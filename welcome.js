@@ -1,9 +1,9 @@
 (() => {
   const steps = [
-    {key:'start', title:'欢迎使用极简翻译！', description:'下一页，读懂一个更大的世界。'},
-    {key:'translate', title:'网页翻译', description:'点一下翻译胶囊，让译文出现在原文身旁。', action:'translate', button:'翻译这篇文章'},
-    {key:'sidebar', title:'分栏对照', description:'两种语言，并排阅读。没有看到译文时，点击右侧“显示页面其他内容”。', action:'sidebar', button:'试试分栏对照'},
-    {key:'reader', title:'沉浸阅读', description:'把页面里的干扰收起来，留下文章、大纲和配图。', action:'reader', button:'进入阅读模式'},
+    {key:'start', title:'欢迎使用极简翻译！', description:'陪你看一个更大的世界。'},
+    {key:'translate', title:'网页翻译', description:'轻点翻译胶囊，世界触手可及！', action:'translate', button:'翻译这篇文章'},
+    {key:'sidebar', title:'分栏对照', description:'侧边分栏对照，不破坏原文阅读体验。提示：没有看到译文时，点击侧边栏中的“显示页面其他内容”。', action:'sidebar', button:'试试分栏对照'},
+    {key:'reader', title:'沉浸阅读', description:'用干净的方式阅读，用纯粹的心情感受。', action:'reader', button:'进入阅读模式'},
     {key:'notes', title:'高亮与笔记', description:'划选一句话，留下高亮，也写下自己的想法。', action:'reader', button:'进入文章做笔记'},
     {key:'lookup', title:'双击查词', description:'双击 curiosity，看看词义；点星标就能加入生词本。'},
     {key:'image', title:'图片也能翻译', description:'试试把这张英文卡片变成中文。'},
@@ -88,7 +88,9 @@
     current=index;const step=steps[index];
     document.body.dataset.guideStep=index;document.body.dataset.guideKey=step.key;
     q('#step-title').textContent=step.title;q('#step-description').textContent=step.description;q('#step-description').hidden=!step.description;
-    q('#guide-shortcuts').hidden=step.key!=='reader'&&step.key!=='extras';
+    q('#guide-shortcuts').hidden=step.key!=='reader'&&step.key!=='translate';
+    q('#guide-reader-shortcuts').hidden=step.key!=='reader';
+    q('#guide-pill-shortcut').hidden=step.key!=='translate';
     q('#welcome-start').hidden=index!==0;q('#welcome-extras').hidden=index!==7;
     q('#guide-reading-layout').hidden=index<1||index>4;article.hidden=index<1||index>4;
     q('#guide-page-noise').hidden=index!==3;
