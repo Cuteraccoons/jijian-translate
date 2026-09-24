@@ -1,7 +1,7 @@
 (() => {
   const steps = [
     {key:'start', title:'欢迎使用极简翻译！', description:'陪你看一个更大的世界。'},
-    {key:'translate', title:'网页翻译', description:'轻点翻译胶囊，世界触手可及！', action:'translate', button:'翻译这篇文章'},
+    {key:'translate', title:'网页翻译', description:'轻点翻译胶囊，世界触手可及', action:'translate', button:'翻译这篇文章'},
     {key:'sidebar', title:'分栏对照', description:'侧边分栏对照，不破坏原文阅读体验。提示：没有看到译文时，点击侧边栏中的“显示页面其他内容”。', action:'sidebar', button:'试试分栏对照'},
     {key:'reader', title:'沉浸阅读', description:'用干净的方式阅读，用纯粹的心情感受。', action:'reader', button:'进入阅读模式'},
     {key:'notes', title:'高亮与笔记', description:'划选一句话，留下高亮，也写下自己的想法。', action:'reader', button:'进入文章做笔记'},
@@ -14,6 +14,8 @@
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const completed = new Set();
   let current = 0, moving = false, mountedArticle = '', observerFrame = 0;
+  let observedPillRoot = null;
+  const pillVisibilityObserver = new MutationObserver(observeExperience);
   const article = q('#welcome-article');
   const make = (tag, text) => { const el=document.createElement(tag); if(text)el.textContent=text; return el; };
 
@@ -73,16 +75,37 @@
       }
       if(key==='reader'&&reader)celebrate();
       if(key==='image'&&q('#raccoon-image-translate-overlay.is-ready'))celebrate();
+      observePillVisibility();
       positionPillHint();
     });
   }
   function positionPillHint() {
     const hint=q('#guide-pill-hint'),pill=q('#raccoon-pill-main');
-    hint.hidden=steps[current].key!=='translate'||completed.has(current)||!pill;
+    const isVisible=element=>{
+      if(!element?.isConnected)return false;
+      for(let currentElement=element;currentElement?.nodeType===Node.ELEMENT_NODE;currentElement=currentElement.parentElement){
+        const style=getComputedStyle(currentElement);
+        if(currentElement.hidden||style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse'||style.contentVisibility==='hidden'||Number(style.opacity)===0)return false;
+      }
+      const rect=element.getBoundingClientRect();
+      return element.getClientRects().length>0&&rect.width>0&&rect.height>0;
+    };
+    hint.hidden=steps[current].key!=='translate'||completed.has(current)||!isVisible(pill);
     if(hint.hidden)return;
     const rect=pill.getBoundingClientRect();
     hint.style.left=`${Math.max(10,Math.min(innerWidth-110,rect.left+rect.width/2-66))}px`;
     hint.style.top=`${Math.max(90,rect.top-116)}px`;
+  }
+  function observePillVisibility() {
+    const root=q('#raccoon-floating-ball-root');
+    if(root===observedPillRoot)return;
+    pillVisibilityObserver.disconnect();
+    observedPillRoot=root;
+    if(!root)return;
+    const options={attributes:true,attributeFilter:['style','hidden','aria-hidden']};
+    pillVisibilityObserver.observe(root,options);
+    const pill=root.querySelector('#raccoon-pill-main');
+    if(pill)pillVisibilityObserver.observe(pill,options);
   }
   function render(index, preserveReader=false) {
     current=index;const step=steps[index];
