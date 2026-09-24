@@ -1340,7 +1340,7 @@
         const clone = document.createElement("div");
         clone.innerHTML = storedHtml;
         clone.querySelectorAll?.(TRANSLATION_EXTENSION_SELECTOR).forEach(node => node.remove());
-      clone.querySelectorAll?.("script,style,noscript,template,.navbar,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
+        clone.querySelectorAll?.("script,style,noscript,template,.navbar,.mw-collapsible-toggle,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
         return String(clone.textContent || "").replace(/\s+/g, " ").trim();
       }
 
@@ -3202,14 +3202,19 @@
         if(node.closest('.syntaxhighlighter')&&codeLines.length){const pre=document.createElement('pre');const code=document.createElement('code');code.textContent=[...codeLines].map(line=>line.textContent.replace(/\u00a0/g,' ')).join('\n');pre.append(code);result.push(pre);continue;}
         if(node.matches('.regionlistitem-table')){const cell=node.querySelector('.regionlistitem-textholder');if(cell){const paragraph=document.createElement('p');paragraph.innerHTML=readerInlineHtml(cell);result.push(paragraph);}continue;}
         const rows = Array.from(node.rows || []).filter(row => {
-          const hasText = String(row.innerText || "").trim().length >= 3;
+          // Wikipedia collapsible tables hide their rows from innerText while
+          // keeping the source text in the DOM. Use textContent here so the
+          // table can preserve those rows in the reader's own disclosure.
+          const hasText = String(row.textContent || "").trim().length >= 3;
           const hasInlineMedia = Array.from(row.querySelectorAll?.("img") || []).some(image => !!getReaderImageInfo(image).src);
           return hasText || hasInlineMedia;
         });
         const hint = `${node.id || ""} ${typeof node.className === "string" ? node.className : ""}`;
-        const textLength = String(node.innerText || "").trim().length;
+        const textLength = String(node.textContent || "").trim().length;
         const isArticleInfobox = /(?:^|\s)infobox(?:\s|$)/i.test(hint) || node.hasAttribute("data-infobox");
-        if (rows.length >= 2 && rows.length <= 80 && textLength <= 12000 && (isArticleInfobox || !/(?:navbox|sidebar|metadata|toccolours)/i.test(hint))) result.push(node);
+        const isWikipediaDataTable = wikipedia && node.matches("table.wikitable");
+        const withinExistingTableBounds = rows.length <= 80 && textLength <= 12000;
+        if (rows.length >= 2 && (isArticleInfobox || isWikipediaDataTable || withinExistingTableBounds) && (isArticleInfobox || !/(?:navbox|sidebar|metadata|toccolours)/i.test(hint))) result.push(node);
         continue;
       }
 
@@ -3313,7 +3318,7 @@
       }
     });
     clone.querySelectorAll?.(TRANSLATION_EXTENSION_SELECTOR).forEach(node => node.remove());
-      clone.querySelectorAll?.("script,style,noscript,template,.navbar,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
+    clone.querySelectorAll?.("script,style,noscript,template,.navbar,.mw-collapsible-toggle,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
     // Preserve separators from nested layout wrappers before stripping host
     // markup. Wikipedia facts often place several values in sibling DIV/LI
     // nodes; blindly unwrapping them would concatenate every label.
@@ -3646,14 +3651,20 @@
   function readerTableHtml(node, nodeIndex, mediaEntries, mediaIndexByNode, renderStyle) {
     const rows = Array.from(node.rows || []).filter(row => {
       if(row.closest("table")!==node)return false;
-      const hasText = String(row.innerText || "").trim().length > 0;
+      const hasText = String(row.textContent || "").trim().length > 0;
       const hasInlineMedia = Array.from(row.querySelectorAll?.("img") || []).some(image => !!getReaderImageInfo(image).src);
       return hasText || hasInlineMedia;
     });
-    const caption = String(node.querySelector("caption")?.innerText || "").trim();
+    const caption = String(node.querySelector("caption")?.textContent || "").replace(/\s+/g," ").trim();
     const className = typeof node.className === "string" ? node.className : "";
     const isInfobox = /(?:^|\s)(?:infobox|sidebar)(?:\s|$)/i.test(className) || node.hasAttribute("data-infobox");
-    const label = caption || (isInfobox ? "资料卡" : "表格资料");
+    const wikipedia = /(?:^|\.)wikipedia\.org$/i.test(location.hostname);
+    const firstCellLabelHolder=document.createElement("div");
+    firstCellLabelHolder.innerHTML=readerInlineHtml(rows[0]?.cells?.[0]);
+    firstCellLabelHolder.querySelectorAll("br").forEach(node=>node.replaceWith(document.createTextNode(" ")));
+    const firstCellLabel = String(firstCellLabelHolder.textContent || "").replace(/\s+/g," ").replace(/^(?:show|hide|v\s*t\s*e)\s*/i,"").trim().slice(0,140);
+    const hasWikipediaTableCaptionRow = wikipedia && rows[0]?.cells?.length === 1 && firstCellLabel.length > 0;
+    const label = caption || (hasWikipediaTableCaptionRow ? firstCellLabel : isInfobox ? "资料卡" : "表格资料");
 
     if (isInfobox) {
       const factRows = rows.map((row, rowIndex) => {
@@ -3718,9 +3729,17 @@
       }).join("");
       return `<tr>${cellHtml}</tr>`;
     }).join("");
-    const chartData = readerChartData(rows);
+    const sourceCollapsed = wikipedia && node.classList.contains("mw-collapsed");
+    const overTableBudget = rows.length > 80 || String(node.textContent || "").trim().length > 12000;
+    const useDisclosure = sourceCollapsed || (wikipedia && overTableBudget);
+    const disclosureReason = sourceCollapsed ? "source-collapsed" : "complete-data";
+    const tableScroll = `<div class="reader-table-scroll" tabindex="0" role="region" aria-label="${escapeHtml(label)}"><table class="reader-semantic-table" style="--reader-table-min-width:${tableMinWidth}px">${colgroup}<tbody>${tableRows}</tbody></table></div>`;
+    const disclosureHtml = useDisclosure
+      ? `<details class="reader-table-details" data-reader-table-reason="${disclosureReason}"><summary><span>${sourceCollapsed ? "展开来源中折叠的表格" : "展开完整数据表"}</span><small>${rows.length} 行 · ${columnCount} 列</small></summary>${tableScroll}</details>`
+      : tableScroll;
+    const chartData = useDisclosure ? null : readerChartData(rows);
     const chartHtml = chartData ? `<details class="reader-chart" data-reader-chart="${escapeHtml(JSON.stringify(chartData))}"><summary>数据图 <span>查看这组数值</span></summary><div class="reader-chart-types" role="group" aria-label="图表类型"><button type="button" data-chart-type="bar" aria-pressed="true">柱状</button><button type="button" data-chart-type="line" aria-pressed="false">折线</button><button type="button" data-chart-type="pie" aria-pressed="false">占比</button></div><div class="reader-chart-output"></div><p class="reader-chart-caption" aria-live="polite"></p></details>` : "";
-    return `<section class="reader-table-block reader-data-table" id="reader_table_${nodeIndex}"><div class="reader-table-heading"><span>${escapeHtml(label)}</span><small>${rows.length} 行 · ${columnCount} 列</small></div><div class="reader-table-scroll" tabindex="0" role="region" aria-label="${escapeHtml(label)}"><table class="reader-semantic-table" style="--reader-table-min-width:${tableMinWidth}px">${colgroup}<tbody>${tableRows}</tbody></table></div>${chartHtml}</section>`;
+    return `<section class="reader-table-block reader-data-table" id="reader_table_${nodeIndex}"><div class="reader-table-heading"><span>${escapeHtml(label)}</span><small>${rows.length} 行 · ${columnCount} 列</small></div>${disclosureHtml}${chartHtml}</section>`;
   }
 
   async function openReaderMode() {
@@ -5238,7 +5257,10 @@
 
     let hasTriggeredTranslation = false;
     const readerPairs=[...root.querySelectorAll('.reader-paragraph-pair')];
-    const longReader=readerPairs.length>250;
+    // A disclosure table can contain many cell pairs that are intentionally
+    // closed on first view. Keep those translations progressive and request
+    // them only as rows enter the reader viewport.
+    const longReader=readerPairs.length>250||!!root.querySelector('.reader-table-details');
     const nearbyPairs=new Set(),attemptedPairs=new Set();
     let readerTranslationObserver;
     if(longReader){

@@ -588,6 +588,18 @@
   scrollbar-color:rgba(90,97,107,.22) transparent!important;
   background:rgba(255,255,255,.18)!important;
 }
+#raccoon-reader-root .reader-table-details{margin:0!important;min-width:0!important}
+#raccoon-reader-root .reader-table-details>summary{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:14px!important;
+  min-height:42px!important;padding:8px 2px!important;cursor:pointer!important;list-style:none!important;
+  color:var(--reader-text,#373e47)!important;font:560 13px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif!important;
+}
+#raccoon-reader-root .reader-table-details>summary::-webkit-details-marker{display:none!important}
+#raccoon-reader-root .reader-table-details>summary::after{content:"＋"!important;flex:0 0 auto!important;color:var(--reader-shell-muted,#858d97)!important;font-size:16px!important}
+#raccoon-reader-root .reader-table-details[open]>summary::after{content:"−"!important}
+#raccoon-reader-root .reader-table-details>summary small{margin-left:auto!important;color:var(--reader-shell-muted,#858d97)!important;font-size:13px!important;font-weight:430!important;white-space:nowrap!important}
+#raccoon-reader-root .reader-table-details>summary:focus-visible{outline:2px solid rgba(41,48,58,.3)!important;outline-offset:2px!important;border-radius:4px!important}
+#raccoon-reader-root .reader-table-details[open]>.reader-table-scroll{margin-top:2px!important}
 #raccoon-reader-root .reader-table-scroll:focus-visible{outline:2px solid rgba(41,48,58,.3)!important;outline-offset:3px!important;border-radius:4px!important}
 #raccoon-reader-root .reader-semantic-table{
   width:100%!important;
@@ -875,6 +887,7 @@
 #raccoon-reader-root[data-theme="dark"] .reader-media-index-item{background:rgba(255,255,255,.025)!important;border-color:rgba(255,255,255,.075)!important;color:#d8dde3!important}
 #raccoon-reader-root[data-theme="dark"] .reader-media-index-item:hover{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.13)!important}
 #raccoon-reader-root[data-theme="dark"] .reader-table-scroll{background:rgba(255,255,255,.018)!important;border-color:rgba(255,255,255,.13)!important}
+#raccoon-reader-root[data-theme="dark"] .reader-table-details>summary{color:#e3e7eb!important}
 #raccoon-reader-root[data-theme="dark"] .reader-semantic-table :is(th,td){border-color:rgba(255,255,255,.075)!important}
 #raccoon-reader-root[data-theme="dark"] .reader-semantic-table th{background:rgba(255,255,255,.045)!important;color:#edf0f3!important}
 #raccoon-reader-root[data-theme="dark"] .reader-semantic-table tbody tr:nth-child(even)>td:not([data-reader-source-color]){background:rgba(255,255,255,.018)!important}
@@ -1460,6 +1473,7 @@
 #raccoon-reader-root[data-table-style="three-line"] .reader-table-scroll{border-top:2px solid currentColor!important;border-bottom:2px solid currentColor!important}
 #raccoon-reader-root[data-table-style="three-line"] .reader-semantic-table :is(th,td){border-bottom:0!important;background:transparent!important}
 #raccoon-reader-root[data-table-style="three-line"] .reader-semantic-table th{border-bottom:1px solid currentColor!important}
+#raccoon-reader-root[data-table-style="three-line"] .reader-semantic-table [data-reader-source-color]{background:var(--reader-cell-bg)!important;color:var(--reader-cell-ink)!important}
 #raccoon-reader-root[data-table-style="striped"] .reader-semantic-table :is(th,td){border-bottom:0!important}
 #raccoon-reader-root[data-table-style="striped"] .reader-semantic-table tbody tr:nth-child(even)>:is(th,td):not([data-reader-source-color]){background:rgba(93,101,112,.07)!important}
 
