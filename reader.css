@@ -557,6 +557,13 @@
 #raccoon-reader-root .reader-embedded-media video,
 #raccoon-reader-root .reader-embedded-media iframe{aspect-ratio:var(--reader-media-ratio,16/9)!important;height:auto!important;object-fit:contain!important}
 #raccoon-reader-root .reader-embedded-media audio{min-height:46px!important}
+#raccoon-reader-root .reader-math-block{box-sizing:border-box!important;max-width:100%!important;margin:20px 0!important;overflow-x:auto!important;clear:both!important}
+#raccoon-reader-root .reader-math-expression{display:inline-block!important;box-sizing:border-box!important;max-width:100%!important;line-height:normal!important;vertical-align:middle!important;unicode-bidi:isolate!important}
+#raccoon-reader-root .reader-math-expression-block{display:block!important;width:100%!important;margin:14px auto!important;padding:6px 4px!important;overflow-x:auto!important;text-align:center!important;white-space:nowrap!important}
+#raccoon-reader-root .reader-math-expression math{max-width:none!important;font-size:1em!important;color:inherit!important}
+#raccoon-reader-root .reader-math-fallback-image{display:inline-block!important;max-width:100%!important;object-fit:contain!important}
+#raccoon-reader-root .reader-math-expression-block .reader-math-fallback-image{max-width:none!important}
+#raccoon-reader-root .reader-math-fallback-text{display:inline-block!important;max-width:100%!important;overflow-wrap:anywhere!important;font:500 13px/1.5 ui-monospace,SFMono-Regular,monospace!important;vertical-align:middle!important}
 #raccoon-reader-root .reader-img-wrap img,
 #raccoon-reader-root .reader-media-block>.reader-img-wrap img{background:transparent!important;object-position:center!important}
 #raccoon-reader-root .reader-embedded-media figcaption{margin-top:8px!important;color:#8a929c!important;font:540 13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif!important;text-align:center!important}

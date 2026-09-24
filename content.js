@@ -3149,7 +3149,7 @@
     const boundary=[...container.children];
     const bookStart=gutenberg&&(container.querySelector('#pg-start-separator')||boundary.find(node=>/^\*{3}\s*START OF/i.test(node.textContent.trim())));
     const bookEnd=gutenberg&&(container.querySelector('#pg-end-separator')||boundary.find(node=>/^\*{3}\s*END OF/i.test(node.textContent.trim())));
-    const raw = Array.from(new Set([...container.querySelectorAll(selector),...composites,...supplemental,...baikeRoots,...(baike?container.querySelectorAll('[class^="para_"],.para'):[])]));
+    const raw = Array.from(new Set([...container.querySelectorAll(selector),...(wikipedia?container.querySelectorAll('.mwe-math-element'):[]),...composites,...supplemental,...baikeRoots,...(baike?container.querySelectorAll('[class^="para_"],.para'):[])]));
     if(isHackerNews)raw.push(...container.querySelectorAll('.commtext,.toptext'));
     const legacyBlocks=[...container.querySelectorAll('font,td')].filter(node=>node.querySelectorAll('br').length>=4&&!node.querySelector('p,div,section,table,pre,li,h1,h2,h3,h4,h5,h6')&&node.textContent.trim().length>180);
     raw.push(...legacyBlocks.filter(node=>!legacyBlocks.some(other=>other!==node&&other.contains(node))));
@@ -3173,6 +3173,13 @@
       if(node.tagName!=="PRE"&&node.closest("pre"))continue;
       const composite=readerCompositeAncestor(node);
       if(composite&&composite!==node)continue;
+
+      if(wikipedia&&node.matches(".mwe-math-element")){
+        if(node.closest("p,li,dt,dd,blockquote,figcaption,td,th,figure,table,details"))continue;
+        result.push(node);
+        continue;
+      }
+      if(wikipedia&&node.closest(".mwe-math-element"))continue;
 
       if(bookStart&&!(bookStart.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING))continue;
       if(bookEnd&&(node===bookEnd||bookEnd.contains(node)||(bookEnd.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)))continue;
@@ -3286,8 +3293,130 @@
     });
   }
 
+  const READER_MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
+  const READER_MATHML_ELEMENTS = new Set([
+    "math","semantics","mrow","mi","mn","mo","mtext","mspace","ms","mfrac","msqrt","mroot","mstyle","merror","mpadded","mphantom","mfenced","menclose","msub","msup","msubsup","munder","mover","munderover","mmultiscripts","mprescripts","none","mtable","mtr","mtd","mlabeledtr","maligngroup","malignmark"
+  ]);
+  const READER_MATHML_ATTRIBUTES = new Set([
+    "alttext","display","mathvariant","mathsize","displaystyle","scriptlevel","stretchy","fence","separator","accent","accentunder","largeop","movablelimits","form","linethickness","bevelled","open","close","width","height","depth","voffset","lspace","rspace","columnalign","rowalign","columnspacing","rowspacing","columnwidth","rowspan","columnspan"
+  ]);
+
+  function readerIsWikipediaMath(node) {
+    return /(?:^|\.)wikipedia\.org$/i.test(location.hostname) && node?.nodeType === Node.ELEMENT_NODE && node.matches(".mwe-math-element");
+  }
+
+  function readerMathAlternative(node) {
+    const math = node.querySelector("math");
+    const image = node.querySelector("img");
+    const mathAlt = String(math?.getAttribute("alttext") || "").trim();
+    const imageAlt = String(image?.getAttribute("alt") || "").trim();
+    if (mathAlt || imageAlt) return mathAlt || imageAlt;
+    try {
+      const data = JSON.parse(node.getAttribute("data-mw") || "{}");
+      return String(data?.body?.extsrc || data?.attrs?.alttext || "").trim().slice(0, 4000);
+    } catch (_) { return ""; }
+  }
+
+  function readerSanitizeMathML(source) {
+    if (!source) return null;
+    if (source.nodeType === Node.TEXT_NODE) return document.createTextNode(source.nodeValue || "");
+    if (source.nodeType !== Node.ELEMENT_NODE || source.namespaceURI !== READER_MATHML_NAMESPACE) return null;
+    const tag = String(source.localName || "").toLowerCase();
+    if (tag === "annotation" || tag === "annotation-xml") return null;
+    if (!READER_MATHML_ELEMENTS.has(tag)) {
+      const fragment = document.createDocumentFragment();
+      for (const child of source.childNodes) {
+        const clean = readerSanitizeMathML(child);
+        if (clean) fragment.append(clean);
+      }
+      return fragment;
+    }
+    const clean = document.createElementNS(READER_MATHML_NAMESPACE, tag);
+    for (const attribute of source.attributes) {
+      const name = attribute.name.toLowerCase();
+      const value = String(attribute.value || "").trim();
+      if (!READER_MATHML_ATTRIBUTES.has(name) || value.length > 4000) continue;
+      if (name === "display" && !/^(?:inline|block)$/i.test(value)) continue;
+      if (name === "displaystyle" || name === "stretchy" || name === "fence" || name === "separator" || name === "accent" || name === "accentunder" || name === "largeop" || name === "movablelimits" || name === "bevelled") {
+        if (!/^(?:true|false)$/i.test(value)) continue;
+      } else if (name === "scriptlevel" || name === "rowspan" || name === "columnspan") {
+        if (!/^-?\d+$/.test(value)) continue;
+      } else if (name !== "alttext" && !/^[\p{L}\p{N}#.,+%/()\-\s]*$/u.test(value)) continue;
+      clean.setAttribute(name, value);
+    }
+    for (const child of source.childNodes) {
+      const cleanChild = readerSanitizeMathML(child);
+      if (cleanChild) clean.append(cleanChild);
+    }
+    return clean;
+  }
+
+  function readerMathHtml(sourceNode) {
+    if (!readerIsWikipediaMath(sourceNode)) return "";
+    const sourceMath = sourceNode.querySelector("math");
+    const safeMath = readerSanitizeMathML(sourceMath);
+    const hasPresentation = safeMath && (safeMath.localName !== "math" || safeMath.querySelector("mi,mn,mo,mtext,ms,mfrac,msqrt,mroot,msub,msup,msubsup,munder,mover,munderover,mtable"));
+    let expressionHtml = "";
+    let mathMarkup = "";
+    let mathBaseline = "";
+    if (hasPresentation) {
+      let sourceDisplay = "";
+      try { sourceDisplay = JSON.parse(sourceNode.getAttribute("data-mw") || "{}").attrs?.display || ""; } catch (_) {}
+      const isBlockMath = sourceNode.classList.contains("mwe-math-element-block") || sourceMath?.getAttribute("display") === "block" || sourceDisplay === "block";
+      const sourceImage = sourceNode.querySelector("img");
+      const fontSize = Math.max(1, parseFloat(getComputedStyle(sourceNode).fontSize) || 16);
+      if (!isBlockMath && sourceImage) {
+        const baselinePx = parseFloat(getComputedStyle(sourceImage).verticalAlign) || 0;
+        mathBaseline = `${Math.max(-20, Math.min(20, baselinePx / fontSize)).toFixed(3)}em`;
+      }
+      if (isBlockMath) {
+        const imageStyle = sourceImage ? getComputedStyle(sourceImage) : null;
+        const imageRect = sourceImage?.getBoundingClientRect();
+        const sourceWidth = imageRect?.width || parseFloat(imageStyle?.width) || sourceImage?.naturalWidth || 0;
+        const mathTokenCount = safeMath.querySelectorAll("mi,mn,mo,mtext,ms").length;
+        const widthEm = sourceWidth > fontSize * 1.15
+          ? sourceWidth / fontSize
+          : mathTokenCount >= 24 ? Math.min(1200, mathTokenCount * 0.72) : 0;
+        if (widthEm > 0) safeMath.style.setProperty("width", `${widthEm.toFixed(3)}em`, "important");
+      }
+      const holder = document.createElement("div");
+      holder.append(safeMath);
+      mathMarkup = holder.innerHTML;
+      expressionHtml = mathMarkup;
+    }
+
+    const alternative = readerMathAlternative(sourceNode);
+    if (!expressionHtml) {
+      const image = sourceNode.querySelector("img");
+      const imageStyle = image ? getComputedStyle(image) : null;
+      const imageRect = image?.getBoundingClientRect();
+      const imageSource = image && !image.hidden && imageStyle?.display !== "none" && imageStyle?.visibility !== "hidden"
+        ? readerSafeMediaUrl(image.currentSrc || image.getAttribute("src") || image.getAttribute("data-src"))
+        : "";
+      const baseFontSize = Math.max(1, parseFloat(getComputedStyle(sourceNode).fontSize) || 16);
+      const widthPx = imageRect?.width || parseFloat(imageStyle?.width) || image?.naturalWidth || 0;
+      const heightPx = imageRect?.height || parseFloat(imageStyle?.height) || image?.naturalHeight || 0;
+      const baselinePx = parseFloat(imageStyle?.verticalAlign) || 0;
+      if (imageSource && widthPx > 0 && heightPx > 0) {
+        const dimension = value => `${Math.max(0.1, Math.min(200, value / baseFontSize)).toFixed(3)}em`;
+        const baseline = `${Math.max(-20, Math.min(20, baselinePx / baseFontSize)).toFixed(3)}em`;
+        expressionHtml = `<img class="reader-math-fallback-image" src="${escapeHtml(imageSource)}" alt="${escapeHtml(alternative)}" loading="lazy" decoding="async" style="width:${dimension(widthPx)};height:${dimension(heightPx)};vertical-align:${baseline};max-width:100%;object-fit:contain">`;
+      } else if (alternative) {
+        expressionHtml = `<span class="reader-math-fallback-text" role="math" aria-label="${escapeHtml(alternative)}">${escapeHtml(alternative)}</span>`;
+      }
+    }
+    if (!expressionHtml) return "";
+
+    let declaredDisplay = "";
+    try { declaredDisplay = JSON.parse(sourceNode.getAttribute("data-mw") || "{}").attrs?.display || ""; } catch (_) {}
+    const isBlock = sourceNode.classList.contains("mwe-math-element-block") || sourceMath?.getAttribute("display") === "block" || declaredDisplay === "block";
+    const baselineStyle = mathBaseline ? ` style="vertical-align:${mathBaseline}!important"` : "";
+    return `<span class="reader-math-expression${isBlock ? " reader-math-expression-block" : ""}" data-reader-math-display="${isBlock ? "block" : "inline"}"${baselineStyle}>${expressionHtml}</span>`;
+  }
+
   function readerInlineHtml(sourceNode) {
     if (!sourceNode) return "";
+    if (readerIsWikipediaMath(sourceNode)) return readerMathHtml(sourceNode);
     if(readerCompositeNodes.has(sourceNode))return readerCompositeHtml(sourceNode);
     const holder = document.createElement("div");
     const clone = sourceNode.cloneNode(true);
@@ -3309,6 +3438,12 @@
     sourceElements.forEach((source,index)=>{if(readerCompositeNodes.has(source)){const token=`JJCOMPOSITEPLACEHOLDER${preservedComposites.length}END`;preservedComposites.push(readerCompositeHtml(source));cloneElements[index].replaceWith(document.createTextNode(token));}});
     sourceElements.forEach((source,index)=>{
       const copy=cloneElements[index];if(!copy)return;
+      if(readerIsWikipediaMath(source)){
+        const mathHolder=document.createElement("div");
+        mathHolder.innerHTML=readerMathHtml(source);
+        copy.replaceWith(...Array.from(mathHolder.childNodes));
+        return;
+      }
       if(readerBaikeBlocks.has(source)){copy.remove();return;}
       const css=getComputedStyle(source);
       if(source.hidden || source.getAttribute('aria-hidden')==='true' || css.display==='none' || css.visibility==='hidden' || /(?:^|\s)(?:geo-nondefault|geo-multi-punct)(?:\s|$)/.test(source.className||'')){copy.remove();return;}
@@ -3333,6 +3468,7 @@
     // translated paragraph invents a relationship that cannot be aligned.
     const allowed = new Set(["A","STRONG","B","EM","I","U","S","CODE","KBD","SAMP","SUB","SUP","RUBY","RT","RP","BR","SPAN","SMALL","Q","IMG"]);
     Array.from(clone.querySelectorAll?.("*") || []).reverse().forEach(node => {
+      if(node.matches(".reader-math-expression")||node.closest(".reader-math-expression"))return;
       const tag = node.tagName;
       if (["SCRIPT","STYLE","NOSCRIPT","IFRAME","OBJECT","EMBED"].includes(tag)) { node.remove(); return; }
       if (!allowed.has(tag)) { node.replaceWith(...Array.from(node.childNodes)); return; }
@@ -3947,6 +4083,7 @@
                 if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle);
                 if(/(^|\.)wikipedia\.org$/.test(location.hostname)&&node.matches('.navbox,.sistersitebox'))return readerSupplementHtml(node,idx,savedRenderStyle);
                 if(readerCompositeNodes.has(node))return `<div id="r_${idx}">${readerCompositeHtml(node)}</div>`;
+                if(readerIsWikipediaMath(node))return `<div class="reader-math-block" id="r_${idx}">${readerMathHtml(node)}</div>`;
                 if (node.tagName === "IMG") {
                   const mediaIndex = mediaIndexByNode.get(node);
                   const media = mediaEntries[mediaIndex]?.info;
@@ -4864,6 +5001,21 @@
       });
     });
 
+    root.querySelectorAll(".reader-math-fallback-image").forEach(img => {
+      const showAlternative = () => {
+        const alternative = String(img.getAttribute("alt") || "").trim();
+        if (!alternative || !img.isConnected) return;
+        const fallback = document.createElement("span");
+        fallback.className = "reader-math-fallback-text";
+        fallback.setAttribute("role", "math");
+        fallback.setAttribute("aria-label", alternative);
+        fallback.textContent = alternative;
+        img.replaceWith(fallback);
+      };
+      img.addEventListener("error", showAlternative, { once: true });
+      if (img.complete && !img.naturalWidth) showAlternative();
+    });
+
     root.querySelectorAll(".reader-img-wrap img").forEach(img => {
       const mediaIndex = Number(img.dataset.readerMediaIndex);
       const fallbacks = mediaEntries[mediaIndex]?.info?.candidates || [];
@@ -4899,13 +5051,14 @@
     const readerExportClone = () => {
       const source=root.querySelector('.reader-scroll-card'),clone=source.cloneNode(true);
       const originals=[source,...source.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
-      const properties=['display','font-family','font-size','font-weight','font-style','line-height','letter-spacing','color','background-color','text-align','text-decoration','padding','margin','border','border-radius','box-shadow','float','clear','column-count','column-gap','column-span','break-inside','grid-template-columns','gap','align-items','justify-content','flex-direction','flex-wrap','list-style-type','white-space'];
+      const properties=['display','font-family','font-size','font-weight','font-style','line-height','letter-spacing','color','background-color','text-align','text-decoration','vertical-align','padding','margin','border','border-radius','box-shadow','float','clear','column-count','column-gap','column-span','break-inside','grid-template-columns','gap','align-items','justify-content','flex-direction','flex-wrap','list-style-type','white-space'];
       originals.forEach((node,index)=>{
         const copy=copies[index],style=getComputedStyle(node);
         copy.removeAttribute('id');copy.removeAttribute('contenteditable');
         [...copy.attributes].filter(attr=>attr.name.startsWith('on')).forEach(attr=>copy.removeAttribute(attr.name));
         if(node.matches('button,script,style,iframe,.reader-image-note-marker,.reader-capture-note-region')||style.display==='none'||node.matches('.reader-trans-p:not([data-loaded="true"])')){copy.remove();return;}
         copy.removeAttribute('style');properties.forEach(name=>copy.style.setProperty(name,style.getPropertyValue(name)));
+        if(node.matches('math')&&node.style.getPropertyValue('width'))copy.style.setProperty('width',node.style.getPropertyValue('width'),node.style.getPropertyPriority('width'));
         if(node.matches('img')){copy.src=node.currentSrc||node.src;copy.removeAttribute('loading');copy.style.maxWidth='100%';copy.style.width=`${node.getBoundingClientRect().width}px`;copy.style.height='auto';}
         if(style.float!=='none'&&node.parentElement)copy.style.width=`${Math.min(100,node.getBoundingClientRect().width/node.parentElement.getBoundingClientRect().width*100)}%`;
         if(style.display==='grid'&&style.gridTemplateColumns!=='none')copy.style.gridTemplateColumns=`repeat(${style.gridTemplateColumns.split(' ').length},minmax(0,1fr))`;
@@ -4923,6 +5076,8 @@
       if(node.matches('button,script,style,.reader-meta-bar,.reader-image-note-marker,.reader-capture-note-region,.reader-chart')||getComputedStyle(node).display==='none'||node.matches('.reader-trans-p:not([data-loaded="true"])'))return '';
       const children=()=>[...node.childNodes].map(readerMarkdown).join('');
       if(node.matches('img'))return `![${markdownText(node.alt)}](<${node.currentSrc||node.src}>)`;
+      if(node.matches('math'))return markdownText(node.getAttribute('alttext')||node.textContent.trim());
+      if(node.matches('.reader-math-block,.reader-math-expression-block'))return `${children().trim()}\n\n`;
       if(node.matches('a'))return `[${children()}](<${node.href}>)`;
       if(node.matches('h1,h2,h3,h4,h5,h6'))return `${'#'.repeat(Number(node.tagName[1]))} ${children().trim()}\n\n`;
       if(node.matches('strong,b'))return `**${children()}**`;
@@ -4952,7 +5107,7 @@
       if(format==='md'){downloadTextFile(`# ${markdownText(title)}\n\n来源：<${location.href}>\n\n${readerMarkdown(root.querySelector('#reader-content')).replace(/\n{3,}/g,'\n\n')}`,'text/markdown','md');return;}
       const clone=readerExportClone();
       if(format==='txt'){downloadTextFile(`${title}\n${location.href}\n\n`+[...clone.querySelectorAll('.reader-orig-p,.reader-trans-p')].map(node=>node.textContent.trim()).join('\n\n'),'text/plain','txt');return;}
-      const html=`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm}body{margin:0;padding:0;background:${getComputedStyle(root.querySelector('.reader-scroll-card')).backgroundColor};}*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}img,svg,video{max-width:100%;height:auto}table{width:100%;max-width:100%;table-layout:auto;border-collapse:collapse}td,th{overflow-wrap:anywhere}h1,h2,h3,h4{break-after:avoid}p{orphans:3;widows:3}.reader-table-scroll{overflow:visible!important}.reader-content{content-visibility:visible!important}.reader-scroll-card{box-shadow:none!important} @media screen{body{max-width:1100px;margin:24px auto}}@media print{.reader-scroll-card{padding:12px!important;border:0!important}.reader-data-table{font-size:13px!important}.reader-data-table *{font-size:inherit!important}}</style></head><body>${clone.outerHTML}</body></html>`;
+      const html=`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm}body{margin:0;padding:0;background:${getComputedStyle(root.querySelector('.reader-scroll-card')).backgroundColor};}*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}img,svg,video{max-width:100%;height:auto}table{width:100%;max-width:100%;table-layout:auto;border-collapse:collapse}td,th{overflow-wrap:anywhere}h1,h2,h3,h4{break-after:avoid}p{orphans:3;widows:3}.reader-table-scroll{overflow:visible!important}.reader-content{content-visibility:visible!important}.reader-math-block{max-width:100%;margin:20px 0;overflow-x:auto;clear:both}.reader-math-expression{display:inline-block;max-width:100%;line-height:normal;vertical-align:middle;unicode-bidi:isolate}.reader-math-expression-block{display:block;width:100%;margin:14px auto;padding:6px 4px;overflow-x:auto;text-align:center;white-space:nowrap}.reader-math-expression math{max-width:none;font-size:1em;color:inherit}.reader-math-fallback-image{display:inline-block;max-width:100%;object-fit:contain}.reader-math-expression-block .reader-math-fallback-image{max-width:none}.reader-math-fallback-text{display:inline-block;max-width:100%;overflow-wrap:anywhere;font:500 13px/1.5 ui-monospace,SFMono-Regular,monospace;vertical-align:middle}.reader-scroll-card{box-shadow:none!important} @media screen{body{max-width:1100px;margin:24px auto}}@media print{.reader-scroll-card{padding:12px!important;border:0!important}.reader-data-table{font-size:13px!important}.reader-data-table *{font-size:inherit!important}.reader-math-block,.reader-math-expression-block{overflow:visible!important}.reader-math-expression-block{white-space:normal!important}.reader-math-expression-block math{width:auto!important}.reader-math-expression-block .reader-math-fallback-image{max-width:100%!important}}</style></head><body>${clone.outerHTML}</body></html>`;
       if(format==='html'){downloadTextFile(html,'text/html','html');return;}
       const frame=document.createElement('iframe');frame.className='reader-export-print-frame';frame.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;height:800px;border:0';frame.srcdoc=html;
       frame.onload=async()=>{await frame.contentDocument.fonts.ready;await Promise.all([...frame.contentDocument.images].map(image=>image.decode().catch(()=>{})));frame.contentWindow.focus();frame.contentWindow.print();};
