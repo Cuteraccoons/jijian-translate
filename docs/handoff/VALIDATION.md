@@ -105,7 +105,7 @@ HTML 导出保留 MathML、`alttext`、公式图 `alt`、坏图文本和 H₂O �
 
 自有 fixture 使用两行、两图的表格、表外复用其中一个 URL 的独立 figure，以及一行且不会作为表格收录的父表。断言通过：两张表内图各出现一次；复用 URL 在表格和独立 figure 各出现一次；独立图注保留，figure 媒体索引为 2；被过滤的一行父表中的段落与图片仍出现；普通数据表的字段顺序和基本信息一行均保留。`baike-image-ownership.js`、`baike-facts.js`、`regression.js` 均通过。
 
-修复后真实样本复验请求苹果公司时收到 HTTP 403「百度安全验证」，未继续重试或绕过保护；因此真实页面的修复后 DOM 结果尚未验证。`baike-image-ownership-live.js` 会重新按表格行数、源 IMG 祖先和当前 URL 动态定位；遇到 403 明确返回 `available:false`。后续恢复可访问时重跑该脚本，再标记 B03a 完成。
+修复后真实样本复验请求苹果公司时收到 HTTP 403「百度安全验证」，未继续重试或绕过保护；因此真实页面的修复后 DOM 结果尚未验证。2026-09-24 用户要求继续后又运行一次 `baike-image-ownership-live.js`，请求仍返回 HTTP 403，脚本明确返回 `available:false`。当前没有再次请求；恢复可访问时重跑该脚本，再标记 B03a 完成。
 
 `chess-links-citations.js` 通过：真实 Wikipedia 后兵开局棋盘 33 个棋子、原尺寸 208 × 208 px，窄屏棋子坐标保持；自有组合图和引用布局通过。该脚本对 Google 翻译响应使用本机模拟，仅验证引用 DOM，不代表真实服务质量。B03a fixture 均在原文模式、自动翻译关闭下运行，没有真实翻译服务调用。没有在百度 403 后再运行会重新请求多个实页的 `reader104-regression.js`；B01 的四页实测和基本信息 fixture 已单独通过。发布审计、翻译核心审计、三个 JS 语法检查和 `git diff --check` 通过；无截图、未生成候选 ZIP。
 
