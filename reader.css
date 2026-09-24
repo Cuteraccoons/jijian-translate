@@ -1921,3 +1921,31 @@ html:has(#raccoon-reader-root) #raccoon-selection-bubble-root .selection-tool-bt
 @media(max-width:440px){
   #raccoon-reader-root .reader-baike-video-slide{flex-basis:100%!important}
 }
+
+/* Baidu Baike facts become paired cards only when the article column has room. */
+@container (min-width:700px){
+  #raccoon-reader-root .reader-content .reader-baike-infobox .reader-fact-list{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    align-items:stretch!important;
+    column-gap:14px!important;
+    border-top:0!important;
+  }
+  #raccoon-reader-root .reader-content .reader-baike-infobox .reader-fact-row{
+    box-sizing:border-box!important;
+    min-width:0!important;
+    grid-template-columns:minmax(0,28%) minmax(0,1fr)!important;
+    gap:10px!important;
+    margin:0 0 12px!important;
+    padding:12px!important;
+    border:1px solid rgba(78,85,95,.12)!important;
+    border-radius:10px!important;
+    background:rgba(120,128,138,.035)!important;
+  }
+  #raccoon-reader-root .reader-content .reader-baike-infobox .reader-fact-row:last-child{
+    border-bottom:1px solid rgba(78,85,95,.12)!important;
+  }
+  #raccoon-reader-root .reader-content .reader-baike-infobox .reader-fact-row-wide{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}

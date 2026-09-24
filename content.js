@@ -3823,7 +3823,7 @@
         if(!valueHtml)return '';
         return `<div class="reader-fact-row">${readerTableCellPairHtml(`r_${index}_key_${row}`,escapeHtml(label),renderStyle,'reader-fact-key')}${readerTableCellPairHtml(`r_${index}_value_${row}`,valueHtml,renderStyle,'reader-fact-value')}</div>`;
       }).join('');
-      return `<section id="r_${index}" class="reader-table-block reader-infobox reader-infobox-long"><div class="reader-table-heading">基本信息</div><div class="reader-fact-list">${rows}</div></section>`;
+      return `<section id="r_${index}" class="reader-table-block reader-infobox reader-infobox-long reader-baike-infobox"><div class="reader-table-heading">基本信息</div><div class="reader-fact-list">${rows}</div></section>`;
     }
     if(type?.kind==='videos'){
       const slides=type.covers.map((cover,i)=>{

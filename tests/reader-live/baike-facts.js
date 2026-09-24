@@ -51,6 +51,21 @@ async page => {
         valueWidth: row.querySelector(".reader-fact-value .reader-orig-p")?.clientWidth || 0,
         valueScrollWidth: row.querySelector(".reader-fact-value .reader-orig-p")?.scrollWidth || 0
       })),
+      factLayout: (() => {
+        const list = root.querySelector(".reader-baike-infobox .reader-fact-list");
+        const factRows = [...(list?.querySelectorAll(".reader-fact-row") || [])];
+        return {
+          display: list ? getComputedStyle(list).display : "missing",
+          columns: list ? getComputedStyle(list).gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0,
+          contentWidth: root.querySelector("#reader-content").clientWidth,
+          cards: factRows.map(row => {
+            const rect = row.getBoundingClientRect();
+            const key = row.querySelector(".reader-fact-key").getBoundingClientRect();
+            const value = row.querySelector(".reader-fact-value").getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, keyX: key.x, valueX: value.x };
+          })
+        };
+      })(),
       bodyContainsNearby: root.querySelector("#reader-content")?.textContent.includes("邻近正文仍然是一段普通正文"),
       content: { width: root.querySelector("#reader-content").clientWidth, scrollWidth: root.querySelector("#reader-content").scrollWidth }
     };
@@ -58,7 +73,7 @@ async page => {
   await page.waitForFunction(() => document.querySelectorAll("#raccoon-reader-root .reader-infobox .reader-fact-row").length > 0, { timeout: 10000 });
   await page.setViewportSize({ width: 390, height: 900 });
   const narrow = await inspect();
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1920, height: 1080 });
   const wide = await inspect();
   const labels = narrow.rows.map(row => row.label);
   const works = narrow.rows.find(row => row.label === "代表作品");
@@ -74,5 +89,8 @@ async page => {
   if (narrow.rows.find(row => row.label === "下一字段")?.value !== "保持原配对") throw Error("Empty field consumed the next field's value");
   if (narrow.rows.find(row => row.label === "多行说明")?.breaks < 1) throw Error("Line break inside a value was lost");
   if (narrow.content.scrollWidth > narrow.content.width + 1 || wide.content.scrollWidth > wide.content.width + 1) throw Error(`Basic-info content caused page overflow: ${JSON.stringify({ narrow: narrow.content, wide: wide.content })}`);
+  if (narrow.factLayout.contentWidth >= 700 || narrow.factLayout.display === "grid" || narrow.factLayout.cards.some((card, index, cards) => index > 0 && (card.x !== cards[0].x || card.y <= cards[index - 1].y))) throw Error(`Narrow facts should remain a single vertical list: ${JSON.stringify(narrow.factLayout)}`);
+  if (wide.factLayout.contentWidth < 700 || wide.factLayout.display !== "grid" || wide.factLayout.columns !== 2) throw Error(`Wide Baidu facts should use two cards per row: ${JSON.stringify(wide.factLayout)}`);
+  if (wide.factLayout.cards.length !== 7 || wide.factLayout.cards.some((card, index, cards) => card.valueX <= card.keyX || (index % 2 === 1 && (Math.abs(card.y - cards[index - 1].y) > 2 || card.x <= cards[index - 1].x)))) throw Error(`Wide facts should pair label/value columns inside left/right cards: ${JSON.stringify(wide.factLayout)}`);
   return { status: response?.status(), source, narrow, wide, translation: "disabled; original view only" };
 }
