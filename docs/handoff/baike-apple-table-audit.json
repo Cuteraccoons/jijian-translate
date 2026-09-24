@@ -238,5 +238,33 @@
         }
       ]
     }
-  ]
+  ],
+  "latestObservation": {
+    "date": "2026-09-24",
+    "phase": "before B03a implementation, refreshed live source observation",
+    "httpStatus": 200,
+    "sourceRoot": ".J-lemma-content",
+    "sourceImageCount": 30,
+    "sourceTableCount": 20,
+    "sourceDuplicateUrlGroups": 0,
+    "reproducedTable": {
+      "rowCount": 2,
+      "imageCount": 6,
+      "imageParentPattern": "IMG > A > lemmaPicture_* > para_* > TD > TR > TBODY > TABLE",
+      "uniqueSourceImageNodes": 6,
+      "readerDuplicates": 6,
+      "example": {
+        "src": "https://bkimg.cdn.bcebos.com/pic/3b87e950352ac65c63ccbeeafbf2b21192138a5a?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_440",
+        "sourceNodeCount": 1,
+        "readerTableCellPair": "r_670_cell_0_0",
+        "readerStandalonePair": "r_671"
+      }
+    },
+    "afterImplementationRequest": {
+      "httpStatus": 403,
+      "title": "百度安全验证",
+      "result": "post-fix live DOM check unavailable; no retry or workaround"
+    },
+    "note": "r_* IDs are observations only. The live regression script locates the current table by structure."
+  }
 }

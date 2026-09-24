@@ -46,7 +46,7 @@ python3 tests/reader-live/run-baike-inventory.py --session releasefix --output d
 
 原生扩展调查 16 页、四种语言。运行 `python3 tests/reader-live/run-wiki-inventory.py --session releasefix --output docs/handoff/wiki-inventory-new.json`，前提同上述已加载源码会话。`wiki-detail-audit.js` 同样是 CLI run-code 函数模板，补查公式、主表、气候表、音频和代码。
 
-这条记录描述调查时的基线状态，不代表当前状态。W01、W02 与 B01 已完成，见下方记录。
+这条记录描述调查时的基线状态，不代表当前状态。W01、W02、B01 已完成；B03a 的实现已提交，但实页后验收受 403 阻断，见下方记录。
 
 首轮调查记录的追加验证通过：两个 JavaScript 调查模板语法、Python 语法、证据 JSON 解析、交接文档本地链接、发布审计、翻译核心审计及 git diff --check；当时没有修改产品代码。
 
@@ -65,7 +65,7 @@ python3 tests/reader-live/run-baike-inventory.py --session releasefix --output d
 
 回归：`wiki-long-tables.js`、`wiki-long-tables-live.js` 通过；`regression.js`、`reader104-regression.js`、`chess-links-citations.js` 通过。涉及引用的 `chess-links-citations.js` 用本机模拟 Google 响应，只验证引用结构与界面，不代表真实翻译服务质量。W01 的 fixture 和实站检查均关闭翻译、只看原文；没有调用真实翻译服务。浏览器检查为 DOM 与交互断言，没有截图验收。原站 sortable 排序交互仍不在本任务范围内。
 
-发布审计、翻译核心审计和 `git diff --check` 在本轮收尾时重跑。没有生成候选 ZIP；实施计划将候选打包留给 R02。W01 收尾时下一项为 W02，W02 后为 B01；当前结果见下方，后续按计划做 B03a。
+发布审计、翻译核心审计和 `git diff --check` 在本轮收尾时重跑。没有生成候选 ZIP；实施计划将候选打包留给 R02。W01 收尾时下一项为 W02，W02 后为 B01；当前结果见下方。B03a 实页复验恢复后再进入 B02。
 
 ## W02：维基百科公式与化学式（2026-09-24）
 
@@ -96,3 +96,15 @@ HTML 导出保留 MathML、`alttext`、公式图 `alt`、坏图文本和 H₂O �
 自有 fixture 有 10 个源标签、7 行可见输出，覆盖紧邻值、包装层、多个 `dd`、链接、长链接、空值、隐藏标签、隐藏值、标签空格与值内换行。390 px 视口下正文宽 344 px，长值区域宽／滚动宽均为 302 px，无正文横向溢出；1280 px 下正文宽 760 px，长值区域宽／滚动宽均为 503 px。扩展保留“Stage name”标签、“林 夏”“Mira Li”中的语义空格。无截图验收。
 
 回归：`baike-facts.js`、`baike-facts-live.js`、更新后的 `reader104-regression.js` 与 `regression.js` 通过；`reader104` 中周杰伦／杭州市／水分别为 23／19／23 项。发布审计、翻译核心审计、四个 JS 模板语法检查及 `git diff --check` 通过。没有调用模拟或真实翻译服务。现有 DOM 中隐藏／未展开字段不承诺保留，维护者仍需抽查中文标签和值的视觉边界。
+
+## B03a：百度百科同源图片重复归属（2026-09-24，部分完成）
+
+起点提交：`5eee156`；实现提交：`6c962b5`。苹果公司实页在修复前 HTTP 200，源 `.J-lemma-content` 有 30 个图片节点和 20 张表。重新定位后，发现同一个源 IMG 位于表格 TD 内的 `.para_*` 包装中；以 `3b87e950…` 为例，源中仅 1 个 IMG，祖先链为 IMG → A → `lemmaPicture_*` → `para_*` → TD → TR → TABLE。阅读器把它同时输出在 `reader_table_670` 的 `r_670_cell_0_0` 和独立段落 `r_671`。本次重定位找到 6 个这样的表内图片节点；表格单元格说明与图均因此重复。旧调查 JSON 的 `r_669` 等编号只是旧快照，不作为选择器。
+
+根因是百度百科 `.para_*` 特例无条件收录表内段落，即使其祖先表格已经进入阅读器；媒体索引也按 URL 去重，无法表达不同源 IMG 节点使用同一地址。修复后 `collectReaderContentNodes` 用 WeakSet 记录实际收录的源节点：只有祖先已被收录时才跳过子段落；被过滤的一行表不会阻断子内容。`collectReaderMediaEntries` 改为按 IMG 节点身份去重，让不同图注下合法复用同 URL 的图片各自获得媒体索引。
+
+自有 fixture 使用两行、两图的表格、表外复用其中一个 URL 的独立 figure，以及一行且不会作为表格收录的父表。断言通过：两张表内图各出现一次；复用 URL 在表格和独立 figure 各出现一次；独立图注保留，figure 媒体索引为 2；被过滤的一行父表中的段落与图片仍出现；普通数据表的字段顺序和基本信息一行均保留。`baike-image-ownership.js`、`baike-facts.js`、`regression.js` 均通过。
+
+修复后真实样本复验请求苹果公司时收到 HTTP 403「百度安全验证」，未继续重试或绕过保护；因此真实页面的修复后 DOM 结果尚未验证。`baike-image-ownership-live.js` 会重新按表格行数、源 IMG 祖先和当前 URL 动态定位；遇到 403 明确返回 `available:false`。后续恢复可访问时重跑该脚本，再标记 B03a 完成。
+
+`chess-links-citations.js` 通过：真实 Wikipedia 后兵开局棋盘 33 个棋子、原尺寸 208 × 208 px，窄屏棋子坐标保持；自有组合图和引用布局通过。该脚本对 Google 翻译响应使用本机模拟，仅验证引用 DOM，不代表真实服务质量。B03a fixture 均在原文模式、自动翻译关闭下运行，没有真实翻译服务调用。没有在百度 403 后再运行会重新请求多个实页的 `reader104-regression.js`；B01 的四页实测和基本信息 fixture 已单独通过。发布审计、翻译核心审计、三个 JS 语法检查和 `git diff --check` 通过；无截图、未生成候选 ZIP。

@@ -21,4 +21,6 @@
 
 2026-09-24（B01）：`baike-facts.js` 用自有 fixture 验证 DT/DD 包装、多值、隐藏／空字段、链接与窄屏长值；`baike-facts-live.js` 逐字段对照周杰伦、水、杭州市、清华大学。均在原文模式运行，不调用翻译服务。`reader104-regression.js` 的基本信息基准只计可见且有值的字段。
 
+2026-09-24（B03a）：`baike-image-ownership.js` 验证表格内图、表外同 URL 不同图注、媒体索引、一行父表子内容、普通数据表和基本信息；`baike-image-ownership-live.js` 动态定位苹果公司当前含图表格，不依赖历史 `r_*` 编号。fixture、`baike-facts.js`、`regression.js` 和 `chess-links-citations.js` 通过。实页复验遇到百度 403 时脚本返回 `available:false`，不绕过验证页；当次实页后验收尚未通过，因此没有再运行会请求多个百度实页的 `reader104-regression.js`。无真实翻译服务调用；棋盘引用回归的译文响应为本机模拟。
+
 维基百科调查补充：`wiki-inventory.js` / `run-wiki-inventory.py` 统计 16 页结构与阅读器输出；`wiki-detail-audit.js` 核对公式、长表、气候表、音频和代码。参见 [模块报告](../../docs/handoff/WIKIPEDIA-SURVEY.md) 与 [逐步计划](../../docs/handoff/IMPLEMENTATION-PLAN.md)。调查发现不等于修复完成。
