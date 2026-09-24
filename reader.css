@@ -1893,3 +1893,4 @@ html:has(#raccoon-reader-root) #raccoon-selection-bubble-root .selection-tool-bt
 #raccoon-reader-root .reader-baike-gallery:empty{display:none!important}
 #raccoon-reader-root .reader-baike-card{display:flow-root!important;margin:18px 0!important;break-inside:avoid!important}
 #raccoon-reader-root .reader-baike-card .reader-inline-photo{float:left!important;width:90px!important;height:auto!important;max-height:150px!important;object-fit:contain!important;margin:0 18px 10px 0!important}
+#raccoon-reader-root .reader-infobox .reader-fact-value :is(.reader-orig-p,.reader-trans-p){box-sizing:border-box!important;min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important;word-break:normal!important}

@@ -3743,8 +3743,34 @@
   function readerBaikeBlockHtml(node,index,renderStyle) {
     const type=readerBaikeBlocks.get(node);
     if(type==='facts'){
-      const rows=[...node.querySelectorAll('dt')].map((term,row)=>{const value=term.nextElementSibling;if(!value||value.tagName!=='DD')return '';
-        return `<div class="reader-fact-row">${readerTableCellPairHtml(`r_${index}_key_${row}`,escapeHtml(term.textContent.replace(/\s+/g,'')),renderStyle,'reader-fact-key')}${readerTableCellPairHtml(`r_${index}_value_${row}`,readerInlineHtml(value),renderStyle,'reader-fact-value')}</div>`;
+      const terms=[...node.querySelectorAll('dt')];
+      const isVisible=source=>{
+        for(let current=source;current;current=current.parentElement){
+          const style=getComputedStyle(current);
+          if(current.hidden||style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse'||style.contentVisibility==='hidden')return false;
+          if(current.tagName==='DETAILS'&&!current.open&&current!==source)return false;
+          if(current===node)break;
+        }
+        return true;
+      };
+      const normalizeLabel=value=>String(value||'')
+        .replace(/([\p{Script=Han}])(?:\u00a0{2,}|\u3000+)(?=[\p{Script=Han}])/gu,'$1')
+        .replace(/\s+/g,' ').trim();
+      const rows=terms.map((term,row)=>{
+        if(!isVisible(term))return '';
+        const list=term.closest('dl')||node;
+        const listTerms=terms.filter(candidate=>(candidate.closest('dl')||node)===list);
+        const nextTerm=listTerms[listTerms.indexOf(term)+1]||null;
+        const follows=(before,after)=>!!(before.compareDocumentPosition(after)&Node.DOCUMENT_POSITION_FOLLOWING);
+        const values=[...list.querySelectorAll('dd')].filter(value=>
+          (value.closest('dl')||node)===list&&follows(term,value)&&(!nextTerm||follows(value,nextTerm))&&isVisible(value)
+        ).filter(value=>String(value.innerText||value.textContent||'').trim()||[...value.querySelectorAll('img')].some(image=>isVisible(image)&&!!getReaderImageInfo(image).src));
+        if(!values.length)return '';
+        const label=normalizeLabel(term.textContent);
+        if(!label)return '';
+        const valueHtml=values.map(value=>readerInlineHtml(value)).filter(html=>html.trim()).join('<br class="reader-fact-value-break">');
+        if(!valueHtml)return '';
+        return `<div class="reader-fact-row">${readerTableCellPairHtml(`r_${index}_key_${row}`,escapeHtml(label),renderStyle,'reader-fact-key')}${readerTableCellPairHtml(`r_${index}_value_${row}`,valueHtml,renderStyle,'reader-fact-value')}</div>`;
       }).join('');
       return `<section id="r_${index}" class="reader-table-block reader-infobox reader-infobox-long"><div class="reader-table-heading">基本信息</div><div class="reader-fact-list">${rows}</div></section>`;
     }
