@@ -2794,8 +2794,49 @@
     element.replaceChildren(span);
   }
 
+  async function warmBaikeVideoCovers() {
+    if(location.hostname!=='baike.baidu.com')return;
+    const covers=[...document.querySelectorAll('[class^="videoCover_"]')].filter(node=>!node.closest('.swiper-slide-duplicate'));
+    if(!covers.length)return;
+    const firstVisible=covers.slice(0,3);
+    const sourceFor=image=>[
+      image?.getAttribute('data-original'),image?.getAttribute('data-src'),image?.getAttribute('data-lazy-src'),
+      image?.getAttribute('data-url'),image?.getAttribute('data-srcset')?.split(',')[0]?.trim().split(/\s+/)[0],
+      image?.currentSrc,image?.getAttribute('src'),image?.getAttribute('srcset')?.split(',')[0]?.trim().split(/\s+/)[0]
+    ].find(value=>String(value||'').trim()&&!/^data:image\/gif;base64,R0lGODlhAQABA/i.test(String(value).trim()))||'';
+    const ready=cover=>{
+      const image=cover.querySelector('[class^="coverImg_"] img');
+      if(image&&sourceFor(image))return image.complete||!!image.currentSrc;
+      const coverImage=cover.querySelector('[class^="coverImg_"]');
+      if(coverImage&&/url\(["']?.+?["']?\)/i.test(getComputedStyle(coverImage).backgroundImage))return true;
+      const video=cover.querySelector('video');
+      return !!(video?.getAttribute('poster')||video?.currentSrc||video?.getAttribute('src')||video?.getAttribute('data-src')||video?.querySelector('source[src],source[data-src]'));
+    };
+    if(firstVisible.every(ready))return;
+    const startY=window.scrollY;
+    const firstRect=firstVisible[0].getBoundingClientRect();
+    const moved=firstRect.bottom<=0||firstRect.top>=window.innerHeight;
+    try{
+      if(moved){firstVisible[0].scrollIntoView({block:'center',behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));}
+      await new Promise(resolve=>{
+        let done=false;
+        const finish=()=>{if(done)return;done=true;clearTimeout(timer);observer.disconnect();document.body.removeEventListener('load',check,true);document.body.removeEventListener('error',check,true);resolve();};
+        const check=()=>{if(firstVisible.every(ready))finish();};
+        const observer=new MutationObserver(check);
+        observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src','srcset','poster','data-src','data-original','data-lazy-src','data-srcset']});
+        document.body.addEventListener('load',check,true);
+        document.body.addEventListener('error',check,true);
+        const timer=setTimeout(finish,1100);
+        check();
+      });
+    }finally{
+      if(moved){window.scrollTo({top:startY,behavior:'instant'});await new Promise(resolve=>requestAnimationFrame(resolve));readerContainerCache={url:'',element:null};}
+    }
+  }
+
   async function warmReaderLazyContent() {
     if(location.hostname==='baike.baidu.com'){
+      await warmBaikeVideoCovers();
       const start=window.scrollY;
       const targets=[...document.querySelectorAll('[class^="albumWrap_"],[class^="movieAndTvPosterWrapper_"],[class^="albumItem_"]')];
       // These pages create IMG only after visibility; warming IMG selectors alone misses them.
@@ -3785,12 +3826,23 @@
       return `<section id="r_${index}" class="reader-table-block reader-infobox reader-infobox-long"><div class="reader-table-heading">基本信息</div><div class="reader-fact-list">${rows}</div></section>`;
     }
     if(type?.kind==='videos'){
-      return `<section id="r_${index}" class="reader-baike-videos">${type.covers.map((cover,i)=>{
+      const slides=type.covers.map((cover,i)=>{
         const video=cover.querySelector('video');const title=cover.querySelector('[class^="videoTitle_"]')?.textContent.trim()||'词条视频';
-        const image=cover.querySelector('[class^="coverImg_"] img');const poster=image?readerSafeMediaUrl(getReaderImageInfo(image).src):'';
-        if(video&&(video.currentSrc||video.getAttribute('src'))){const copy=video.cloneNode(true);copy.setAttribute('title',title);if(poster)copy.setAttribute('poster',poster);return readerEmbeddedMediaHtml(copy,`${index}_${i}`);}
-        return `<figure>${poster?`<img src="${escapeHtml(poster)}" alt="" loading="lazy">`:''}<figcaption>${escapeHtml(title)} · <a href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer">在原网页播放</a></figcaption></figure>`;
-      }).join('')}</section>`;
+        const image=cover.querySelector('[class^="coverImg_"] img');
+        const imageSources=[...(image?.closest('picture')?.querySelectorAll('source')||[])].flatMap(source=>[source.getAttribute('data-srcset'),source.getAttribute('srcset')]);
+        const srcset=[image?.getAttribute('data-srcset'),...imageSources,image?.getAttribute('srcset')].find(value=>String(value||'').trim())||'';
+        const dataPoster=image&&[image.getAttribute('data-original'),image.getAttribute('data-src'),image.getAttribute('data-lazy-src'),image.getAttribute('data-url'),image.currentSrc,image.getAttribute('src')].find(value=>String(value||'').trim()&&!/^data:image\/gif;base64,R0lGODlhAQABA/i.test(String(value).trim()));
+        const coverImage=cover.querySelector('[class^="coverImg_"]');
+        const backgroundPoster=coverImage&&getComputedStyle(coverImage).backgroundImage.match(/url\(["']?(.*?)["']?\)/i)?.[1];
+        const poster=readerSafeMediaUrl(dataPoster||srcset.split(',')[0]?.trim().split(/\s+/)[0]||backgroundPoster||video?.getAttribute('poster')||'');
+        const videoSource=video&&(video.currentSrc||video.getAttribute('src')||video.getAttribute('data-src')||video.querySelector('source[src]')?.getAttribute('src')||video.querySelector('source[data-src]')?.getAttribute('data-src'));
+        const mediaSrc=readerSafeMediaUrl(videoSource||'');
+        const posterHtml=poster?`<img class="reader-baike-video-poster" src="${escapeHtml(poster)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async">`:`<div class="reader-baike-video-placeholder" role="img" aria-label="${escapeHtml(title)}">封面暂未加载</div>`;
+        const mediaHtml=mediaSrc?`<video controls preload="none" src="${escapeHtml(mediaSrc)}"${poster?` poster="${escapeHtml(poster)}"`:''} aria-label="${escapeHtml(title)}"></video>`:`<a class="reader-baike-video-source" href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer" aria-label="在原网页播放：${escapeHtml(title)}">${posterHtml}</a>`;
+        return `<figure class="reader-baike-video-slide" data-reader-video-slide="${i}"><div class="reader-baike-video-media">${mediaHtml}</div><figcaption><span>${escapeHtml(title)}</span><a href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer">在原网页播放</a></figcaption></figure>`;
+      }).join('');
+      const hasNavigation=type.covers.length>1;
+      return `<section id="r_${index}" class="reader-baike-videos" aria-label="词条视频轮播"><div class="reader-baike-video-heading"><span>词条视频</span><div class="reader-baike-video-controls" ${hasNavigation?'':'hidden'}><button type="button" data-reader-video-nav="previous" aria-label="上一组三个视频" title="上一组" disabled>‹</button><button type="button" data-reader-video-nav="next" aria-label="下一组三个视频" title="下一组">›</button></div></div><div class="reader-baike-video-viewport" role="region" aria-label="词条视频" tabindex="0"><div class="reader-baike-video-track">${slides}</div></div><p class="reader-baike-video-count">${type.covers.length} 个视频</p></section>`;
     }
     if(type==='gallery'){
       const cards=node.querySelectorAll('[class^="worksItem_"]');
@@ -3806,6 +3858,41 @@
     const table=node.matches('table')?node:node.querySelector('table');
     const body=table?readerTableHtml(table,index,[],new WeakMap(),renderStyle):readerPairHtml({id:`r_${index}`,originalHtml:readerInlineHtml(node),renderStyle});
     return `<details class="reader-supplement" open><summary>${escapeHtml(title)}</summary>${body}</details>`;
+  }
+
+  function initializeReaderBaikeVideoCarousels(root) {
+    const carousels=[...root.querySelectorAll('.reader-baike-videos')];
+    if(!carousels.length)return;
+    const update=viewport=>{
+      const section=viewport.closest('.reader-baike-videos');
+      const controls=section?.querySelector('.reader-baike-video-controls');
+      const previous=section?.querySelector('[data-reader-video-nav="previous"]');
+      const next=section?.querySelector('[data-reader-video-nav="next"]');
+      if(!previous||!next)return;
+      if(controls)controls.hidden=viewport.scrollWidth<=viewport.clientWidth+2;
+      previous.disabled=viewport.scrollLeft<=1;
+      next.disabled=viewport.scrollLeft+viewport.clientWidth>=viewport.scrollWidth-2;
+    };
+    const observers=[];
+    for(const section of carousels){
+      const viewport=section.querySelector('.reader-baike-video-viewport');
+      if(!viewport)continue;
+      const previous=section.querySelector('[data-reader-video-nav="previous"]');
+      const next=section.querySelector('[data-reader-video-nav="next"]');
+      previous?.addEventListener('click',()=>viewport.scrollBy({left:-viewport.clientWidth,behavior:'smooth'}));
+      next?.addEventListener('click',()=>viewport.scrollBy({left:viewport.clientWidth,behavior:'smooth'}));
+      let scheduled=false;
+      viewport.addEventListener('scroll',()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;update(viewport);});},{passive:true});
+      const resizeObserver=new ResizeObserver(()=>update(viewport));
+      resizeObserver.observe(viewport);observers.push(resizeObserver);
+      update(viewport);
+    }
+    const removalObserver=new MutationObserver(()=>{
+      if(root.isConnected)return;
+      observers.forEach(observer=>observer.disconnect());
+      removalObserver.disconnect();
+    });
+    removalObserver.observe(document.documentElement,{childList:true});
   }
 
   function readerSemanticCellColor(cell) {
@@ -4398,6 +4485,7 @@
 
     document.documentElement.appendChild(root);
     readerRoot = root;
+    initializeReaderBaikeVideoCarousels(root);
     const languageForText = text => {
       if (/[ぁ-ゟ゠-ヿ]/u.test(text)) return "ja";
       if (/[가-힣]/u.test(text)) return "ko";

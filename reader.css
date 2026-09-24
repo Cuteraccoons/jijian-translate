@@ -1886,11 +1886,37 @@ html:has(#raccoon-reader-root) #raccoon-selection-bubble-root .selection-tool-bt
 #raccoon-reader-root .reader-supplement{margin:22px 0!important;padding:12px 0!important;border-top:1px solid var(--reader-shell-border)!important}
 #raccoon-reader-root .reader-supplement>summary{cursor:pointer!important;font-size:15px!important;font-weight:600!important;line-height:1.7!important}
 
-#raccoon-reader-root .reader-baike-gallery,#raccoon-reader-root .reader-baike-videos{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))!important;gap:18px!important;margin:22px 0!important;clear:both!important}
-#raccoon-reader-root :is(.reader-baike-gallery,.reader-baike-videos) figure{margin:0!important;min-width:0!important;line-height:1.6!important;font-size:14px!important}
-#raccoon-reader-root :is(.reader-baike-gallery,.reader-baike-videos) img{display:block!important;width:100%!important;height:180px!important;max-width:100%!important;object-fit:contain!important;margin:0 0 10px!important;border-radius:8px!important}
-#raccoon-reader-root .reader-baike-videos img{height:auto!important;max-height:260px!important}
-#raccoon-reader-root .reader-baike-gallery:empty{display:none!important}
+#raccoon-reader-root .reader-baike-gallery{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))!important;gap:18px!important;margin:22px 0!important;clear:both!important}
+#raccoon-reader-root .reader-baike-gallery figure{margin:0!important;min-width:0!important;line-height:1.6!important;font-size:14px!important}
+#raccoon-reader-root .reader-baike-gallery img{display:block!important;width:100%!important;height:180px!important;max-width:100%!important;object-fit:contain!important;margin:0 0 10px!important;border-radius:8px!important}
+#raccoon-reader-root .reader-baike-videos{display:block!important;min-width:0!important;margin:22px 0!important;clear:both!important}
+#raccoon-reader-root .reader-baike-video-heading{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0 0 10px!important;font-size:15px!important;font-weight:600!important}
+#raccoon-reader-root .reader-baike-video-controls{display:flex!important;gap:6px!important}
+#raccoon-reader-root .reader-baike-video-controls[hidden]{display:none!important}
+#raccoon-reader-root .reader-baike-video-controls button{display:grid!important;place-items:center!important;width:32px!important;height:32px!important;padding:0!important;border:1px solid var(--reader-shell-border)!important;border-radius:50%!important;background:var(--reader-card-bg,#fff)!important;color:var(--reader-text)!important;font:inherit!important;font-size:22px!important;line-height:1!important;cursor:pointer!important}
+#raccoon-reader-root .reader-baike-video-controls button:disabled{opacity:.4!important;cursor:default!important}
+#raccoon-reader-root .reader-baike-video-controls button:focus-visible,#raccoon-reader-root .reader-baike-video-viewport:focus-visible{outline:2px solid var(--reader-text)!important;outline-offset:2px!important}
+#raccoon-reader-root .reader-baike-video-viewport{min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;scroll-behavior:smooth!important;scroll-snap-type:x mandatory!important}
+#raccoon-reader-root .reader-baike-video-viewport::-webkit-scrollbar{display:none!important}
+#raccoon-reader-root .reader-baike-video-track{display:flex!important;gap:18px!important;box-sizing:border-box!important;width:100%!important}
+#raccoon-reader-root .reader-baike-video-slide{box-sizing:border-box!important;flex:0 0 calc((100% - 36px)/3)!important;min-width:0!important;margin:0!important;scroll-snap-align:start!important;line-height:1.6!important;font-size:14px!important}
+#raccoon-reader-root .reader-baike-video-media{position:relative!important;display:grid!important;place-items:center!important;width:100%!important;aspect-ratio:16/9!important;overflow:hidden!important;border-radius:8px!important;background:var(--reader-shell-border)!important}
+#raccoon-reader-root .reader-baike-video-media img,#raccoon-reader-root .reader-baike-video-media video{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;object-fit:contain!important;margin:0!important;border-radius:8px!important}
+#raccoon-reader-root .reader-baike-video-source{display:block!important;width:100%!important;height:100%!important}
+#raccoon-reader-root .reader-baike-video-placeholder{display:grid!important;place-items:center!important;width:100%!important;height:100%!important;color:var(--reader-muted)!important;font-size:13px!important}
+#raccoon-reader-root .reader-baike-video-slide figcaption{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:8px!important;margin-top:8px!important}
+#raccoon-reader-root .reader-baike-video-slide figcaption span{min-width:0!important;overflow-wrap:anywhere!important}
+#raccoon-reader-root .reader-baike-video-slide figcaption a{flex:none!important;font-size:13px!important}
+#raccoon-reader-root .reader-baike-video-count{margin:8px 0 0!important;color:var(--reader-muted)!important;font-size:13px!important}
+#raccoon-reader-root .reader-baike-videos:empty,#raccoon-reader-root .reader-baike-gallery:empty{display:none!important}
+#raccoon-reader-root .reader-baike-video-media video{max-height:260px!important}
 #raccoon-reader-root .reader-baike-card{display:flow-root!important;margin:18px 0!important;break-inside:avoid!important}
 #raccoon-reader-root .reader-baike-card .reader-inline-photo{float:left!important;width:90px!important;height:auto!important;max-height:150px!important;object-fit:contain!important;margin:0 18px 10px 0!important}
 #raccoon-reader-root .reader-infobox .reader-fact-value :is(.reader-orig-p,.reader-trans-p){box-sizing:border-box!important;min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important;word-break:normal!important}
+
+@media(max-width:640px){
+  #raccoon-reader-root .reader-baike-video-slide{flex-basis:calc((100% - 18px)/2)!important}
+}
+@media(max-width:440px){
+  #raccoon-reader-root .reader-baike-video-slide{flex-basis:100%!important}
+}
