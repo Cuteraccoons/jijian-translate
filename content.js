@@ -3314,7 +3314,7 @@
       const text = getHostOriginalText(node);
       const isHeading = readerHeadingLevel(node) > 0;
       if (text.length < (isHeading ? 2 : (node.tagName === "LI" ? 6 : 10))) continue;
-      if (!bookPage && seenText.has(text)) continue;
+      if (!bookPage && !isHeading && seenText.has(text)) continue;
 
       const linkText = Array.from(node.querySelectorAll?.("a") || []).reduce((n,a) => n + ((a.innerText || a.textContent || "").trim().length), 0);
       const linkDensity = text.length ? linkText / text.length : 0;
@@ -5520,7 +5520,9 @@
     accentSection.after(addStyleChoices('超链接样式','reader-link-style','readerLinkStyle',[['underline','下划线'],['blue','蓝色链接']],value=>{root.dataset.readerLinkStyle=value;}));
     const sourceAnchors=new Map();
     contentNodes.forEach((node,index)=>{const target=root.querySelector(`#${readerHeadingLevel(node)?'head':'r'}_${index}`)||root.querySelector(`#reader_table_${index}`);if(!target)return;
-      [node,...node.querySelectorAll('[id],a[name]'),node.closest('.footnote')].filter(Boolean).forEach(source=>{const id=source.id||source.getAttribute('name');if(id&&!sourceAnchors.has(id))sourceAnchors.set(id,target);});
+      const sourceNodes=[node,...node.querySelectorAll('[id],a[name]'),node.closest('.footnote')];
+      for(let ancestor=node.parentElement;ancestor;ancestor=ancestor.parentElement){sourceNodes.push(ancestor);if(ancestor===bestContainer)break;}
+      sourceNodes.filter(Boolean).forEach(source=>{const id=source.id||source.getAttribute('name');if(id&&!sourceAnchors.has(id))sourceAnchors.set(id,target);});
     });
     root.querySelector('#reader-content').addEventListener('click',event=>{const link=event.target.closest('a[href]');if(!link)return;try{const url=new URL(link.href);if(url.origin!==location.origin||url.pathname!==location.pathname||!url.hash)return;const target=sourceAnchors.get(decodeURIComponent(url.hash.slice(1)));if(target){event.preventDefault();scrollReaderTarget(target);}}catch{}});
     const copyLink = root.querySelector("#reader-copy-link");

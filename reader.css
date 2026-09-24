@@ -1861,9 +1861,10 @@ html:has(#raccoon-reader-root) #raccoon-selection-bubble-root .selection-tool-bt
 #raccoon-reader-root .reader-composite-stage *::before,#raccoon-reader-root .reader-composite-stage *::after{content:none!important}
 
 /* 1.0.4: generous hit areas with indented, full-row outline navigation. */
-#raccoon-reader-root .reader-outline-item{width:100%!important;box-sizing:border-box!important}
-#raccoon-reader-root .reader-outline-item.level-2{width:calc(100% - 12px)!important}
-#raccoon-reader-root .reader-outline-item.level-3{width:calc(100% - 25px)!important}
+#raccoon-reader-root .reader-outline-item{width:calc(100% - 12px)!important;box-sizing:border-box!important}
+#raccoon-reader-root .reader-outline-item.level-2{width:calc(100% - 24px)!important}
+#raccoon-reader-root .reader-outline-item.level-3{width:calc(100% - 37px)!important}
+#raccoon-reader-root .reader-nav-view[data-reader-nav-view="outline"]{scrollbar-gutter:stable!important}
 #raccoon-reader-root .reader-context-themes{gap:2px!important;justify-content:space-between!important;padding:3px 0!important;flex-wrap:wrap!important}
 #raccoon-reader-root .reader-context-themes button{flex:0 0 34px!important;width:34px!important;min-width:34px!important;height:36px!important;border-radius:50%!important;outline:0!important;background:transparent!important}
 #raccoon-reader-root .reader-context-themes button i{flex:none!important;width:22px!important;height:22px!important;border-radius:50%!important;border:1px solid #0003!important;box-shadow:none!important;box-sizing:border-box!important}
