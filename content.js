@@ -3168,6 +3168,11 @@
       for(const [selector,kind] of [['.J-basic-info,.basic-info','facts'],['[class^="worksWrap_"],[class^="albumWrap_"]','gallery'],['[class^="movieItem_"],[class^="albumItem_"]','card']]){
         container.querySelectorAll(selector).forEach(node=>{if(!baikeRoots.some(parent=>parent.contains(node))){readerBaikeBlocks.set(node,kind);baikeRoots.push(node);}});
       }
+      container.querySelectorAll('[data-module-type="album"],[data-module-type="video"]').forEach(node=>{
+        if(baikeRoots.some(parent=>parent.contains(node)))return;
+        readerBaikeBlocks.set(node,{kind:node.dataset.moduleType==='video'?'module-videos':'module-gallery'});
+        baikeRoots.push(node);
+      });
     }
     const composites=discoverReaderComposites(container);
     const wikipedia=/(^|\.)wikipedia\.org$/.test(location.hostname);
@@ -3603,14 +3608,37 @@
   function collectReaderMediaEntries(contentNodes) {
     const entries = [];
     const seenImages = new Set();
+    const belongsToBaikeVideoModule=image=>{
+      for(let current=image;current;current=current.parentElement){
+        if(readerBaikeBlocks.get(current)?.kind==='module-videos')return true;
+      }
+      return false;
+    };
+    const baikeAlbumImageLabel=image=>{
+      let group=null;
+      for(let current=image;current;current=current.parentElement){
+        if(readerBaikeBlocks.get(current)?.kind==='module-gallery'){group=current;break;}
+      }
+      if(!group)return '';
+      const images=[...group.querySelectorAll('img')].filter(item=>!item.closest('.swiper-slide-duplicate')&&!getReaderImageInfo(item).isIcon&&!!getReaderImageInfo(item).src);
+      if(images.length<2)return '';
+      const index=images.indexOf(image);
+      if(index<0)return '';
+      const captions=images.map(item=>String(item.getAttribute('alt')||'').trim());
+      const repeatedCaption=captions[0]&&captions.every(value=>value===captions[0])?captions[0]:'';
+      const groupText=String(group.closest('[class^="para_"],.para')?.innerText||'').trim();
+      const sharedCaption=repeatedCaption||(captions.every(value=>!value)&&groupText.length<=100?groupText:'');
+      if(!sharedCaption)return '';
+      return index===0?sharedCaption:`组图第${index+1}张`;
+    };
     const add = (image, caption = "") => {
-      if(readerCompositeAncestor(image))return;
+      if(readerCompositeAncestor(image)||belongsToBaikeVideoModule(image))return;
       const info = getReaderImageInfo(image);
       if (!info.src || info.isIcon || seenImages.has(image)) return;
       const hint = `${info.src} ${info.alt} ${image.className || ""}`.toLowerCase();
       if (/icon|avatar|logo|emoji|sprite|tracking|pixel|badge|button|chevron|favicon|placeholder|loading|spinner|divider|separator|advert|promo|sponsor|watermark|qrcode|qr-code/.test(hint)) return;
       seenImages.add(image);
-      entries.push({ image, info, caption:String(caption || info.alt || "文章配图").trim() });
+      entries.push({ image, info, caption:String(caption || baikeAlbumImageLabel(image) || info.alt || "文章配图").trim() });
     };
     contentNodes.forEach(node => {
       if (node.tagName === "IMG") add(node);
@@ -3791,7 +3819,7 @@
     });
   }
 
-  function readerBaikeBlockHtml(node,index,renderStyle) {
+  function readerBaikeBlockHtml(node,index,renderStyle,mediaEntries=[],mediaIndexByNode=new WeakMap()) {
     const type=readerBaikeBlocks.get(node);
     if(type==='facts'){
       const terms=[...node.querySelectorAll('dt')];
@@ -3842,7 +3870,35 @@
         return `<figure class="reader-baike-video-slide" data-reader-video-slide="${i}"><div class="reader-baike-video-media">${mediaHtml}</div><figcaption><span>${escapeHtml(title)}</span><a href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer">在原网页播放</a></figcaption></figure>`;
       }).join('');
       const hasNavigation=type.covers.length>1;
-      return `<section id="r_${index}" class="reader-baike-videos" aria-label="词条视频轮播"><div class="reader-baike-video-heading"><span>词条视频</span><div class="reader-baike-video-controls" ${hasNavigation?'':'hidden'}><button type="button" data-reader-video-nav="previous" aria-label="上一组三个视频" title="上一组" disabled>‹</button><button type="button" data-reader-video-nav="next" aria-label="下一组三个视频" title="下一组">›</button></div></div><div class="reader-baike-video-viewport" role="region" aria-label="词条视频" tabindex="0"><div class="reader-baike-video-track">${slides}</div></div><p class="reader-baike-video-count">${type.covers.length} 个视频</p></section>`;
+      return `<section id="r_${index}" class="reader-baike-videos" aria-label="词条视频轮播"><div class="reader-baike-video-heading"><span>词条视频 <small class="reader-baike-video-count">（${type.covers.length}个）</small></span><div class="reader-baike-video-controls" ${hasNavigation?'':'hidden'}><button type="button" data-reader-video-nav="previous" aria-label="上一组三个视频" title="上一组" disabled>‹</button><button type="button" data-reader-video-nav="next" aria-label="下一组三个视频" title="下一组">›</button></div></div><div class="reader-baike-video-viewport" role="region" aria-label="词条视频" tabindex="0"><div class="reader-baike-video-track">${slides}</div></div></section>`;
+    }
+    if(type?.kind==='module-gallery'){
+      const images=[...node.querySelectorAll('img')].filter(image=>!image.closest('.swiper-slide-duplicate')&&!getReaderImageInfo(image).isIcon&&!!getReaderImageInfo(image).src);
+      if(!images.length)return '';
+      const captions=images.map(image=>String(image.getAttribute('alt')||'').trim());
+      const candidateSharedCaption=captions.length>1&&captions[0]&&captions.every(caption=>caption===captions[0])?captions[0]:'';
+      const parentText=String(node.closest('[class^="para_"],.para')?.innerText||'').trim();
+      const sharedCaption=candidateSharedCaption&&!parentText.includes(candidateSharedCaption)?candidateSharedCaption:'';
+      const cards=images.map((image,imageIndex)=>{
+        const mediaIndex=mediaIndexByNode.get(image);
+        const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-gallery-image');
+        const caption=!candidateSharedCaption?captions[imageIndex]:'';
+        return `<figure>${mediaHtml}${caption?`<figcaption>${escapeHtml(caption)}</figcaption>`:''}</figure>`;
+      }).join('');
+      return `<section id="r_${index}" class="reader-baike-gallery reader-baike-module-gallery"><div class="reader-baike-gallery-grid">${cards}</div>${sharedCaption?`<p class="reader-baike-gallery-caption">${escapeHtml(sharedCaption)}</p>`:''}</section>`;
+    }
+    if(type?.kind==='module-videos'){
+      const cards=[...node.querySelectorAll('[class^="videoContainer_"]')].filter(card=>!card.closest('.swiper-slide-duplicate'));
+      if(!cards.length)return '';
+      const content=cards.map(card=>{
+        const image=card.querySelector('[class^="coverImg_"]');
+        const poster=image?getReaderImageInfo(image).src:'';
+        const duration=String(card.querySelector('[class^="video_"]')?.innerText||'').trim();
+        const title=String(card.querySelector('[class^="videoInfo_"]')?.innerText||card.querySelector('[class^="videoTitle_"]')?.innerText||'词条视频').trim();
+        const media=poster?`<img src="${escapeHtml(poster)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async">`:'<span class="reader-baike-module-video-placeholder">封面暂未加载</span>';
+        return `<figure class="reader-baike-module-video"><a href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer"><span class="reader-baike-module-video-media">${media}${duration?`<small>${escapeHtml(duration)}</small>`:''}</span><figcaption>${escapeHtml(title)}</figcaption><span class="reader-baike-module-video-source">在原网页播放</span></a></figure>`;
+      }).join('');
+      return `<section id="r_${index}" class="reader-baike-module-videos" aria-label="正文视频">${content}</section>`;
     }
     if(type==='gallery'){
       const cards=node.querySelectorAll('[class^="worksItem_"]');
@@ -4203,7 +4259,7 @@
             </div>
             <div class="reader-content" id="reader-content">
               ${contentNodes.map((node, idx) => {
-                if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle);
+                if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle,mediaEntries,mediaIndexByNode);
                 if(/(^|\.)wikipedia\.org$/.test(location.hostname)&&node.matches('.navbox,.sistersitebox'))return readerSupplementHtml(node,idx,savedRenderStyle);
                 if(readerCompositeNodes.has(node))return `<div id="r_${idx}">${readerCompositeHtml(node)}</div>`;
                 if(readerIsWikipediaMath(node))return `<div class="reader-math-block" id="r_${idx}">${readerMathHtml(node)}</div>`;

@@ -46,6 +46,13 @@ async page => {
     const viewport = section?.querySelector('.reader-baike-video-viewport');
     return {
       titles: [...section.querySelectorAll('figcaption span')].map(node => node.textContent.trim()),
+      headingCount: section.querySelector('.reader-baike-video-heading .reader-baike-video-count')?.textContent.trim(),
+      countRows: section.querySelectorAll('p.reader-baike-video-count').length,
+      captionLayout: [...section.querySelectorAll('.reader-baike-video-slide')].slice(0, 3).map(slide => {
+        const title=slide.querySelector('figcaption span').getBoundingClientRect();
+        const link=slide.querySelector('figcaption a').getBoundingClientRect();
+        return { titleBottom:title.bottom, linkTop:link.top, linkDisplay:getComputedStyle(slide.querySelector('figcaption a')).display };
+      }),
       images: section.querySelectorAll('img').length,
       videos: [...section.querySelectorAll('video')].map(video => ({ controls: video.controls, autoplay: video.autoplay, preload: video.preload, poster: video.getAttribute('poster') })),
       controls: section.querySelectorAll('[data-reader-video-nav]').length,
@@ -61,6 +68,7 @@ async page => {
   if (response?.status() !== 200) throw Error(`Fixture HTTP status ${response?.status()}`);
   if (source.cards !== 6 || source.loadedPosters !== 0 || source.duplicate !== 1) throw Error(`Fixture source changed: ${JSON.stringify(source)}`);
   if (opened.cards !== 6 || opened.titles.join('|') !== Array.from({ length: 6 }, (_, index) => `样例视频 ${index + 1}`).join('|') || opened.duplicateTitle) throw Error(`Video order or clone filtering failed: ${JSON.stringify(opened)}`);
+  if (opened.headingCount !== '（6个）' || opened.countRows !== 0 || opened.captionLayout.some(layout => layout.linkTop < layout.titleBottom - 1 || layout.linkDisplay === 'inline')) throw Error(`Video count or original-page link placement failed: ${JSON.stringify(opened)}`);
   if (opened.images < 3 || opened.visibleCards !== 3 || opened.controls !== 2 || opened.viewport?.scrollWidth <= opened.viewport?.clientWidth) throw Error(`Initial carousel did not load and show three posters: ${JSON.stringify(opened)}`);
   if (opened.videos.length !== 1 || !opened.videos[0].controls || opened.videos[0].autoplay || opened.videos[0].preload !== 'none' || !opened.videos[0].poster) throw Error(`Direct video should be controllable, poster-backed and never autoplay: ${JSON.stringify(opened.videos)}`);
   if (opened.missingPosterFallback.text !== '封面暂未加载' || opened.missingPosterFallback.links < 2) throw Error(`Missing poster should keep a clear fallback and original-page links: ${JSON.stringify(opened.missingPosterFallback)}`);
@@ -72,6 +80,7 @@ async page => {
   const navigation = { forward, returnedToStart: true };
   if (navigation.forward.left < opened.viewport.clientWidth * .8 || navigation.forward.previousDisabled || !navigation.forward.nextDisabled || !navigation.returnedToStart) throw Error(`Carousel arrow navigation failed: ${JSON.stringify(navigation)}`);
   await page.setViewportSize({ width: 390, height: 900 });
+  await page.waitForTimeout(120);
   const narrow = await page.evaluate(() => {
     const section=document.querySelector('#raccoon-reader-root .reader-baike-videos'),viewport=section.querySelector('.reader-baike-video-viewport');
     const area=viewport.getBoundingClientRect();
