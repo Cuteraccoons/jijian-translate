@@ -46,6 +46,23 @@ python3 tests/reader-live/run-baike-inventory.py --session releasefix --output d
 
 原生扩展调查 16 页、四种语言。运行 `python3 tests/reader-live/run-wiki-inventory.py --session releasefix --output docs/handoff/wiki-inventory-new.json`，前提同上述已加载源码会话。`wiki-detail-audit.js` 同样是 CLI run-code 函数模板，补查公式、主表、气候表、音频和代码。
 
-本轮只更新调查与计划，没有产品代码变更。标题/目标存在检查不是提取完整性或视觉验收；统计脚本执行成功也不表示所测功能全部通过。数学公式和人口主表问题仍未修复。
+这条记录描述调查时的基线状态，不代表当前状态。W01 已完成，见下方记录；数学公式仍待 W02。
 
-本轮追加验证通过：两个 JavaScript 调查模板语法、Python 语法、证据 JSON 解析、交接文档本地链接、发布审计、翻译核心审计及 git diff --check。没有修改产品代码。
+首轮调查记录的追加验证通过：两个 JavaScript 调查模板语法、Python 语法、证据 JSON 解析、交接文档本地链接、发布审计、翻译核心审计及 git diff --check；当时没有修改产品代码。
+
+## W01：维基百科长表与折叠气候表（2026-09-24）
+
+起点提交：`3ee172b`。实现提交：`8945588`。修复前原生扩展 fixture 复现 81 行表被筛掉；79／80 行通过。问题还包括 `innerText` 对隐藏表行返回空、维基 `wikitable` 被通用布局表规则拦截，以及单元格标签中的换行导致清理样式误入阅读器。
+
+改动位于 `content.js` 与 `reader.css`：改用 `textContent` 读取语义表格内容；维基 `table.wikitable` 走专用数据表识别；折叠维基表和超过 80 行或 12000 字的表格放入初始收起的 `<details>`，提供行列数及完整内容展开入口；表格行只在可见时进入渐进翻译；标签清理去除源站切换按钮、样式和多余换行。三线表仍保留原有数据格颜色及文字对比度。
+
+新增自有短文本 fixture：79、80、81、242 行边界；超过 12000 字表；折叠小表；caption、colspan、rowspan；彩色数据格。检查结果为：79／80 行直接呈现，81／242 行和超长表均可展开；隐藏行与合并单元格完整；长表在自身区域滚动，不造成正文横向溢出。纯净、三线、条纹三种表格样式下彩色格均保留。
+
+真实页面：
+
+- [人口列表](https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population)：HTTP 200。源表 242 个物理行，其中一个为空的 `.mw-empty-elt` 间隔行；阅读器保留 241 条有意义记录。World（8,232,000,000，13 Jun 2025）、Norway（5,636,904，30 Jun 2026）和 Pitcairn Islands（UK，35，2023）首／中／末组合字段均匹配，展开后首末记录均可见。
+- [伦敦气候](https://en.wikipedia.org/wiki/Climate_of_London)：HTTP 200。9 张源 wikitable 对应 9 张阅读器表；隐藏站点行未丢失，均可通过折叠入口查看。对每张表的首、中、末抽样记录均匹配；源站切换按钮没有进入内容，彩色数据格在三种样式下保持可读。
+
+回归：`wiki-long-tables.js`、`wiki-long-tables-live.js` 通过；`regression.js`、`reader104-regression.js`、`chess-links-citations.js` 通过。涉及引用的 `chess-links-citations.js` 用本机模拟 Google 响应，只验证引用结构与界面，不代表真实翻译服务质量。W01 的 fixture 和实站检查均关闭翻译、只看原文；没有调用真实翻译服务。浏览器检查为 DOM 与交互断言，没有截图验收。原站 sortable 排序交互仍不在本任务范围内。
+
+发布审计、翻译核心审计和 `git diff --check` 在本轮收尾时重跑。没有生成候选 ZIP；实施计划将候选打包留给 R02。下一项为 W02 公式。

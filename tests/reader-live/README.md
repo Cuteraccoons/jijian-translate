@@ -17,4 +17,6 @@
 
 2026-09-24：大纲颜色按钮 12 组布局检查与键盘选择通过；新增 16 个百度百科页面结构调查。见 [交接入口](../../HANDOFF.md) 与 [复现说明](../../docs/handoff/VALIDATION.md)。没有截图验收。
 
+2026-09-24（W01）：`wiki-long-tables.js` 用自有 fixture 验证长表阈值、折叠表、合并格、彩色单元格与表格内滚动；`wiki-long-tables-live.js` 检查人口列表与伦敦气候页真实源/阅读器记录。两者均在原文模式运行，不调用翻译服务。详细结果及物理空行的统计口径见 [验证记录](../../docs/handoff/VALIDATION.md)。
+
 维基百科调查补充：`wiki-inventory.js` / `run-wiki-inventory.py` 统计 16 页结构与阅读器输出；`wiki-detail-audit.js` 核对公式、长表、气候表、音频和代码。参见 [模块报告](../../docs/handoff/WIKIPEDIA-SURVEY.md) 与 [逐步计划](../../docs/handoff/IMPLEMENTATION-PLAN.md)。调查发现不等于修复完成。
