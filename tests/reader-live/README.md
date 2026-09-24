@@ -9,6 +9,16 @@
 
 `regression.js` 是两组自有文本的确定性浏览器回归，通过请求路由提供测试页面，仍使用真实扩展。验证旧式表格正文、后半章节、图片段落、引用中的代码、数据表格与标题锚点清理。
 
+`baike-headings.js` 使用自有百科结构 fixture 检查同名标题、包装层锚点、目录排除、层级顺序、窄／宽栏行尾点击和滚动位置；`baike-headings-live.js` 对照苹果公司、周杰伦和民法典实页。可以在可见 Chromium 测试窗口中运行：
+
+```bash
+python3 tests/reader-live/run-baike-headings.py --session baike-manual --mode fixture
+python3 tests/reader-live/run-baike-headings.py --session baike-manual --mode live --names 周杰伦
+python3 tests/reader-live/run-baike-headings.py --session baike-manual --mode live --wait-for-manual
+```
+
+第三条命令遇到百度安全验证时会在当前可见窗口等待最多 120 秒；手动完成页面验证后它会继续采集。未通过验证的页面会记录为 unavailable，不会绕过验证或重试。
+
 `chess-links-citations.js` 验证真实 Wikipedia Queen’s Pawn Game 的棋盘、棋子坐标及窄屏缩放，再使用自有定位图与引用测试页面验证组合图、蓝色／下划线链接和译文上标。此脚本临时模拟翻译服务响应，不代表真实服务翻译质量；结束时恢复 worker 的 fetch。
 
 2026-09-22：以上新回归、`regression.js` 与 `feedback-regression.js` 均通过。棋盘保留 33 张图片（底板及 32 枚棋子），宽窄窗口的棋子相对坐标误差小于 0.01；定位式手机示意图的标签位置保持一致。未做截图验收。
@@ -19,8 +29,10 @@
 
 2026-09-24（W01）：`wiki-long-tables.js` 用自有 fixture 验证长表阈值、折叠表、合并格、彩色单元格与表格内滚动；`wiki-long-tables-live.js` 检查人口列表与伦敦气候页真实源/阅读器记录。两者均在原文模式运行，不调用翻译服务。详细结果及物理空行的统计口径见 [验证记录](../../docs/handoff/VALIDATION.md)。
 
-2026-09-24（B01）：`baike-facts.js` 用自有 fixture 验证 DT/DD 包装、多值、隐藏／空字段、链接与窄屏长值；`baike-facts-live.js` 逐字段对照周杰伦、水、杭州市、清华大学。均在原文模式运行，不调用翻译服务。`reader104-regression.js` 的基本信息基准只计可见且有值的字段。
+2026-09-24（B01）：`baike-facts.js` 用自有 fixture 验证 DT/DD 包装、多值、隐藏／空字段、链接与窄／宽屏布局；`baike-facts-live.js` 逐字段对照周杰伦、水、杭州市、清华大学。用户追加的左右双卡片布局限定为 Baidu facts 分支；宽屏 fixture 与周杰伦实页均通过。均在原文模式运行，不调用翻译服务。`reader104-regression.js` 的基本信息基准只计可见且有值的字段。
 
-2026-09-24（B03a）：`baike-image-ownership.js` 验证表格内图、表外同 URL 不同图注、媒体索引、一行父表子内容、普通数据表和基本信息；`baike-image-ownership-live.js` 动态定位苹果公司当前含图表格，不依赖历史 `r_*` 编号。fixture、`baike-facts.js`、`regression.js` 和 `chess-links-citations.js` 通过。实页复验遇到百度 403 时脚本返回 `available:false`，不绕过验证页；当次实页后验收尚未通过，因此没有再运行会请求多个百度实页的 `reader104-regression.js`。无真实翻译服务调用；棋盘引用回归的译文响应为本机模拟。
+主动测试双卡片布局：`python3 tests/reader-live/run-baike-facts-layout.py --session baike-manual --mode fixture` 会运行自有窄／宽布局 fixture；`python3 tests/reader-live/run-baike-facts-layout.py --session baike-manual --mode live` 会检查当前可见浏览器标签页的百度百科词条，若阅读模式尚未打开则通过扩展打开，然后测 390 px 与 1920 px 视口。需要先在该标签页人工完成百度验证；脚本不会导航到新词条或绕过验证，并会把窗口留在 1920 px 的基本信息位置，方便直接检查。
+
+2026-09-24（B02/B03a）：`baike-headings.js` 覆盖重复标题、包装层锚点、长标题、窄／宽栏和行尾点击；周杰伦实页 36/36 标题匹配（忽略允许跳过的互动星图），首／中／末点击通过。民法典此前 13/13 标题及点击通过；苹果公司 B02 样本遇 403，未重试。B03a 的 `baike-image-ownership.js` 和 `baike-image-ownership-live.js` 检查苹果公司表格内图片归属：可见实页六张图均只输出一次并留在正确单元格。`regression.js`、`baike-facts.js` 与 `chess-links-citations.js` 通过。无真实翻译服务调用；棋盘引用回归的译文响应为本机模拟。
 
 维基百科调查补充：`wiki-inventory.js` / `run-wiki-inventory.py` 统计 16 页结构与阅读器输出；`wiki-detail-audit.js` 核对公式、长表、气候表、音频和代码。参见 [模块报告](../../docs/handoff/WIKIPEDIA-SURVEY.md) 与 [逐步计划](../../docs/handoff/IMPLEMENTATION-PLAN.md)。调查发现不等于修复完成。

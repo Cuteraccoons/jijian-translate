@@ -3,7 +3,14 @@ async page => {
   if (!worker) throw Error("Native extension service worker required");
   await worker.evaluate(() => chrome.storage.sync.set({ readerView: "orig", autoTranslateEnabled: false }));
   const url = "https://baike.baidu.com/item/苹果公司";
-  const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 35000 });
+  const currentPageState = await page.evaluate(() => {
+    const path = decodeURIComponent(location.pathname);
+    const applePage = location.origin === "https://baike.baidu.com" && path.includes("/item/苹果公司");
+    const title = document.title || "";
+    return { applePage, articleReady: applePage && !!document.querySelector(".J-lemma-content") && !/验证/.test(title), challenge: applePage && /验证/.test(title) };
+  });
+  const response = currentPageState.applePage ? null : await page.goto(url, { waitUntil: "domcontentloaded", timeout: 35000 });
+  const httpStatus = response?.status() ?? (currentPageState.articleReady ? 200 : currentPageState.challenge ? 403 : null);
   const source = await page.evaluate(() => {
     const root = document.querySelector(".J-lemma-content");
     if (!root) return null;
@@ -37,8 +44,8 @@ async page => {
     function tableTextLength(table) { return String(table.textContent || "").trim().length; }
   });
   const title = await page.title();
-  if (response?.status() === 403 || /验证/.test(title)) return { status: response?.status() || null, title, available: false, reason: "Baidu source verification page; no workaround attempted", translation: "disabled; original view only" };
-  if (response?.status() !== 200 || !source?.candidateCount) throw Error(`Apple source table unavailable or changed: HTTP ${response?.status()}, ${JSON.stringify(source)}`);
+  if (httpStatus === 403 || /验证/.test(title)) return { status: httpStatus, title, available: false, reason: "Baidu source verification page; no workaround attempted", translation: "disabled; original view only" };
+  if (httpStatus !== 200 || !source?.candidateCount) throw Error(`Apple source table unavailable or changed: HTTP ${httpStatus}, ${JSON.stringify(source)}`);
   const repeatedSourceImages = source.imageRows.filter(image => image.sourceCount === 1);
   if (repeatedSourceImages.length < 2) throw Error(`No suitable single-node table images found: ${JSON.stringify(source)}`);
 
@@ -76,5 +83,5 @@ async page => {
   }, repeatedSourceImages);
   const duplicates = output.checks.filter(check => check.totalOutputCount !== 1 || check.insideTableCount !== 1 || check.outsideTableCount !== 0);
   if (!output.tableId || output.tableRows !== source.tableRows || duplicates.length) throw Error(`Table images were duplicated or table structure changed: ${JSON.stringify({ source, output, duplicates })}`);
-  return { status: response.status(), available: true, source, output, translation: "disabled; original view only" };
+  return { status: httpStatus, reusedCurrentTab: currentPageState.articleReady, available: true, source, output, translation: "disabled; original view only" };
 }
