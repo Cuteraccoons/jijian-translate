@@ -46,7 +46,7 @@ python3 tests/reader-live/run-baike-inventory.py --session releasefix --output d
 
 原生扩展调查 16 页、四种语言。运行 `python3 tests/reader-live/run-wiki-inventory.py --session releasefix --output docs/handoff/wiki-inventory-new.json`，前提同上述已加载源码会话。`wiki-detail-audit.js` 同样是 CLI run-code 函数模板，补查公式、主表、气候表、音频和代码。
 
-这条记录描述调查时的基线状态，不代表当前状态。W01 与 W02 已完成，见下方记录。
+这条记录描述调查时的基线状态，不代表当前状态。W01、W02 与 B01 已完成，见下方记录。
 
 首轮调查记录的追加验证通过：两个 JavaScript 调查模板语法、Python 语法、证据 JSON 解析、交接文档本地链接、发布审计、翻译核心审计及 git diff --check；当时没有修改产品代码。
 
@@ -65,7 +65,7 @@ python3 tests/reader-live/run-baike-inventory.py --session releasefix --output d
 
 回归：`wiki-long-tables.js`、`wiki-long-tables-live.js` 通过；`regression.js`、`reader104-regression.js`、`chess-links-citations.js` 通过。涉及引用的 `chess-links-citations.js` 用本机模拟 Google 响应，只验证引用结构与界面，不代表真实翻译服务质量。W01 的 fixture 和实站检查均关闭翻译、只看原文；没有调用真实翻译服务。浏览器检查为 DOM 与交互断言，没有截图验收。原站 sortable 排序交互仍不在本任务范围内。
 
-发布审计、翻译核心审计和 `git diff --check` 在本轮收尾时重跑。没有生成候选 ZIP；实施计划将候选打包留给 R02。W01 收尾时下一项为 W02；当前 W02 结果见下节，后续按计划做 B01。
+发布审计、翻译核心审计和 `git diff --check` 在本轮收尾时重跑。没有生成候选 ZIP；实施计划将候选打包留给 R02。W01 收尾时下一项为 W02，W02 后为 B01；当前结果见下方，后续按计划做 B03a。
 
 ## W02：维基百科公式与化学式（2026-09-24）
 
@@ -86,3 +86,13 @@ python3 tests/reader-live/run-baike-inventory.py --session releasefix --output d
 HTML 导出保留 MathML、`alttext`、公式图 `alt`、坏图文本和 H₂O 下标；PDF 打印的 `srcdoc` 中检查了相同语义，并确认长公式容器与打印样式规则存在。打印媒体下的实际分页与公式排版未验收，也未落盘实际 PDF。Markdown 将 MathML `alttext` 作为普通替代文本保留，图像使用 alt 文本与链接，H₂O 保留为文本 `H2O`；不宣称转换为正确 LaTeX。导出文件为自有短 fixture，已检查 HTML 和 Markdown 文件内容。
 
 回归：`wiki-math.js`、`wiki-math-live.js`、`wiki-math-export.js` 通过；四个真实页面与 fixture 均关闭自动翻译，不调用模拟或真实翻译服务。发布审计、翻译核心审计、三个 JS 模板语法检查和 `git diff --check` 通过。未生成候选 ZIP；R02 负责候选包。
+
+## B01：百度百科基本信息字段配对（2026-09-24）
+
+起点提交：`dba934f`；实现提交：`2e27712`。修复前 facts 分支只取 `dt.nextElementSibling`，无法收集包装层中的值或同一标签下后续的多个 `dd`；也会为隐藏占位生成空行，并通过删除全部空白把 `Stage name` 压成 `Stagename`。修复后按最近的 `dl` 和下一个 `dt` 界定值节点，合并可见值，跳过隐藏／空字段；标签清理保留英文间隔，值内链接和换行保留。
+
+四个真实样本均 HTTP 200，使用原文模式、自动翻译关闭：周杰伦 24 个源 `dt`／23 个可见字段／23 行输出；水 23／23／23；杭州市 19／19／19；清华大学 29／28／28。周杰伦与清华大学各有一个隐藏项，阅读器没有把它们输出为空行。逐字段比较中，标签顺序、值字符序列（按空白归一）、图片替代文本、链接文字及目标地址一致；实页没有字段差异。页面入口见 [百度样本矩阵](BAIKE-SURVEY.md)。
+
+自有 fixture 有 10 个源标签、7 行可见输出，覆盖紧邻值、包装层、多个 `dd`、链接、长链接、空值、隐藏标签、隐藏值、标签空格与值内换行。390 px 视口下正文宽 344 px，长值区域宽／滚动宽均为 302 px，无正文横向溢出；1280 px 下正文宽 760 px，长值区域宽／滚动宽均为 503 px。扩展保留“Stage name”标签、“林 夏”“Mira Li”中的语义空格。无截图验收。
+
+回归：`baike-facts.js`、`baike-facts-live.js`、更新后的 `reader104-regression.js` 与 `regression.js` 通过；`reader104` 中周杰伦／杭州市／水分别为 23／19／23 项。发布审计、翻译核心审计、四个 JS 模板语法检查及 `git diff --check` 通过。没有调用模拟或真实翻译服务。现有 DOM 中隐藏／未展开字段不承诺保留，维护者仍需抽查中文标签和值的视觉边界。

@@ -19,4 +19,6 @@
 
 2026-09-24（W01）：`wiki-long-tables.js` 用自有 fixture 验证长表阈值、折叠表、合并格、彩色单元格与表格内滚动；`wiki-long-tables-live.js` 检查人口列表与伦敦气候页真实源/阅读器记录。两者均在原文模式运行，不调用翻译服务。详细结果及物理空行的统计口径见 [验证记录](../../docs/handoff/VALIDATION.md)。
 
+2026-09-24（B01）：`baike-facts.js` 用自有 fixture 验证 DT/DD 包装、多值、隐藏／空字段、链接与窄屏长值；`baike-facts-live.js` 逐字段对照周杰伦、水、杭州市、清华大学。均在原文模式运行，不调用翻译服务。`reader104-regression.js` 的基本信息基准只计可见且有值的字段。
+
 维基百科调查补充：`wiki-inventory.js` / `run-wiki-inventory.py` 统计 16 页结构与阅读器输出；`wiki-detail-audit.js` 核对公式、长表、气候表、音频和代码。参见 [模块报告](../../docs/handoff/WIKIPEDIA-SURVEY.md) 与 [逐步计划](../../docs/handoff/IMPLEMENTATION-PLAN.md)。调查发现不等于修复完成。
