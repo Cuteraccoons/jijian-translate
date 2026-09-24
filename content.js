@@ -3158,17 +3158,27 @@
     loose.forEach(node=>{if(!raw.includes(node))raw.push(node);});
     raw.sort((a,b)=>a===b?0:a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
     const result = [];
+    const readerOwnedNodes = new WeakSet();
+    const appendResult = node => {
+      result.push(node);
+      if(node?.nodeType===Node.ELEMENT_NODE)readerOwnedNodes.add(node);
+    };
     let accumulatedText = 0;
 
     const noiseContainerRe = /(?:^|[-_\s])(related|recommend|recommended|suggest|suggested|more-stories|more-from|next-article|prev-article|newsletter|comments?|responses?|discussion|outbrain|taboola|sidebar|footer|social|share|promo|sponsored|advertisement|ads?|banner|popup|modal|subscribe|signup)(?:$|[-_\s])/i;
 
     for (const node of raw) {
       if(baike&&node.closest('[class^="catalog_"],[class^="catalogWrapper_"],.lemma-catalog,[class^="lemmaStructured_"],[class^="dynamicWiki_"],[class^="tashuoWrap_"],[class^="personalAuth_"]'))continue;
-      if(baikeRoots.includes(node)){result.push(node);continue;}
+      if(baikeRoots.includes(node)){appendResult(node);continue;}
       if(baikeRoots.some(parent=>parent.contains(node)))continue;
       if(baike&&node.parentElement.closest('[class^="para_"],.para'))continue;
-      if(baike&&node.matches('[class^="para_"],.para')){if(getHostOriginalText(node).trim())result.push(node);continue;}
-      if(supplemental.includes(node)){result.push(node);continue;}
+      if(baike&&node.matches('[class^="para_"],.para')){
+        let alreadyOwnedByReaderBlock=false;
+        for(let parent=node.parentElement;parent&&!alreadyOwnedByReaderBlock;parent=parent.parentElement)alreadyOwnedByReaderBlock=readerOwnedNodes.has(parent);
+        if(!alreadyOwnedByReaderBlock&&getHostOriginalText(node).trim())appendResult(node);
+        continue;
+      }
+      if(supplemental.includes(node)){appendResult(node);continue;}
       if(supplemental.some(parent=>parent.contains(node)))continue;
       if(node.tagName!=="PRE"&&node.closest("pre"))continue;
       const composite=readerCompositeAncestor(node);
@@ -3176,7 +3186,7 @@
 
       if(wikipedia&&node.matches(".mwe-math-element")){
         if(node.closest("p,li,dt,dd,blockquote,figcaption,td,th,figure,table,details"))continue;
-        result.push(node);
+        appendResult(node);
         continue;
       }
       if(wikipedia&&node.closest(".mwe-math-element"))continue;
@@ -3191,7 +3201,7 @@
       let semanticParent=node.parentElement?.closest('figure,table,details');
       while(semanticParent?.tagName==='TABLE'&&isLayoutTable(semanticParent))semanticParent=semanticParent.parentElement?.closest('figure,table,details');
       if(semanticParent&&semanticParent!==node)continue;
-      if(readerCompositeNodes.has(node)){result.push(node);continue;}
+      if(readerCompositeNodes.has(node)){appendResult(node);continue;}
       if(node.tagName==='TABLE'&&isLayoutTable(node))continue;
       const ancestor = node.closest("section, div, ul, ol");
       const noiseHint = `${ancestor?.id || ""} ${typeof ancestor?.className === "string" ? ancestor.className : ""}`.trim();
@@ -3200,14 +3210,14 @@
       if (node.tagName === "FIGURE") {
         const media = Array.from(node.querySelectorAll("img")).some(img => !!getReaderImageInfo(img).src);
         const caption = String(node.querySelector("figcaption")?.innerText || "").trim();
-        if (media || caption.length >= 6) result.push(node);
+        if (media || caption.length >= 6) appendResult(node);
         continue;
       }
 
       if (node.tagName === "TABLE") {
         const codeLines=node.querySelectorAll('td.code .line,.code .line');
-        if(node.closest('.syntaxhighlighter')&&codeLines.length){const pre=document.createElement('pre');const code=document.createElement('code');code.textContent=[...codeLines].map(line=>line.textContent.replace(/\u00a0/g,' ')).join('\n');pre.append(code);result.push(pre);continue;}
-        if(node.matches('.regionlistitem-table')){const cell=node.querySelector('.regionlistitem-textholder');if(cell){const paragraph=document.createElement('p');paragraph.innerHTML=readerInlineHtml(cell);result.push(paragraph);}continue;}
+        if(node.closest('.syntaxhighlighter')&&codeLines.length){const pre=document.createElement('pre');const code=document.createElement('code');code.textContent=[...codeLines].map(line=>line.textContent.replace(/\u00a0/g,' ')).join('\n');pre.append(code);appendResult(pre);continue;}
+        if(node.matches('.regionlistitem-table')){const cell=node.querySelector('.regionlistitem-textholder');if(cell){const paragraph=document.createElement('p');paragraph.innerHTML=readerInlineHtml(cell);appendResult(paragraph);}continue;}
         const rows = Array.from(node.rows || []).filter(row => {
           // Wikipedia collapsible tables hide their rows from innerText while
           // keeping the source text in the DOM. Use textContent here so the
@@ -3221,25 +3231,25 @@
         const isArticleInfobox = /(?:^|\s)infobox(?:\s|$)/i.test(hint) || node.hasAttribute("data-infobox");
         const isWikipediaDataTable = wikipedia && node.matches("table.wikitable");
         const withinExistingTableBounds = rows.length <= 80 && textLength <= 12000;
-        if (rows.length >= 2 && (isArticleInfobox || isWikipediaDataTable || withinExistingTableBounds) && (isArticleInfobox || !/(?:navbox|sidebar|metadata|toccolours)/i.test(hint))) result.push(node);
+        if (rows.length >= 2 && (isArticleInfobox || isWikipediaDataTable || withinExistingTableBounds) && (isArticleInfobox || !/(?:navbox|sidebar|metadata|toccolours)/i.test(hint))) appendResult(node);
         continue;
       }
 
       if (node.tagName === "DETAILS") {
         const textLength = String(node.innerText || node.textContent || "").trim().length;
-        if (textLength >= 8 && textLength <= 10000) result.push(node);
+        if (textLength >= 8 && textLength <= 10000) appendResult(node);
         continue;
       }
 
       if (["VIDEO", "AUDIO", "IFRAME"].includes(node.tagName) || (node.tagName === "A" && /\.(?:mp4|webm|ogv)(?:$|[?#])/i.test(node.href || ""))) {
         const src = node.currentSrc || node.getAttribute("src") || node.getAttribute("href") || node.querySelector?.("source")?.getAttribute("src") || "";
         const safeEmbeddedFrame = node.tagName !== "IFRAME" || /(?:youtube(?:-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/|player\.bilibili\.com\/player\.html)/i.test(src);
-        if (src && safeEmbeddedFrame) result.push(node);
+        if (src && safeEmbeddedFrame) appendResult(node);
         continue;
       }
 
       if (node.tagName === "HR") {
-        if (accumulatedText > 80) result.push(node);
+        if (accumulatedText > 80) appendResult(node);
         continue;
       }
 
@@ -3253,7 +3263,7 @@
         const w = Number(node.getAttribute("width")) || node.naturalWidth || 0;
         const h = Number(node.getAttribute("height")) || node.naturalHeight || 0;
         if (!(w >= 180 || h >= 120 || (!w && !h))) continue;
-        result.push(node);
+        appendResult(node);
         continue;
       }
 
@@ -3273,7 +3283,7 @@
       if (!bookPage && !wikipedia && !baike && accumulatedText > 900 && node.tagName === "LI" && linkDensity > .8) continue;
 
       seenText.add(text);
-      result.push(node);
+      appendResult(node);
       accumulatedText += text.length;
     }
     return result.flatMap(node=>{
@@ -3551,14 +3561,14 @@
 
   function collectReaderMediaEntries(contentNodes) {
     const entries = [];
-    const seen = new Set();
+    const seenImages = new Set();
     const add = (image, caption = "") => {
       if(readerCompositeAncestor(image))return;
       const info = getReaderImageInfo(image);
-      if (!info.src || info.isIcon || seen.has(info.src)) return;
+      if (!info.src || info.isIcon || seenImages.has(image)) return;
       const hint = `${info.src} ${info.alt} ${image.className || ""}`.toLowerCase();
       if (/icon|avatar|logo|emoji|sprite|tracking|pixel|badge|button|chevron|favicon|placeholder|loading|spinner|divider|separator|advert|promo|sponsor|watermark|qrcode|qr-code/.test(hint)) return;
-      seen.add(info.src);
+      seenImages.add(image);
       entries.push({ image, info, caption:String(caption || info.alt || "文章配图").trim() });
     };
     contentNodes.forEach(node => {
