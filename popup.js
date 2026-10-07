@@ -1366,3 +1366,36 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/'/g, "&#039;");
   }
 });
+
+/* Collapsible translation-style section: a one-line summary stays visible,
+   the full style controls open on demand and the open state is remembered. */
+document.addEventListener("DOMContentLoaded", () => {
+  const toggle = document.getElementById("popup-style-toggle");
+  const body = document.getElementById("popup-style-body");
+  const summary = document.getElementById("popup-style-summary");
+  if (!toggle || !body) return;
+  const STORAGE_KEY = "jijianPopupStyleOpen";
+  const setOpen = (open) => {
+    body.hidden = !open;
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.classList.toggle("is-open", open);
+    try { localStorage.setItem(STORAGE_KEY, open ? "1" : "0"); } catch (_) {}
+  };
+  let initialOpen = false;
+  try { initialOpen = localStorage.getItem(STORAGE_KEY) === "1"; } catch (_) {}
+  setOpen(initialOpen);
+  toggle.addEventListener("click", () => setOpen(body.hidden));
+
+  const text = (selector) => String(document.querySelector(selector)?.textContent || "").trim();
+  const refreshSummary = () => {
+    if (!summary) return;
+    const style = text("#popup-render-style-grid button.active");
+    const color = text("#popup-text-color-trigger span");
+    const size = text("#label-font-size");
+    // Colour and size follow the page when "参考原网页" is active (rows hidden).
+    const followsPage = !!document.querySelector(".translation-style-only-row[hidden]");
+    summary.textContent = (followsPage ? [style] : [style, color, size]).filter(Boolean).join(" · ");
+  };
+  refreshSummary();
+  new MutationObserver(refreshSummary).observe(body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+});

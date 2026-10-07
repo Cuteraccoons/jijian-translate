@@ -1458,3 +1458,24 @@ input:checked + .switch-knob:before {
 #btn-toggle-reader > svg,#btn-toggle-sidebar > svg{transform:translateY(-.5px)!important}
 #btn-donate:hover{background:#000!important;color:#fff!important}
 #btn-donate:hover *{color:#fff!important}
+
+/* v1.0.5: primary action stays prominent but lighter; every "pick one" control
+   uses the same blue selected state as the settings page. */
+.apple-primary-btn.full-width { height: 60px !important; border-radius: 12px !important; }
+.popup-style-choice-grid button.active,
+.popup-highlight-grid button.active,
+.popup-trigger-mode-row button.active,
+.popup-underline-picker button.active {
+  border-color: #0071e3 !important;
+  background: rgba(0, 113, 227, .07) !important;
+  color: #0b5cc2 !important;
+  box-shadow: inset 0 0 0 1px #0071e3 !important;
+}
+
+/* Collapsible translation-style row */
+.popup-style-toggle { width: 100%; gap: 8px; background: none; border: 0; border-top: .5px solid var(--separator); cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.popup-style-toggle:hover { background: rgba(0, 0, 0, .025); }
+.popup-style-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 12.5px; color: var(--label-secondary); }
+.popup-style-chevron { flex: none; width: 15px; height: 15px; fill: none; stroke: var(--label-tertiary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease; }
+.popup-style-toggle.is-open .popup-style-chevron { transform: rotate(90deg); }
+.popup-style-body[hidden] { display: none !important; }

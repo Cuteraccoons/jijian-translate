@@ -37,6 +37,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 2. 表单元素引用
   const apiActiveEngine = document.getElementById("api-active-engine");
+  const engineCards = document.querySelectorAll(".engine-card[data-engine]");
+  const providerTiles = document.querySelectorAll(".provider-tile[data-engine]");
+  const engineKeyInputs = { deepseek: "input-deepseek-key", deepl: "input-deepl-key", openai: "input-openai-key", claude: "input-claude-key", gemini: "input-gemini-key", custom: "input-custom-key" };
+  const engineDisplayNames = { google: "Google 翻译", deepseek: "DeepSeek", deepl: "DeepL", openai: "OpenAI", claude: "Claude", gemini: "Gemini", ollama: "Ollama", custom: "自定义 API" };
+  let selectedProvider = "";
+  const saveStatus = document.getElementById("save-status");
+  const saveStatusLabel = saveStatus?.querySelector("span");
+  let saveStatusTimer = 0;
 
   // DeepSeek
   const inputDeepseekKey = document.getElementById("input-deepseek-key");
@@ -177,6 +185,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let cachedHighlightList = [];
   let currentVocabLangFilter = "all";
   let currentVocabView = "list";
+  let currentVocabStatus = "all";
   const modelPickerMenus = new Map();
 
   function activeTypographyRenderStyle(settings = currentSettings) {
@@ -215,6 +224,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   enhanceSelects();
   enhanceModelPickers();
+  selectProvider(apiActiveEngine.value || "google");
+  refreshProviderTiles();
   syncAllSegmentIndicators();
   loadLocalDictionaryMeta();
   if (initialTab) {
@@ -242,6 +253,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     return "API";
   }
 
+  // 服务卡片：上方网格选择服务，下方只显示被选中服务的配置。
+  function selectProvider(engine) {
+    selectedProvider = engine;
+    providerTiles.forEach(tile => {
+      const active = tile.dataset.engine === engine;
+      tile.classList.toggle("is-selected", active);
+      tile.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    engineCards.forEach(card => { card.hidden = card.dataset.engine !== engine; });
+    requestAnimationFrame(() => syncAllSegmentIndicators());
+  }
+  function refreshProviderTiles() {
+    const primary = apiActiveEngine.value || "google";
+    const verified = currentSettings.verifiedEngines || {};
+    providerTiles.forEach(tile => {
+      const engine = tile.dataset.engine;
+      const status = tile.querySelector(".provider-status");
+      const keyValue = engineKeyInputs[engine] ? String(document.getElementById(engineKeyInputs[engine])?.value || "").trim() : "";
+      let state = "idle", label = "未配置";
+      if (engine === "google") { state = "ready"; label = "可直接使用"; }
+      else if (verified[engine]) { state = "ready"; label = "已连接"; }
+      else if (keyValue) { state = "pending"; label = "待测试"; }
+      else if (engine === "ollama") { label = "未连接"; }
+      if (engine === primary) { state = "primary"; label = "首选"; }
+      tile.dataset.state = state;
+      if (status) status.textContent = label;
+    });
+    document.querySelectorAll(".engine-make-primary").forEach(btn => {
+      const isPrimary = btn.dataset.engine === primary;
+      btn.disabled = isPrimary;
+      btn.textContent = isPrimary ? "已是首选" : "设为首选";
+      btn.classList.toggle("is-primary", isPrimary);
+    });
+    const autoPrimaryDesc = document.getElementById("auto-engine-primary-desc");
+    if (autoPrimaryDesc) autoPrimaryDesc.textContent = `当前首选为 ${engineDisplayNames[primary] || primary}。${primary === "google" ? "与左侧相同。" : "质量更好，会消耗 API 额度。"}`;
+  }
+  providerTiles.forEach(tile => tile.addEventListener("click", () => selectProvider(tile.dataset.engine)));
+  document.querySelectorAll(".engine-make-primary").forEach(btn => btn.addEventListener("click", () => {
+    apiActiveEngine.value = btn.dataset.engine;
+    apiActiveEngine.dispatchEvent(new Event("change", { bubbles: true }));
+  }));
+  document.getElementById("tab-api")?.addEventListener("input", (e) => {
+    if (e.target.matches?.("input")) refreshProviderTiles();
+  });
+
   function setEngineCardConnectedState(engine, connected) {
     const card = document.getElementById(`card-engine-${engine}`);
     if (!card) return;
@@ -255,7 +311,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       summary.querySelector(".engine-edit-btn")?.addEventListener("click", () => setEngineCardConnectedState(engine, false));
     }
     const copy = summary.querySelector(".engine-connected-copy");
-    if (copy) copy.textContent = connected ? `已连接 · ${engineModelValue(engine) || engine}` : "";
+    if (copy) copy.textContent = connected ? `连接正常 · ${engineModelValue(engine) || engine}` : "";
+    refreshProviderTiles();
   }
 
   function readableProviderError(error) {
@@ -279,7 +336,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // 4. 事件监听与自动保存
-  apiActiveEngine.addEventListener("change", (e) => saveSetting({ translationEngine: e.target.value }));
+  apiActiveEngine.addEventListener("change", (e) => {
+    saveSetting({ translationEngine: e.target.value });
+    refreshProviderTiles();
+  });
 
   // DeepSeek
   if (inputDeepseekKey) inputDeepseekKey.addEventListener("input", (e) => { invalidateEngine("deepseek"); saveSetting({ deepseekApiKey: e.target.value.trim() }); });
@@ -434,6 +494,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (optSidebarSync) {
     optSidebarSync.addEventListener("change", (e) => saveSetting({ sidebarSyncScroll: e.target.checked }));
   }
+  // 译文样式分页：每页内容短，预览始终可见。
+  bindSegmentedControl(document.getElementById("typo-tabs"), (pane) => {
+    document.querySelectorAll("#tab-typography .typo-pane").forEach(el => { el.hidden = el.dataset.pane !== pane; });
+    requestAnimationFrame(() => syncAllSegmentIndicators());
+  });
+
   highlightStyleCardGrid?.querySelectorAll("button[data-value]").forEach(btn => btn.addEventListener("click", () => {
     const val = btn.dataset.value || "soft-marker";
     currentSettings.highlightStyle = val;
@@ -524,7 +590,46 @@ document.addEventListener("DOMContentLoaded", async () => {
   optFloatingShortcut?.addEventListener("change", (e) => { const v = normalizeShortcut(e.target.value, "zz"); e.target.value = v.toUpperCase(); saveSetting({ floatingShortcut: v }); });
   optReaderShortcut?.addEventListener("change", (e) => { const v = normalizeShortcut(e.target.value, "aa"); e.target.value = v.toUpperCase(); saveSetting({ readerShortcut: v }); });
   optAutoTranslate?.addEventListener("change", (e) => saveSetting({ autoTranslateEnabled: e.target.checked }));
-  optAutoTranslateEngine?.addEventListener("change", (e) => saveSetting({ autoTranslateEngine: e.target.value }));
+  optAutoTranslateEngine?.addEventListener("change", (e) => { saveSetting({ autoTranslateEngine: e.target.value }); syncAutoEngineTiles(); });
+  document.querySelectorAll("#auto-translate-engine-tiles .option-tile").forEach(tile => tile.addEventListener("click", () => {
+    if (!optAutoTranslateEngine || optAutoTranslateEngine.value === tile.dataset.value) return;
+    optAutoTranslateEngine.value = tile.dataset.value;
+    optAutoTranslateEngine.dispatchEvent(new Event("change", { bubbles: true }));
+  }));
+  document.getElementById("btn-add-auto-domain")?.addEventListener("click", addAutoDomain);
+  document.getElementById("opt-auto-domain-input")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addAutoDomain(); } });
+
+  function syncAutoEngineTiles() {
+    const value = optAutoTranslateEngine?.value || "google";
+    document.querySelectorAll("#auto-translate-engine-tiles .option-tile").forEach(tile => {
+      tile.classList.toggle("active", tile.dataset.value === value);
+      tile.setAttribute("aria-pressed", tile.dataset.value === value ? "true" : "false");
+    });
+  }
+  function renderAutoDomainList() {
+    const el = document.getElementById("auto-domain-list");
+    if (!el) return;
+    const list = Array.isArray(currentSettings.autoTranslateDomainList) ? currentSettings.autoTranslateDomainList : [];
+    el.innerHTML = list.length ? list.map(domain => `<div class="domain-row"><div class="domain-row-line">
+        <span class="domain-favicon">${escapeHtml(domain.charAt(0).toUpperCase())}</span>
+        <div class="domain-row-copy"><strong>${escapeHtml(domain)}</strong></div>
+        <div class="domain-row-actions"><button type="button" class="domain-remove-btn" data-auto-domain="${escapeHtml(domain)}">移除</button></div>
+      </div></div>`).join("") : `<div class="domain-list-empty">还没有添加网站</div>`;
+    el.querySelectorAll("[data-auto-domain]").forEach(btn => btn.addEventListener("click", () => {
+      currentSettings.autoTranslateDomainList = list.filter(x => x !== btn.dataset.autoDomain);
+      saveSetting({ autoTranslateDomainList: currentSettings.autoTranslateDomainList });
+      renderAutoDomainList();
+    }));
+  }
+  async function addAutoDomain() {
+    const input = document.getElementById("opt-auto-domain-input");
+    const domain = normalizeDomainEntry(input?.value);
+    if (!domain) return;
+    currentSettings.autoTranslateDomainList = Array.from(new Set([...(currentSettings.autoTranslateDomainList || []), domain]));
+    await saveSetting({ autoTranslateDomainList: currentSettings.autoTranslateDomainList });
+    if (input) input.value = "";
+    renderAutoDomainList();
+  }
   const openConfiguredUrl = (value) => {
     const url = String(value || "").trim();
     if (!/^https?:\/\//i.test(url)) return;
@@ -590,6 +695,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         </label>`).join("");
       return `<div class="domain-row" data-domain-row="${escapeHtml(domain)}">
         <div class="domain-row-line">
+          <span class="domain-favicon">${escapeHtml(domain.charAt(0).toUpperCase())}</span>
           <div class="domain-row-copy"><strong>${escapeHtml(domain)}</strong><span>${custom ? `自定义 · 停用 ${disabledCount} 项` : `使用默认 · 停用 ${disabledCount} 项`}</span></div>
           <div class="domain-row-actions">
             <button type="button" class="domain-config-btn" data-domain="${escapeHtml(domain)}" aria-expanded="false">功能设置</button>
@@ -791,19 +897,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     }));
   }
 
+  function renderVocabLangChips() {
+    const totalEl = document.getElementById("vocab-total-count");
+    if (totalEl) totalEl.textContent = String(cachedVocabList.length);
+    const chipsEl = document.getElementById("vocab-lang-chips");
+    if (!chipsEl) return;
+    const counts = {};
+    cachedVocabList.forEach(item => { const key = normalizeVocabLang(item.lang); counts[key] = (counts[key] || 0) + 1; });
+    const langs = ["en", "ja", "ko", "fr", "de", "es", "ru", "zh", "other"].filter(key => counts[key]);
+    if (currentVocabLangFilter !== "all" && !counts[currentVocabLangFilter]) currentVocabLangFilter = "all";
+    chipsEl.hidden = langs.length < 2;
+    chipsEl.innerHTML = [["all", "全部", cachedVocabList.length], ...langs.map(key => [key, vocabLangName(key), counts[key]])]
+      .map(([key, label, count]) => `<button type="button" role="tab" data-lang="${key}" class="${key === currentVocabLangFilter ? "active" : ""}" aria-selected="${key === currentVocabLangFilter}">${escapeHtml(label)}<span>${count}</span></button>`)
+      .join("");
+    chipsEl.querySelectorAll("button[data-lang]").forEach(btn => btn.addEventListener("click", () => {
+      currentVocabLangFilter = btn.dataset.lang;
+      if (vocabLangFilter) vocabLangFilter.value = currentVocabLangFilter;
+      filterAndRenderVocabulary();
+    }));
+  }
+
   function filterAndRenderVocabulary() {
+    renderVocabLangChips();
     const query = String(inputVocabSearch?.value || "").toLowerCase().trim();
     let list = cachedVocabList;
 
     if (currentVocabLangFilter !== "all") {
       list = list.filter(item => normalizeVocabLang(item.lang) === currentVocabLangFilter);
     }
+    if (currentVocabStatus !== "all") {
+      list = list.filter(item => (currentVocabStatus === "mastered") === !!item.mastered);
+    }
 
     if (query) {
       list = list.filter(item => {
         const standard = Array.isArray(item.definitions) ? item.definitions.flatMap(d => Array.isArray(d.terms) ? d.terms : (Array.isArray(d.senses) ? d.senses.map(x => x.zh || x.en) : [])) : [];
         const local = Array.isArray(item.localDictionarySummary) ? item.localDictionarySummary.flatMap(x => [x?.name, x?.text]) : [];
-        const haystack = [item.word, item.phonetic, item.translation, item.sourceName, ...standard, ...local]
+        const haystack = [item.word, item.phonetic, item.translation, item.sourceName, item.context, item.pageTitle, ...standard, ...local]
           .filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(query);
       });
@@ -834,6 +964,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     return [...new Set([...standard,...local])].slice(0, limit);
   }
 
+  const VOCAB_SPEECH_LANG = { en:"en-US", ja:"ja-JP", ko:"ko-KR", fr:"fr-FR", de:"de-DE", es:"es-ES", ru:"ru-RU", zh:"zh-CN" };
+  const SPEAK_ICON = '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+  const DELETE_ICON = '<svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M9 11v6M15 11v6M7 7l1 13h8l1-13"/></svg>';
+
+  function speakText(text, lang) {
+    try {
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(String(text || ""));
+      utterance.lang = VOCAB_SPEECH_LANG[normalizeVocabLang(lang)] || "en-US";
+      speechSynthesis.speak(utterance);
+    } catch (_) {}
+  }
+
+  function sourceHost(url) {
+    return String(url || "").replace(/^https?:\/\//, "").split(/[/?#]/)[0].replace(/^www\./, "");
+  }
+
+  // Escaped sentence with the saved word wrapped in <mark>.
+  function markWordInSentence(sentence, word) {
+    const text = String(sentence || "");
+    const needle = String(word || "");
+    const at = needle ? text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase()) : -1;
+    if (at < 0) return escapeHtml(text);
+    return `${escapeHtml(text.slice(0, at))}<mark>${escapeHtml(text.slice(at, at + needle.length))}</mark>${escapeHtml(text.slice(at + needle.length))}`;
+  }
+
+  async function updateVocabularyItem(item, patch) {
+    const key = x => `${String(x.word || "").toLowerCase()}|${String(x.lang || "und").toLowerCase()}`;
+    const stored = await chrome.storage.local.get("raccoonVocabularyList").catch(() => ({}));
+    const list = Array.isArray(stored?.raccoonVocabularyList) ? stored.raccoonVocabularyList : [];
+    const target = list.find(x => key(x) === key(item));
+    Object.assign(item, patch);
+    if (!target) return;
+    Object.assign(target, patch);
+    await chrome.storage.local.set({ raccoonVocabularyList: list });
+  }
+
   function renderVocabularyList(list) {
     if (!list || list.length === 0) {
       vocabListContainer.innerHTML = `<div class="vocab-empty vocab-empty-state">当前筛选下暂无生词。网页查词时点击星标即可加入这里。</div>`;
@@ -847,34 +1014,47 @@ document.addEventListener("DOMContentLoaded", async () => {
       const phonetic = String(item.phonetic || "").trim();
       const meaning = String(item.translation || "暂无简明释义").trim();
       const date = formatVocabDate(item.createdAt||item.created||item.date);
-      const source = String(item.sourceName || "").trim();
-      const preview = view === "gallery" ? vocabDetailPreview(item, 2) : [];
+      const source = sourceHost(item.sourceUrl || item.url) || String(item.sourceName || "").trim();
+      const context = String(item.context || "").trim();
+      const preview = view === "gallery" && !context ? vocabDetailPreview(item, 2) : [];
       const index = cachedVocabList.indexOf(item);
+      const mastered = item.mastered ? `<span class="vocab-mastered-badge">已掌握</span>` : "";
+      const actions = `<div class="vocab-row-actions">
+          <button type="button" class="vocab-inline-action vocab-speak" data-vocab-index="${index}" title="朗读" aria-label="朗读">${SPEAK_ICON}</button>
+          <button type="button" class="vocab-inline-action vocab-inline-delete btn-del-vocab" data-word="${escapeHtml(item.word)}" data-lang="${escapeHtml(item.lang || "und")}" title="删除生词" aria-label="删除生词">${DELETE_ICON}</button>
+        </div>`;
 
       if (view === "gallery") {
-        return `<article class="vocab-card-item vocab-gallery-card" data-view="gallery" data-vocab-index="${index}" title="点击查看完整释义">
+        return `<article class="vocab-card-item vocab-gallery-card${item.mastered ? " is-mastered" : ""}" data-view="gallery" data-vocab-index="${index}" title="点击查看详情">
           <div class="vocab-gallery-top">
             <div class="vocab-gallery-word-wrap"><span class="vocab-word-text">${escapeHtml(item.word)}</span></div>
-            <span class="vocab-card-lang">${escapeHtml(langName)}</span>
+            <span class="vocab-card-lang">${escapeHtml(langName)}</span>${mastered}
           </div>
+          ${phonetic ? `<span class="vocab-phonetic-text">${escapeHtml(phonetic)}</span>` : ""}
           <div class="vocab-gallery-meaning">${escapeHtml(meaning)}</div>
+          ${context ? `<p class="vocab-context">${markWordInSentence(context, item.word)}</p>` : ""}
           ${preview.length ? `<div class="vocab-gallery-preview"><span>词典摘录</span><p>${escapeHtml(preview.join("；"))}</p></div>` : ""}
-          <div class="vocab-gallery-footer">${date ? `<span>收藏于 ${escapeHtml(date)}</span>` : `<span>${source ? `来源 ${escapeHtml(source)}` : "已收藏"}</span>`}${source && date ? `<span>来源 ${escapeHtml(source)}</span>` : ""}</div>
-          <button class="vocab-inline-delete btn-del-vocab" data-word="${escapeHtml(item.word)}" data-lang="${escapeHtml(item.lang || "und")}" title="删除生词" aria-label="删除生词"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M9 11v6M15 11v6M7 7l1 13h8l1-13"/></svg></button>
+          <div class="vocab-gallery-footer"><span>${date ? `收藏于 ${escapeHtml(date)}` : "已收藏"}</span>${source ? `<span>${escapeHtml(source)}</span>` : ""}</div>
+          ${actions}
         </article>`;
       }
 
-      return `<article class="vocab-card-item vocab-list-row" data-view="list" data-vocab-index="${index}" title="点击查看完整释义">
+      return `<article class="vocab-card-item vocab-list-row${item.mastered ? " is-mastered" : ""}" data-view="list" data-vocab-index="${index}" title="点击查看详情">
         <div class="vocab-list-lexical">
           <div class="vocab-list-wordline"><span class="vocab-word-text">${escapeHtml(item.word)}</span><span class="vocab-card-lang">${escapeHtml(langName)}</span></div>
           ${phonetic ? `<span class="vocab-phonetic-text">${escapeHtml(phonetic)}</span>` : `<span class="vocab-phonetic-text vocab-phonetic-empty">未记录音标</span>`}
         </div>
-        <div class="vocab-list-definition"><span class="vocab-list-definition-label">简明释义</span><p>${escapeHtml(meaning)}</p></div>
-        <div class="vocab-list-meta">${date ? `<span>收藏于 ${escapeHtml(date)}</span>` : ""}${source ? `<span>来源 ${escapeHtml(source)}</span>` : ""}</div>
-        <button class="vocab-inline-delete btn-del-vocab" data-word="${escapeHtml(item.word)}" data-lang="${escapeHtml(item.lang || "und")}" title="删除生词" aria-label="删除生词"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M9 11v6M15 11v6M7 7l1 13h8l1-13"/></svg></button>
+        <div class="vocab-list-definition"><p>${mastered}${escapeHtml(meaning)}</p>${context ? `<p class="vocab-context">${markWordInSentence(context, item.word)}</p>` : ""}</div>
+        <div class="vocab-list-meta">${date ? `<span>${escapeHtml(date)}</span>` : ""}${source ? `<span>${escapeHtml(source)}</span>` : ""}</div>
+        ${actions}
       </article>`;
     }).join("");
 
+    vocabListContainer.querySelectorAll(".vocab-speak").forEach(btn => btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const item = cachedVocabList[Number(btn.dataset.vocabIndex)];
+      if (item) speakText(item.word, item.lang);
+    }));
     vocabListContainer.querySelectorAll(".btn-del-vocab").forEach(b => {
       b.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -894,14 +1074,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const standardDetails = Array.isArray(item.definitions) ? item.definitions.flatMap(d => Array.isArray(d.terms) ? d.terms : (Array.isArray(d.senses) ? d.senses.map(x => x.zh || x.en) : [])).filter(Boolean) : [];
     const localDetails = Array.isArray(item.localDictionarySummary) ? item.localDictionarySummary.filter(x=>x?.text) : [];
     const wrap=document.createElement("div"); wrap.className="vocab-detail-modal-backdrop";
+    const context = String(item.context || "").trim();
+    const sourceUrl = /^https?:\/\//i.test(String(item.sourceUrl || "")) ? item.sourceUrl : "";
     wrap.innerHTML=`<div class="vocab-detail-modal" role="dialog" aria-modal="true">
       <div class="vocab-detail-modal-head">
-        <div><div class="vocab-detail-modal-word">${escapeHtml(item.word||"")}</div>${item.phonetic?`<div class="vocab-detail-modal-phonetic">${escapeHtml(item.phonetic)}</div>`:""}</div>
+        <div class="vocab-detail-modal-title">
+          <div class="vocab-detail-modal-word">${escapeHtml(item.word||"")}</div>
+          <div class="vocab-detail-modal-sub">${item.phonetic?`<span class="vocab-detail-modal-phonetic">${escapeHtml(item.phonetic)}</span>`:""}<button type="button" class="vocab-detail-speak" title="朗读" aria-label="朗读">${SPEAK_ICON}</button></div>
+        </div>
         <button type="button" class="vocab-detail-modal-close" aria-label="关闭">×</button>
       </div>
       <div class="vocab-detail-modal-translation">${escapeHtml(item.translation||"暂无简明释义")}</div>
+      ${context?`<div class="vocab-detail-modal-section"><b>原句</b><p class="vocab-detail-context">${markWordInSentence(context, item.word)}</p>${sourceUrl?`<a class="vocab-detail-source" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener">出自 ${escapeHtml(item.pageTitle || sourceHost(sourceUrl))} ↗</a>`:""}</div>`:""}
       ${standardDetails.length?`<div class="vocab-detail-modal-section"><b>词典释义</b>${standardDetails.slice(0,10).map((x,i)=>`<div class="vocab-detail-sense"><span>${i+1}</span><p>${escapeHtml(x)}</p></div>`).join("")}</div>`:""}
       ${localDetails.length?`<div class="vocab-detail-modal-section"><b>本地词典</b>${localDetails.slice(0,4).map(x=>`<div class="vocab-detail-local"><strong>${escapeHtml(x.name||"本地词典")}</strong><p>${escapeHtml(x.text||"")}</p></div>`).join("")}</div>`:""}
+      <div class="vocab-detail-modal-foot">
+        <button type="button" class="test-btn vocab-master-toggle${item.mastered ? " is-mastered" : ""}">${item.mastered ? "✓ 已掌握" : "标记为已掌握"}</button>
+      </div>
     </div>`;
     document.body.appendChild(wrap);
     const localSection = wrap.querySelector(".vocab-detail-modal-section:last-of-type");
@@ -922,10 +1111,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       }).catch(() => { if (rich.isConnected) {rich.className="vocab-local-rich-empty";rich.textContent="本地词典读取失败。";} });
     }
     const close=()=>wrap.remove();
+    wrap.querySelector(".vocab-detail-speak")?.addEventListener("click",()=>speakText(item.word,item.lang));
+    wrap.querySelector(".vocab-master-toggle")?.addEventListener("click",async (e)=>{
+      const btn=e.currentTarget;
+      await updateVocabularyItem(item,{ mastered:!item.mastered });
+      btn.classList.toggle("is-mastered",!!item.mastered);
+      btn.textContent=item.mastered?"✓ 已掌握":"标记为已掌握";
+      filterAndRenderVocabulary();
+    });
+    const onKey=(e)=>{ if(e.key==="Escape"){ close(); document.removeEventListener("keydown",onKey); } };
+    document.addEventListener("keydown",onKey);
     wrap.querySelector(".vocab-detail-modal-close")?.addEventListener("click",close);
     wrap.addEventListener("click",e=>{if(e.target===wrap)close();});
   }
 
+  bindSegmentedControl(document.getElementById("vocab-status-switch"), (value) => {
+    currentVocabStatus = value || "all";
+    filterAndRenderVocabulary();
+  });
   inputVocabSearch.addEventListener("input", () => {
     filterAndRenderVocabulary();
   });
@@ -935,13 +1138,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert("生词本为空，无需导出");
       return;
     }
-    let csv = "Word,Language,Phonetic,Translation,Details,Source,URL,Date\n";
+    let csv = "Word,Language,Phonetic,Translation,Details,Context,Source,URL,Mastered,Date\n";
     visibleVocabList.forEach(i => {
       const standardDetails = Array.isArray(i.definitions) ? i.definitions.flatMap(d => Array.isArray(d.terms) ? d.terms : (Array.isArray(d.senses) ? d.senses.map(x => x.zh || x.en) : [])).filter(Boolean) : [];
       const localDetails = Array.isArray(i.localDictionarySummary) ? i.localDictionarySummary.map(x => `${x.name || "本地词典"}: ${x.text || ""}`).filter(Boolean) : [];
       const details = [...standardDetails, ...localDetails].join("；");
       const esc = v => String(v || "").replace(/"/g, '""').replace(/\r?\n/g, " ");
-      csv += `"${esc(i.word)}","${esc(i.lang || "und")}","${esc(i.phonetic)}","${esc(i.translation)}","${esc(details)}","${esc(i.sourceName)}","${esc(i.sourceUrl||i.url)}","${esc(i.createdAt||i.created||i.date)}"\n`;
+      csv += `"${esc(i.word)}","${esc(i.lang || "und")}","${esc(i.phonetic)}","${esc(i.translation)}","${esc(details)}","${esc(i.context)}","${esc(i.sourceName)}","${esc(i.sourceUrl||i.url)}","${i.mastered ? "yes" : ""}","${esc(i.createdAt||i.created||i.date)}"\n`;
     });
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -961,7 +1164,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item.note) md += `   - 笔记：${String(item.note).trim()}\n`;
       if (item.sourceUrl) md += `   - 来源：${item.articleTitle || item.title || ""} · ${item.sourceUrl}\n`;
       if (item.trans) md += `   - ${String(item.trans).trim()}\n`;
-      if (item.url || item.title) md += `   - 来源：${item.title || item.url || ""}${item.url ? ` · ${item.url}` : ""}\n`;
+      const sourceUrl = item.sourceUrl || item.url || "";
+      if (sourceUrl || item.title) md += `   - 来源：${item.title || sourceUrl}${sourceUrl ? ` · ${sourceUrl}` : ""}\n`;
       md += `\n`;
     });
     return md;
@@ -969,8 +1173,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnCopyHighlights?.addEventListener("click", async () => {
     if (!visibleHighlightList.length) return alert("高亮收藏为空");
     await navigator.clipboard.writeText(visibleHighlightList.map(x=>x.orig||"").filter(Boolean).join("\n"));
-    btnCopyHighlights.textContent="已复制";
-    setTimeout(()=>btnCopyHighlights.textContent="复制当前结果",1000);
+    const copyLabel = btnCopyHighlights.querySelector("span") || btnCopyHighlights;
+    copyLabel.textContent="已复制";
+    setTimeout(()=>copyLabel.textContent="复制当前结果",1000);
   });
   btnExportHighlightsMd?.addEventListener("click", () => {
     if (!visibleHighlightList.length) return alert("高亮收藏为空");
@@ -984,20 +1189,94 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderHighlightCollection();
   }
 
+  const highlightSourceKey = (item) => String(item.sourceUrl || item.url || item.hostname || "").trim();
+  const highlightHostOf = (value) => String(value || "").replace(/^https?:\/\//, "").split(/[/?#]/)[0].replace(/^www\./, "");
+
+  // Chrome scroll-to-text fragment: opens the page scrolled to and marking
+  // this sentence. Long sentences use a start…end range so small page edits
+  // in the middle do not break the match.
+  function highlightFragmentUrl(item) {
+    const url = String(item.sourceUrl || item.url || "");
+    if (!/^https?:\/\//i.test(url)) return "";
+    const text = String(item.orig || "").replace(/\s+/g, " ").trim();
+    if (!text) return url;
+    const enc = value => encodeURIComponent(value).replace(/-/g, "%2D").replace(/,/g, "%2C").replace(/&/g, "%26");
+    const spaced = /\s/.test(text);
+    const parts = spaced ? text.split(" ") : Array.from(text);
+    const joiner = spaced ? " " : "";
+    const fragment = parts.length > (spaced ? 12 : 40)
+      ? `${enc(parts.slice(0, spaced ? 5 : 16).join(joiner))},${enc(parts.slice(spaced ? -4 : -12).join(joiner))}`
+      : enc(text);
+    return `${url.split("#")[0]}#:~:text=${fragment}`;
+  }
+
   function renderHighlightCollection() {
     if (!highlightManagerList) return;
     const q = String(inputHighlightSearch?.value || "").trim().toLowerCase();
-    const searched = cachedHighlightList.filter(x => !q || String(x.orig || "").toLowerCase().includes(q) || String(x.trans || "").toLowerCase().includes(q) || String(x.note || "").toLowerCase().includes(q) || String(x.articleTitle || "").toLowerCase().includes(q));
-    const list=visibleHighlightList=applyCollectionScope("highlight",searched);
-    if (highlightCount) highlightCount.textContent = `${list.length} 条`;
-    if (!list.length) { highlightManagerList.innerHTML = `<div class="vocab-empty">没有符合条件的高亮收藏。</div>`; return; }
-    const groups=new Map();
-    list.forEach(item=>{const url=item.sourceUrl||item.url||'';if(!groups.has(url))groups.set(url,[]);groups.get(url).push(item);});
-    highlightManagerList.innerHTML=[...groups].map(([url,items])=>{
-      const title=items.find(item=>item.articleTitle)?.articleTitle||items.find(item=>item.title)?.title||items[0].hostname||url||'未命名文章';
-      const safeUrl=/^https?:\/\//i.test(url)?url:'';
-      return `<details class="highlight-article-group" open><summary>${escapeHtml(title)} <span>${items.length} 条</span></summary>${safeUrl?`<a class="highlight-article-link" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">打开原文</a>`:''}${items.map(item=>`<article class="highlight-manager-item"><div class="highlight-quote">${item.image&&/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(item.image)?`<img src="${item.image}" alt="截图笔记">`:escapeHtml(item.orig||'')}</div>${item.note?`<p>${escapeHtml(item.note)}</p>`:''}${item.createdAt||item.created||item.date?`<time class="highlight-collected-at">${escapeHtml(formatVocabDate(item.createdAt||item.created||item.date))}</time>`:""}${item.trans?`<div class="highlight-translation">${escapeHtml(item.trans)}</div>`:''}<button type="button" class="highlight-delete" data-id="${escapeHtml(item.id||'')}" data-orig="${escapeHtml(item.orig||'')}" title="删除"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M9 11v6M15 11v6M7 7l1 13h8l1-13"/></svg></button></article>`).join('')}</details>`;
-    }).join('');
+    const searched = cachedHighlightList.filter(x => !q || String(x.orig || "").toLowerCase().includes(q) || String(x.trans || "").toLowerCase().includes(q) || String(x.note || "").toLowerCase().includes(q) || String(x.articleTitle || x.title || "").toLowerCase().includes(q));
+    const list = visibleHighlightList = applyCollectionScope("highlight", searched);
+    if (highlightCount) highlightCount.textContent = String(cachedHighlightList.length);
+    if (!list.length) {
+      highlightManagerList.innerHTML = `<div class="vocab-empty">${cachedHighlightList.length ? "没有符合条件的高亮。" : "还没有高亮收藏。在网页上选中句子后点击“高亮”即可保存到这里。"}</div>`;
+      return;
+    }
+    // One card per source article, in the current sort order.
+    const groups = new Map();
+    list.forEach(item => {
+      const key = highlightSourceKey(item) || "unknown";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    });
+    const groupList = Array.from(groups.entries());
+    const isScreenshot = item => item.image && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(item.image);
+    highlightManagerList.innerHTML = groupList.map(([key, items], groupIndex) => {
+      const host = highlightHostOf(key === "unknown" ? "" : key);
+      const title = String(items.find(item => item.articleTitle)?.articleTitle || items.find(item => item.title)?.title || items[0].hostname || host || "未命名文章").trim();
+      const url = /^https?:\/\//i.test(key) ? key : "";
+      const meta = [host, `${items.length} 条`].filter(Boolean).map(escapeHtml).join(" · ");
+      return `<section class="highlight-group">
+        <header class="highlight-group-head">
+          <span class="domain-favicon">${escapeHtml((host || title).charAt(0).toUpperCase())}</span>
+          <div class="highlight-group-copy">${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="打开原文">${escapeHtml(title)}</a>` : `<b>${escapeHtml(title)}</b>`}<span>${meta}</span></div>
+          <button type="button" class="link-btn highlight-group-copy-btn" data-group="${groupIndex}">复制本篇</button>
+        </header>
+        ${items.map(item => {
+          const index = list.indexOf(item);
+          const fragment = isScreenshot(item) ? "" : highlightFragmentUrl(item);
+          const when = item.createdAt || item.created || item.date;
+          return `<article class="highlight-manager-item${isScreenshot(item) ? " is-screenshot" : ""}">
+          <div class="highlight-quote">${isScreenshot(item) ? `<img src="${item.image}" alt="截图笔记">` : escapeHtml(item.orig || "")}</div>
+          ${item.trans ? `<div class="highlight-translation">${escapeHtml(item.trans)}</div>` : ""}
+          ${item.note ? `<p class="highlight-note">${escapeHtml(item.note)}</p>` : ""}
+          ${when ? `<time class="highlight-collected-at">${escapeHtml(formatVocabDate(when))}</time>` : ""}
+          <span class="highlight-item-actions">
+            ${fragment ? `<a class="highlight-copy highlight-open" href="${escapeHtml(fragment)}" target="_blank" rel="noopener noreferrer" title="在原文中查看" aria-label="在原文中查看"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a>` : ""}
+            ${isScreenshot(item) ? "" : `<button type="button" class="highlight-copy highlight-speak" data-index="${index}" title="朗读原文" aria-label="朗读原文">${SPEAK_ICON}</button>`}
+            ${isScreenshot(item) ? "" : `<button type="button" class="highlight-copy" data-index="${index}" title="复制原文与译文" aria-label="复制原文与译文"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button>`}
+            <button type="button" class="highlight-delete" data-id="${escapeHtml(item.id || "")}" data-orig="${escapeHtml(item.orig || "")}" title="删除" aria-label="删除"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M9 11v6M15 11v6M7 7l1 13h8l1-13"/></svg></button>
+          </span>
+        </article>`;
+        }).join("")}
+      </section>`;
+    }).join("");
+    const flashCopied = (btn) => { btn.classList.add("is-done"); setTimeout(() => btn.classList.remove("is-done"), 1000); };
+    highlightManagerList.querySelectorAll(".highlight-speak").forEach(btn => btn.addEventListener("click", () => {
+      const item = list[Number(btn.dataset.index)];
+      if (item) speakText(item.orig, /[\u3040-\u30ff]/.test(item.orig || "") ? "ja" : "en");
+    }));
+    highlightManagerList.querySelectorAll(".highlight-copy:not(.highlight-speak):not(.highlight-open)").forEach(btn => btn.addEventListener("click", async () => {
+      const item = list[Number(btn.dataset.index)];
+      if (!item) return;
+      await navigator.clipboard.writeText([item.orig, item.trans].filter(Boolean).join("\n"));
+      flashCopied(btn);
+    }));
+    highlightManagerList.querySelectorAll(".highlight-group-copy-btn").forEach(btn => btn.addEventListener("click", async () => {
+      const group = groupList[Number(btn.dataset.group)];
+      if (!group) return;
+      await navigator.clipboard.writeText(buildHighlightMarkdown(group[1]));
+      btn.textContent = "已复制";
+      setTimeout(() => { btn.textContent = "复制本篇"; }, 1000);
+    }));
     highlightManagerList.querySelectorAll(".highlight-delete").forEach(btn => btn.addEventListener("click", async () => {
       if (!confirm("确定删除这条高亮收藏吗？")) return;
       await sendRuntimeMessage({action:"REMOVE_HIGHLIGHT_SENTENCE", id:btn.dataset.id || undefined, orig:btn.dataset.orig || undefined});
@@ -1212,6 +1491,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (optReaderShortcut) optReaderShortcut.value = String(s.readerShortcut || "aa").toUpperCase();
     if (optAutoTranslate) optAutoTranslate.checked = s.autoTranslateEnabled === true;
     if (optAutoTranslateEngine) optAutoTranslateEngine.value = s.autoTranslateEngine || "google";
+    syncAutoEngineTiles();
+    renderAutoDomainList();
     if (btnOpenDonationUrl) btnOpenDonationUrl.dataset.configured = /^https?:\/\//i.test(String(s.donationUrl || "")) ? "true" : "false";
     if (btnOpenProjectUrl) btnOpenProjectUrl.dataset.configured = /^https?:\/\//i.test(String(s.projectUrl || "")) ? "true" : "false";
 
@@ -1900,7 +2181,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function saveSetting(delta) {
     Object.assign(currentSettings, delta || {});
+    flashSaveStatus();
     return sendRuntimeMessage({ action: "UPDATE_SETTINGS", settings: delta });
+  }
+
+  function flashSaveStatus() {
+    if (!saveStatus) return;
+    saveStatus.classList.add("is-saving");
+    if (saveStatusLabel) saveStatusLabel.textContent = "已保存";
+    clearTimeout(saveStatusTimer);
+    saveStatusTimer = setTimeout(() => {
+      saveStatus.classList.remove("is-saving");
+      if (saveStatusLabel) saveStatusLabel.textContent = "更改会自动保存";
+    }, 1400);
   }
 
   function sendRuntimeMessage(msg, timeoutMs = 1200) {

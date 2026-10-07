@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>极简翻译 - 偏好设置与 API 配置</title>
+  <title>极简翻译 - 设置</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <div class="macos-window">
-    <!-- Sidebar with Clean Lucide SVG Icons -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <img src="icons/icon48.png" alt="Logo" class="sidebar-icon">
+        <img src="icons/icon48.png" alt="" class="sidebar-icon">
         <div class="sidebar-title-group">
           <span class="sidebar-app-name">极简翻译</span>
           <span class="sidebar-version" id="sidebar-version-label">v1.0.0</span>
@@ -20,282 +19,341 @@
 
       <nav class="nav-list">
         <button class="nav-btn active" data-tab="tab-api">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9-9M15 8l2 2M18 5l2 2"/></svg>
-          <span>API 与翻译引擎</span>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+          <span>翻译引擎</span>
         </button>
         <button class="nav-btn" data-tab="tab-typography">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
-          <span>排版与呈现样式</span>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          <span>译文样式</span>
         </button>
         <button class="nav-btn" data-tab="tab-interaction">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
           <span>查词与交互</span>
         </button>
-        <button class="nav-btn" data-tab="tab-local-dict">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z"/><path d="M8 7h8M8 11h5"/></svg>
-          <span>接入本地词典</span>
-        </button>
-        <button class="nav-btn" data-tab="tab-vocab">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span>生词本</span>
-        </button>
-        <button class="nav-btn" data-tab="tab-highlights">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 15 7-7 5 5-7 7H4v-5Z"/><path d="m14 5 5 5"/><path d="M3 21h18"/></svg>
-          <span>高亮收藏</span>
-        </button>
         <button class="nav-btn" data-tab="tab-auto-translate">
-          <svg class="nav-svg nav-brand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg>
           <span>自动翻译</span>
         </button>
         <button class="nav-btn" data-tab="tab-rules">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
-          <span>网页黑名单</span>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          <span>网站黑名单</span>
         </button>
+
+        <span class="nav-gap"></span>
+        <button class="nav-btn" data-tab="tab-local-dict">
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z"/><path d="M8 7h8M8 11h5"/></svg>
+          <span>本地词典</span>
+        </button>
+        <button class="nav-btn" data-tab="tab-vocab">
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span>生词本</span>
+        </button>
+        <button class="nav-btn" data-tab="tab-highlights">
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 15 7-7 5 5-7 7H4v-5Z"/><path d="m14 5 5 5"/><path d="M3 21h18"/></svg>
+          <span>高亮收藏</span>
+        </button>
+
+        <span class="nav-gap"></span>
         <button class="nav-btn" data-tab="tab-backup">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          <span>缓存与配置备份</span>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span>备份与缓存</span>
         </button>
         <button class="nav-btn" data-tab="tab-about">
-          <svg class="nav-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          <span>项目与赞赏</span>
+          <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <span>关于与支持</span>
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="save-status" id="save-status">✓ 更改已实时生效</div>
+        <div class="save-status" id="save-status"><i></i><span>更改会自动保存</span></div>
       </div>
     </aside>
 
-    <!-- Main Content Panel -->
     <main class="content-panel">
 
-      <!-- Tab 1: API & Translation Services -->
+      <!-- ═══ 翻译引擎 ═══ -->
       <section id="tab-api" class="tab-view active">
-        <div class="view-header">
-          <h2 class="view-title">API 与翻译引擎配置</h2>
+        <header class="view-header">
+          <h2 class="view-title">翻译引擎</h2>
+          <p class="view-subtitle">选择一个服务作为首选引擎。Google 翻译开箱即用，AI 服务填写 API Key 并测试通过后即可使用。</p>
+        </header>
 
-        </div>
-
-        <div class="macos-card">
+        <div class="macos-card target-lang-card">
           <div class="card-row">
-            <div class="row-info">
-              <span class="row-title">首选翻译引擎</span>
-            </div>
-            <select id="api-active-engine" class="apple-select">
-              <option value="google">Google 翻译</option>
-              <option value="deepseek">DeepSeek</option>
-              <option value="deepl">DeepL</option>
-              <option value="openai">OpenAI</option>
-              <option value="claude">Claude</option>
-              <option value="gemini">Gemini</option>
-              <option value="ollama">Ollama（本地）</option>
-              <option value="custom">自定义兼容 API</option>
-            </select>
-          </div>
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">默认目标语言</span></div>
+            <div class="row-info"><span class="row-title">翻译为</span><span class="row-desc">网页翻译、划词与段落翻译的目标语言</span></div>
             <select id="opt-target-lang" class="apple-select">
               <option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en">英语</option><option value="ja">日语</option><option value="ko">韩语</option><option value="fr">法语</option><option value="de">德语</option><option value="es">西班牙语</option>
             </select>
           </div>
         </div>
 
-        <div class="engine-compact-grid">
-        <!-- DeepSeek Official API Settings (Top Feature!) -->
-        <div class="macos-card" id="card-engine-deepseek">
-          <div class="form-row-header">
-            <span class="row-title">DeepSeek</span>
-          </div>
-          <div class="form-item">
-            <label class="item-label" for="input-deepseek-key">API Key</label>
-            <input type="password" id="input-deepseek-key" class="apple-input" placeholder="sk-...">
-          </div>
-          <div class="form-row-2">
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-deepseek-url">API Base URL</label>
-              <input type="text" id="input-deepseek-url" class="apple-input" value="https://api.deepseek.com/v1">
-            </div>
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-deepseek-model">模型名称</label>
-              <div class="model-input-row model-input-row-without-refresh"><input type="text" id="input-deepseek-model" class="apple-input" value="deepseek-v4-flash" placeholder="选择或输入模型"></div><datalist id="models-deepseek"><option value="deepseek-v4-flash"><option value="deepseek-v4-pro"></datalist>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="deepseek">测试 DeepSeek 连通性</button>
-            <button type="button" class="model-refresh-btn deepseek-refresh-action" data-engine="deepseek" title="刷新 DeepSeek 模型" aria-label="刷新 DeepSeek 模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button>
-            <span class="test-result" id="test-result-deepseek"></span>
-          </div>
+        <select id="api-active-engine" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
+          <option value="google">Google 翻译</option><option value="deepseek">DeepSeek</option><option value="deepl">DeepL</option><option value="openai">OpenAI</option><option value="claude">Claude</option><option value="gemini">Gemini</option><option value="ollama">Ollama</option><option value="custom">自定义兼容 API</option>
+        </select>
+
+        <div class="provider-grid" id="provider-grid" role="listbox" aria-label="翻译服务">
+          <button type="button" class="provider-tile" data-engine="google" role="option">
+            <span class="brand-mark"><img src="icons/brands/google.svg" alt=""></span>
+            <span class="provider-copy"><b>Google 翻译</b><small>免费 · 无需配置</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="deepseek" role="option">
+            <span class="brand-mark"><img src="icons/brands/deepseek.svg" alt=""></span>
+            <span class="provider-copy"><b>DeepSeek</b><small>中文表现好 · 价格低</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="deepl" role="option">
+            <span class="brand-mark"><img src="icons/brands/deepl.svg" alt=""></span>
+            <span class="provider-copy"><b>DeepL</b><small>欧洲语言地道</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="openai" role="option">
+            <span class="brand-mark"><img src="icons/brands/openai.svg" alt=""></span>
+            <span class="provider-copy"><b>OpenAI</b><small>GPT 系列模型</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="claude" role="option">
+            <span class="brand-mark"><img src="icons/brands/claude.svg" alt=""></span>
+            <span class="provider-copy"><b>Claude</b><small>长文与语气把握好</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="gemini" role="option">
+            <span class="brand-mark"><img src="icons/brands/gemini.svg" alt=""></span>
+            <span class="provider-copy"><b>Gemini</b><small>速度快 · 有免费额度</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="ollama" role="option">
+            <span class="brand-mark"><img src="icons/brands/ollama.svg" alt=""></span>
+            <span class="provider-copy"><b>Ollama</b><small>本地运行 · 离线隐私</small></span>
+            <span class="provider-status"></span>
+          </button>
+          <button type="button" class="provider-tile" data-engine="custom" role="option">
+            <span class="brand-mark mark-custom"><svg viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a6 6 0 0 1-12 0V8Z"/></svg></span>
+            <span class="provider-copy"><b>自定义 API</b><small>任意 OpenAI 兼容接口</small></span>
+            <span class="provider-status"></span>
+          </button>
         </div>
 
-        <!-- DeepL API Settings -->
-        <div class="macos-card" id="card-engine-deepl">
-          <div class="form-row-header">
-            <span class="row-title">DeepL</span>
-          </div>
-          <div class="form-item">
-            <div class="segmented-control" id="deepl-type-control">
-              <button type="button" class="segment-item active" data-value="free">Free</button>
-              <button type="button" class="segment-item" data-value="pro">Pro</button>
+        <div class="engine-detail-stack">
+          <div class="macos-card engine-card" id="card-engine-google" data-engine="google">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/google.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>Google 翻译</b><span>无需 API Key，开箱即用。也适合用于自动翻译，不消耗 AI 额度。</span></div>
+              <div class="engine-detail-actions"><button type="button" class="test-btn engine-make-primary" data-engine="google">设为首选</button></div>
             </div>
           </div>
-          <div class="form-item">
-            <label class="item-label" for="input-deepl-key">Authentication Key</label>
-            <input type="password" id="input-deepl-key" class="apple-input" placeholder="输入 DeepL API 密钥">
-          </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="deepl">测试 DeepL 连通性</button>
-            <span class="test-result" id="test-result-deepl"></span>
-          </div>
-        </div>
-        </div>
 
-        <!-- OpenAI Settings -->
-        <div class="macos-card" id="card-engine-openai">
-          <div class="form-row-header">
-            <span class="row-title">OpenAI</span>
-          </div>
-          <div class="form-item">
-            <label class="item-label" for="input-openai-key">API Key</label>
-            <input type="password" id="input-openai-key" class="apple-input" placeholder="sk-...">
-          </div>
-          <div class="form-row-2">
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-openai-url">API Base URL</label>
-              <input type="text" id="input-openai-url" class="apple-input" value="https://api.openai.com/v1">
+          <div class="macos-card engine-card" id="card-engine-deepseek" data-engine="deepseek">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/deepseek.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>DeepSeek</b><span>深度求索的大模型，中文语境理解出色。</span></div>
+              <div class="engine-detail-actions"><a class="engine-key-link" href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">获取 API Key</a><button type="button" class="test-btn engine-make-primary" data-engine="deepseek">设为首选</button></div>
             </div>
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-openai-model">模型名称</label>
-              <div class="model-input-row"><input type="text" id="input-openai-model" class="apple-input" value="gpt-5.6-luna"><button type="button" class="model-refresh-btn" data-engine="openai" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-openai"><option value="gpt-5.6-luna"><option value="gpt-5.6-terra"><option value="gpt-5.6-sol"><option value="gpt-5.4-mini"></datalist>
+            <div class="form-item">
+              <label class="item-label" for="input-deepseek-key">API Key</label>
+              <input type="password" id="input-deepseek-key" class="apple-input" placeholder="sk-..." autocomplete="off">
+            </div>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-deepseek-url">API 地址</label>
+                <input type="text" id="input-deepseek-url" class="apple-input" value="https://api.deepseek.com/v1">
+              </div>
+              <div class="form-item">
+                <label class="item-label" for="input-deepseek-model">模型</label>
+                <div class="model-input-row"><input type="text" id="input-deepseek-model" class="apple-input" value="deepseek-v4-flash" placeholder="选择或输入模型"><button type="button" class="model-refresh-btn" data-engine="deepseek" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-deepseek"><option value="deepseek-v4-flash"><option value="deepseek-v4-pro"></datalist>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="deepseek">测试连接</button>
+              <span class="test-result" id="test-result-deepseek"></span>
             </div>
           </div>
-          <div class="form-item">
-            <label class="item-label" for="input-openai-prompt">翻译指令</label>
-            <textarea id="input-openai-prompt" class="apple-textarea" rows="2"></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="openai">测试 OpenAI 连通性</button>
-            <span class="test-result" id="test-result-openai"></span>
-          </div>
-        </div>
 
-        <!-- Claude Settings -->
-        <div class="macos-card" id="card-engine-claude">
-          <div class="form-row-header">
-            <span class="row-title">Claude</span>
-          </div>
-          <div class="form-item">
-            <label class="item-label" for="input-claude-key">API Key</label>
-            <input type="password" id="input-claude-key" class="apple-input" placeholder="sk-ant-...">
-          </div>
-          <div class="form-row-2">
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-claude-url">Base URL</label>
-              <input type="text" id="input-claude-url" class="apple-input" value="https://api.anthropic.com">
+          <div class="macos-card engine-card" id="card-engine-deepl" data-engine="deepl">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/deepl.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>DeepL</b><span>以自然流畅著称的机器翻译，欧洲语言尤其出色。</span></div>
+              <div class="engine-detail-actions"><a class="engine-key-link" href="https://www.deepl.com/your-account/keys" target="_blank" rel="noopener">获取 API Key</a><button type="button" class="test-btn engine-make-primary" data-engine="deepl">设为首选</button></div>
             </div>
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-claude-model">模型名称</label>
-              <div class="model-input-row"><input type="text" id="input-claude-model" class="apple-input" value="claude-sonnet-5"><button type="button" class="model-refresh-btn" data-engine="claude" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-claude"><option value="claude-sonnet-5"><option value="claude-opus-5"><option value="claude-fable-5"><option value="claude-haiku-4-5"></datalist>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-deepl-key">Authentication Key</label>
+                <input type="password" id="input-deepl-key" class="apple-input" placeholder="输入 DeepL API 密钥" autocomplete="off">
+              </div>
+              <div class="form-item">
+                <span class="item-label">账户类型</span>
+                <div class="segmented-control" id="deepl-type-control">
+                  <button type="button" class="segment-item active" data-value="free">Free</button>
+                  <button type="button" class="segment-item" data-value="pro">Pro</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="deepl">测试连接</button>
+              <span class="test-result" id="test-result-deepl"></span>
             </div>
           </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="claude">测试 Claude 连通性</button>
-            <span class="test-result" id="test-result-claude"></span>
-          </div>
-        </div>
 
-        <!-- Gemini Settings -->
-        <div class="macos-card" id="card-engine-gemini">
-          <div class="form-row-header">
-            <span class="row-title">Gemini</span>
-          </div>
-          <div class="form-row-2">
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-gemini-key">API Key</label>
-              <input type="password" id="input-gemini-key" class="apple-input" placeholder="AIzaSy...">
+          <div class="macos-card engine-card" id="card-engine-openai" data-engine="openai">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/openai.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>OpenAI</b><span>GPT 系列模型，可自定义翻译指令。</span></div>
+              <div class="engine-detail-actions"><a class="engine-key-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">获取 API Key</a><button type="button" class="test-btn engine-make-primary" data-engine="openai">设为首选</button></div>
             </div>
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-gemini-model">模型名称</label>
-              <div class="model-input-row"><input type="text" id="input-gemini-model" class="apple-input" value="gemini-3.6-flash"><button type="button" class="model-refresh-btn" data-engine="gemini" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-gemini"><option value="gemini-3.6-flash"><option value="gemini-3.5-flash"><option value="gemini-3.5-flash-lite"></datalist>
+            <div class="form-item">
+              <label class="item-label" for="input-openai-key">API Key</label>
+              <input type="password" id="input-openai-key" class="apple-input" placeholder="sk-..." autocomplete="off">
+            </div>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-openai-url">API 地址</label>
+                <input type="text" id="input-openai-url" class="apple-input" value="https://api.openai.com/v1">
+              </div>
+              <div class="form-item">
+                <label class="item-label" for="input-openai-model">模型</label>
+                <div class="model-input-row"><input type="text" id="input-openai-model" class="apple-input" value="gpt-5.6-luna"><button type="button" class="model-refresh-btn" data-engine="openai" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-openai"><option value="gpt-5.6-luna"><option value="gpt-5.6-terra"><option value="gpt-5.6-sol"><option value="gpt-5.4-mini"></datalist>
+              </div>
+            </div>
+            <div class="form-item">
+              <label class="item-label" for="input-openai-prompt">翻译指令</label>
+              <textarea id="input-openai-prompt" class="apple-textarea" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="openai">测试连接</button>
+              <span class="test-result" id="test-result-openai"></span>
             </div>
           </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="gemini">测试 Gemini 连通性</button>
-            <span class="test-result" id="test-result-gemini"></span>
-          </div>
-        </div>
 
-        <!-- Ollama Settings -->
-        <div class="macos-card" id="card-engine-ollama">
-          <div class="form-row-header">
-            <span class="row-title">Ollama</span>
-          </div>
-          <div class="form-row-2">
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-ollama-url">Ollama Host</label>
-              <input type="text" id="input-ollama-url" class="apple-input" value="http://localhost:11434">
+          <div class="macos-card engine-card" id="card-engine-claude" data-engine="claude">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/claude.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>Claude</b><span>Anthropic 的模型，擅长长文与语气把握。</span></div>
+              <div class="engine-detail-actions"><a class="engine-key-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">获取 API Key</a><button type="button" class="test-btn engine-make-primary" data-engine="claude">设为首选</button></div>
             </div>
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-ollama-model">模型名称</label>
-              <div class="model-input-row"><input type="text" id="input-ollama-model" class="apple-input" value="qwen2.5:7b"><button type="button" class="model-refresh-btn" data-engine="ollama" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-ollama"></datalist>
+            <div class="form-item">
+              <label class="item-label" for="input-claude-key">API Key</label>
+              <input type="password" id="input-claude-key" class="apple-input" placeholder="sk-ant-..." autocomplete="off">
+            </div>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-claude-url">API 地址</label>
+                <input type="text" id="input-claude-url" class="apple-input" value="https://api.anthropic.com">
+              </div>
+              <div class="form-item">
+                <label class="item-label" for="input-claude-model">模型</label>
+                <div class="model-input-row"><input type="text" id="input-claude-model" class="apple-input" value="claude-sonnet-5"><button type="button" class="model-refresh-btn" data-engine="claude" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-claude"><option value="claude-sonnet-5"><option value="claude-opus-5"><option value="claude-fable-5"><option value="claude-haiku-4-5"></datalist>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="claude">测试连接</button>
+              <span class="test-result" id="test-result-claude"></span>
             </div>
           </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="ollama">测试 Ollama 连接</button>
-            <span class="test-result" id="test-result-ollama"></span>
-          </div>
-        </div>
 
-        <!-- Custom API Settings -->
-        <div class="macos-card" id="card-engine-custom">
-          <div class="form-row-header">
-            <span class="row-title">自定义兼容 API</span>
-          </div>
-          <div class="form-item">
-            <label class="item-label" for="input-custom-url">Base URL</label>
-            <input type="text" id="input-custom-url" class="apple-input" placeholder="https://api.deepseek.com/v1">
-          </div>
-          <div class="form-row-2">
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-custom-key">API Key</label>
-              <input type="password" id="input-custom-key" class="apple-input" placeholder="sk-...">
+          <div class="macos-card engine-card" id="card-engine-gemini" data-engine="gemini">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/gemini.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>Gemini</b><span>Google 的模型，速度快，AI Studio 提供免费额度。</span></div>
+              <div class="engine-detail-actions"><a class="engine-key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">获取 API Key</a><button type="button" class="test-btn engine-make-primary" data-engine="gemini">设为首选</button></div>
             </div>
-            <div class="form-item flex-1">
-              <label class="item-label" for="input-custom-model">模型名称</label>
-              <div class="model-input-row"><input type="text" id="input-custom-model" class="apple-input" placeholder="选择或输入模型"><button type="button" class="model-refresh-btn" data-engine="custom" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-custom"></datalist>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-gemini-key">API Key</label>
+                <input type="password" id="input-gemini-key" class="apple-input" placeholder="AIzaSy..." autocomplete="off">
+              </div>
+              <div class="form-item">
+                <label class="item-label" for="input-gemini-model">模型</label>
+                <div class="model-input-row"><input type="text" id="input-gemini-model" class="apple-input" value="gemini-3.6-flash"><button type="button" class="model-refresh-btn" data-engine="gemini" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-gemini"><option value="gemini-3.6-flash"><option value="gemini-3.5-flash"><option value="gemini-3.5-flash-lite"></datalist>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="gemini">测试连接</button>
+              <span class="test-result" id="test-result-gemini"></span>
             </div>
           </div>
-          <div class="form-actions">
-            <button type="button" class="test-btn" data-engine="custom">测试自定义 API 连通性</button>
-            <span class="test-result" id="test-result-custom"></span>
+
+          <div class="macos-card engine-card" id="card-engine-ollama" data-engine="ollama">
+            <div class="engine-detail-head">
+              <span class="brand-mark"><img src="icons/brands/ollama.svg" alt=""></span>
+              <div class="engine-detail-copy"><b>Ollama</b><span>在本机运行开源模型，内容不出电脑。需先安装并启动 Ollama。</span></div>
+              <div class="engine-detail-actions"><a class="engine-key-link" href="https://ollama.com/download" target="_blank" rel="noopener">下载 Ollama</a><button type="button" class="test-btn engine-make-primary" data-engine="ollama">设为首选</button></div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-ollama-url">服务地址</label>
+                <input type="text" id="input-ollama-url" class="apple-input" value="http://localhost:11434">
+              </div>
+              <div class="form-item">
+                <label class="item-label" for="input-ollama-model">模型</label>
+                <div class="model-input-row"><input type="text" id="input-ollama-model" class="apple-input" value="qwen2.5:7b"><button type="button" class="model-refresh-btn" data-engine="ollama" title="读取本机已安装的模型" aria-label="读取本机已安装的模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-ollama"></datalist>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="ollama">测试连接</button>
+              <span class="test-result" id="test-result-ollama"></span>
+            </div>
+          </div>
+
+          <div class="macos-card engine-card" id="card-engine-custom" data-engine="custom">
+            <div class="engine-detail-head">
+              <span class="brand-mark mark-custom"><svg viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a6 6 0 0 1-12 0V8Z"/></svg></span>
+              <div class="engine-detail-copy"><b>自定义兼容 API</b><span>任何兼容 OpenAI Chat Completions 格式的服务，例如中转或自建网关。</span></div>
+              <div class="engine-detail-actions"><button type="button" class="test-btn engine-make-primary" data-engine="custom">设为首选</button></div>
+            </div>
+            <div class="form-item">
+              <label class="item-label" for="input-custom-url">API 地址</label>
+              <input type="text" id="input-custom-url" class="apple-input" placeholder="https://api.example.com/v1">
+            </div>
+            <div class="form-row-2">
+              <div class="form-item">
+                <label class="item-label" for="input-custom-key">API Key</label>
+                <input type="password" id="input-custom-key" class="apple-input" placeholder="sk-..." autocomplete="off">
+              </div>
+              <div class="form-item">
+                <label class="item-label" for="input-custom-model">模型</label>
+                <div class="model-input-row"><input type="text" id="input-custom-model" class="apple-input" placeholder="选择或输入模型"><button type="button" class="model-refresh-btn" data-engine="custom" title="从服务商读取模型" aria-label="从服务商读取模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 3v5h-5"/></svg></button></div><datalist id="models-custom"></datalist>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="test-btn primary-small" data-engine="custom">测试连接</button>
+              <span class="test-result" id="test-result-custom"></span>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Tab 2: Typography & Presentation Styles -->
+      <!-- ═══ 译文样式 ═══ -->
       <section id="tab-typography" class="tab-view">
-        <div class="view-header">
-          <h2 class="view-title">排版与呈现样式</h2>
-
-        </div>
+        <header class="view-header">
+          <h2 class="view-title">译文样式</h2>
+          <p class="view-subtitle">调整网页中译文的呈现方式，预览会实时更新。</p>
+        </header>
 
         <div class="layout-grid-2">
-          <div class="macos-card">
-            <!-- Render Style Selection -->
-            <div class="form-item">
-              <label class="item-label">译文呈现样式</label>
+          <div class="macos-card typo-panel">
+            <div class="typo-tabs-bar">
+              <div class="segmented-control typo-tabs" id="typo-tabs">
+                <button type="button" class="segment-item active" data-value="style">呈现样式</button>
+                <button type="button" class="segment-item" data-value="text">颜色与字体</button>
+                <button type="button" class="segment-item" data-value="spacing">字号与间距</button>
+                <button type="button" class="segment-item" data-value="sidebar">分栏对照</button>
+              </div>
+            </div>
+
+            <div class="typo-pane" data-pane="style">
               <select id="opt-render-style" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
                 <option value="native">参考原文</option><option value="classic">纯净排版</option><option value="card">卡片译文</option><option value="highlight">高亮底色</option><option value="underline">下划线</option><option value="italic">斜体</option><option value="hover-reveal">悬停显示</option><option value="blur-reveal">模糊显示</option><option value="click-reveal">点按显示</option>
               </select>
               <div class="style-card-grid" id="render-style-card-grid">
-                <button type="button" class="style-choice-card" data-value="native"><span class="style-choice-name">参考原网页</span><span class="style-choice-demo demo-native"><b>Original</b><em>保留原站结构，文字保持正体</em></span></button>
-                <button type="button" class="style-choice-card" data-value="classic"><span class="style-choice-name">纯净对照</span><span class="style-choice-demo"><b>Original sentence</b><em>清晰的中文译文</em></span></button>
-                <button type="button" class="style-choice-card" data-value="card"><span class="style-choice-name">卡片译文</span><span class="style-choice-demo"><b>Original sentence</b><em class="demo-card">留有呼吸感的译文</em></span></button>
-                <button type="button" class="style-choice-card" data-value="highlight"><span class="style-choice-name">高亮底色</span><span class="style-choice-demo"><b>Original sentence</b><em class="demo-highlight">清晰的中文译文</em></span></button>
-                <button type="button" class="style-choice-card" data-value="underline"><span class="style-choice-name">下划线</span><span class="style-choice-demo"><b>Original sentence</b><em class="demo-underline">清晰的中文译文</em></span></button>
-                <button type="button" class="style-choice-card" data-value="italic"><span class="style-choice-name">斜体</span><span class="style-choice-demo"><b>Original sentence</b><em style="font-style:italic">清晰的中文译文</em></span></button>
-                <button type="button" class="style-choice-card" data-value="hover-reveal"><span class="style-choice-name">悬停显示</span><span class="style-choice-demo"><b>Original sentence</b><em class="demo-faded">鼠标经过后清晰</em></span></button>
-                <button type="button" class="style-choice-card" data-value="blur-reveal"><span class="style-choice-name">模糊显示</span><span class="style-choice-demo"><b>Original sentence</b><em class="demo-blur">鼠标经过后显示译文</em></span></button>
-                <button type="button" class="style-choice-card" data-value="click-reveal"><span class="style-choice-name">点按显示</span><span class="style-choice-demo"><b>Original sentence</b><em class="demo-censor">点击显示译文</em></span></button>
+                <button type="button" class="style-choice-card" data-value="native"><span class="style-choice-demo demo-native"><b>Original</b><em>沿用原站字体</em></span><span class="style-choice-name">参考原网页</span></button>
+                <button type="button" class="style-choice-card" data-value="classic"><span class="style-choice-demo"><b>Original</b><em>清晰的中文译文</em></span><span class="style-choice-name">纯净对照</span></button>
+                <button type="button" class="style-choice-card" data-value="card"><span class="style-choice-demo"><b>Original</b><em class="demo-card">留有呼吸感的译文</em></span><span class="style-choice-name">卡片译文</span></button>
+                <button type="button" class="style-choice-card" data-value="highlight"><span class="style-choice-demo"><b>Original</b><em class="demo-highlight">清晰的中文译文</em></span><span class="style-choice-name">高亮底色</span></button>
+                <button type="button" class="style-choice-card" data-value="underline"><span class="style-choice-demo"><b>Original</b><em class="demo-underline">清晰的中文译文</em></span><span class="style-choice-name">下划线</span></button>
+                <button type="button" class="style-choice-card" data-value="italic"><span class="style-choice-demo"><b>Original</b><em class="demo-italic">清晰的中文译文</em></span><span class="style-choice-name">斜体</span></button>
+                <button type="button" class="style-choice-card" data-value="hover-reveal"><span class="style-choice-demo"><b>Original</b><em class="demo-faded">鼠标经过后清晰</em></span><span class="style-choice-name">悬停显示</span></button>
+                <button type="button" class="style-choice-card" data-value="blur-reveal"><span class="style-choice-demo"><b>Original</b><em class="demo-blur">鼠标经过后显示</em></span><span class="style-choice-name">模糊显示</span></button>
+                <button type="button" class="style-choice-card" data-value="click-reveal"><span class="style-choice-demo"><b>Original</b><em class="demo-censor">点击显示译文</em></span><span class="style-choice-name">点按显示</span></button>
               </div>
 
               <div class="style-dependent-options" id="style-dependent-options">
@@ -315,6 +373,7 @@
                   <span class="underline-style-picker" id="opt-underline-style-picker">
                     <i data-value="solid" title="实线"></i><i data-value="dotted" title="点线"></i><i data-value="dashed" title="虚线"></i><i data-value="wavy" title="波浪线"></i><i data-value="double" title="双线"></i>
                   </span>
+                  <span class="style-option-label">颜色</span>
                   <select id="opt-underline-color" class="apple-select compact-color-select" data-color-select="1" aria-label="下划线颜色">
                     <option value="accent" data-color="#3b82f6">蓝色</option>
                     <option value="slate" data-color="#64748b">灰蓝</option>
@@ -325,7 +384,7 @@
                   </select>
                 </div>
                 <div class="style-option-line" id="click-style-options" hidden>
-                  <span class="style-option-label">遮罩底色</span>
+                  <span class="style-option-label">遮罩颜色</span>
                   <select id="opt-click-reveal-color" class="apple-select compact-color-select" data-color-select="1" aria-label="点按遮罩颜色">
                     <option value="charcoal" data-color="#25282d">炭黑</option>
                     <option value="slate" data-color="#46515f">石板灰</option>
@@ -336,416 +395,372 @@
                   </select>
                 </div>
               </div>
-              <p class="typography-native-hint" id="typography-native-hint" hidden>“参考原文”保留原网页的字体、字号与颜色，但统一使用正体；选择“纯净排版”后可自定义字体、颜色、字号和间距。</p>
+              <p class="typography-native-hint" id="typography-native-hint" hidden>“参考原网页”会沿用原站的字体、字号与颜色。想自定义颜色、字体和间距，请选择其他样式。</p>
             </div>
 
-            <div class="form-item" id="translation-color-form-item">
-              <label class="item-label">译文字体颜色</label>
-              <select id="opt-text-color" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
-                <option value="black">黑色</option><option value="slate">石墨灰</option><option value="accent">蓝色</option><option value="green">绿色</option><option value="purple">紫色</option><option value="red">红色</option><option value="orange">橙色</option><option value="teal">青绿</option><option value="brown">棕色</option><option value="inherit">继承原网页</option>
-              </select>
-              <div id="translation-color-grid" class="translation-color-grid" role="radiogroup" aria-label="译文颜色">
-                <button type="button" class="translation-color-choice" data-value="black" style="--choice-color:#111827"><i></i><span>黑色</span></button>
-                <button type="button" class="translation-color-choice" data-value="slate" style="--choice-color:#5f6063"><i></i><span>石墨灰</span></button>
-                <button type="button" class="translation-color-choice" data-value="accent" style="--choice-color:#2563eb"><i></i><span>蓝色</span></button>
-                <button type="button" class="translation-color-choice" data-value="green" style="--choice-color:#27835d"><i></i><span>绿色</span></button>
-                <button type="button" class="translation-color-choice" data-value="purple" style="--choice-color:#7c5ac7"><i></i><span>紫色</span></button>
-                <button type="button" class="translation-color-choice" data-value="red" style="--choice-color:#b84a4a"><i></i><span>红色</span></button>
-                <button type="button" class="translation-color-choice" data-value="orange" style="--choice-color:#b86d24"><i></i><span>橙色</span></button>
-                <button type="button" class="translation-color-choice" data-value="teal" style="--choice-color:#207f7a"><i></i><span>青绿</span></button>
+            <div class="typo-pane" data-pane="text" hidden>
+              <p class="native-lock-note">当前为“参考原网页”样式，颜色与字体跟随原网页。</p>
+              <div class="pane-section" id="translation-color-form-item">
+                <div class="pane-label">译文颜色</div>
+                <select id="opt-text-color" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
+                  <option value="black">黑色</option><option value="slate">石墨灰</option><option value="accent">蓝色</option><option value="green">绿色</option><option value="purple">紫色</option><option value="red">红色</option><option value="orange">橙色</option><option value="teal">青绿</option><option value="brown">棕色</option><option value="inherit">继承原网页</option>
+                </select>
+                <div id="translation-color-grid" class="translation-color-grid" role="radiogroup" aria-label="译文颜色">
+                  <button type="button" class="translation-color-choice" data-value="black" style="--choice-color:#111827"><i></i><span>黑色</span></button>
+                  <button type="button" class="translation-color-choice" data-value="slate" style="--choice-color:#5f6063"><i></i><span>石墨灰</span></button>
+                  <button type="button" class="translation-color-choice" data-value="accent" style="--choice-color:#2563eb"><i></i><span>蓝色</span></button>
+                  <button type="button" class="translation-color-choice" data-value="green" style="--choice-color:#27835d"><i></i><span>绿色</span></button>
+                  <button type="button" class="translation-color-choice" data-value="purple" style="--choice-color:#7c5ac7"><i></i><span>紫色</span></button>
+                  <button type="button" class="translation-color-choice" data-value="red" style="--choice-color:#b84a4a"><i></i><span>红色</span></button>
+                  <button type="button" class="translation-color-choice" data-value="orange" style="--choice-color:#b86d24"><i></i><span>橙色</span></button>
+                  <button type="button" class="translation-color-choice" data-value="teal" style="--choice-color:#207f7a"><i></i><span>青绿</span></button>
+                </div>
+              </div>
+              <div class="pane-section" id="translation-font-form-item">
+                <div class="pane-label">译文字体</div>
+                <select id="opt-font-family" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
+                  <option value="system">系统默认</option><option value="source-sans">思源黑体</option><option value="pingfang">苹方</option><option value="kinghwa-song">京華老宋体</option><option value="source-serif">思源宋体</option><option value="lxgw-wenkai">霞鹜文楷</option><option value="smiley-sans">得意黑</option><option value="kaiti">楷体</option>
+                </select>
+                <div class="font-card-grid" id="translation-font-card-grid">
+                  <button type="button" class="font-choice-card" data-value="system"><b style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">永 Aa</b><span>系统默认</span></button>
+                  <button type="button" class="font-choice-card" data-value="source-sans"><b style="font-family:'Source Han Sans SC','PingFang SC',sans-serif">永 Aa</b><span>思源黑体</span></button>
+                  <button type="button" class="font-choice-card" data-value="pingfang"><b style="font-family:'PingFang SC',sans-serif">永 Aa</b><span>苹方</span></button>
+                  <button type="button" class="font-choice-card" data-value="kinghwa-song"><b style="font-family:'KingHwa_OldSong','STSong',serif">永 Aa</b><span>京華老宋体</span></button>
+                  <button type="button" class="font-choice-card" data-value="source-serif"><b style="font-family:'Source Han Serif SC','Songti SC',serif">永 Aa</b><span>思源宋体</span></button>
+                  <button type="button" class="font-choice-card" data-value="lxgw-wenkai"><b style="font-family:'LXGW WenKai','Kaiti SC',serif">永 Aa</b><span>霞鹜文楷</span></button>
+                  <button type="button" class="font-choice-card" data-value="smiley-sans"><b style="font-family:'Smiley Sans','PingFang SC',sans-serif">永 Aa</b><span>得意黑</span></button>
+                  <button type="button" class="font-choice-card" data-value="kaiti"><b style="font-family:'Kaiti SC','STKaiti',serif">永 Aa</b><span>楷体</span></button>
+                </div>
               </div>
             </div>
 
-            <div class="form-item" id="translation-font-form-item">
-              <label class="item-label">译文字体</label>
-              <select id="opt-font-family" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
-                <option value="system">系统默认</option><option value="source-sans">思源黑体</option><option value="pingfang">苹方</option><option value="kinghwa-song">京華老宋体</option><option value="source-serif">思源宋体</option><option value="lxgw-wenkai">霞鹜文楷</option><option value="smiley-sans">得意黑</option><option value="kaiti">楷体</option>
-              </select>
-              <div class="font-card-grid" id="translation-font-card-grid">
-                <button type="button" class="font-choice-card" data-value="system"><span>系统默认</span><b style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="source-sans"><span>思源黑体</span><b style="font-family:'Source Han Sans SC','PingFang SC',sans-serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="pingfang"><span>苹方</span><b style="font-family:'PingFang SC',sans-serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="kinghwa-song"><span>京華老宋体</span><b style="font-family:'KingHwa_OldSong','STSong',serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="source-serif"><span>思源宋体</span><b style="font-family:'Source Han Serif SC','Songti SC',serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="lxgw-wenkai"><span>霞鹜文楷</span><b style="font-family:'LXGW WenKai','Kaiti SC',serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="smiley-sans"><span>得意黑</span><b style="font-family:'Smiley Sans','PingFang SC',sans-serif">简 Aa 123</b></button>
-                <button type="button" class="font-choice-card" data-value="kaiti"><span>楷体</span><b style="font-family:'Kaiti SC','STKaiti',serif">简 Aa 123</b></button>
-              </div>
-            </div>
-
-            <!-- Font Size & Spacing -->
-            <div class="form-row-2" id="typography-metrics-form">
-              <div class="form-item flex-1">
-                <label class="item-label">
-                  <span>字号比例</span>
-                  <span class="item-desc" id="opt-fontsize-label">100%</span>
+            <div class="typo-pane" data-pane="spacing" hidden>
+              <p class="native-lock-note">当前为“参考原网页”样式，字号与间距跟随原网页。</p>
+              <div id="typography-metrics-form" class="slider-stack">
+                <label class="slider-field">
+                  <span class="slider-head"><span>字号比例</span><b id="opt-fontsize-label">100%</b></span>
+                  <input type="range" id="opt-fontsize-range" min="80" max="140" step="5" value="100" class="apple-slider">
+                  <span class="slider-scale"><span>小</span><span>大</span></span>
                 </label>
-                <input type="range" id="opt-fontsize-range" min="80" max="140" step="5" value="100" class="apple-slider">
+                <label class="slider-field">
+                  <span class="slider-head"><span>与原文的间距</span><b id="opt-spacing-label">6px</b></span>
+                  <input type="range" id="opt-spacing-range" min="0" max="20" step="2" value="6" class="apple-slider">
+                  <span class="slider-scale"><span>紧凑</span><span>宽松</span></span>
+                </label>
+                <label class="slider-field">
+                  <span class="slider-head"><span>行距</span><b id="opt-lineheight-label">1.62</b></span>
+                  <input type="range" id="opt-lineheight-range" min="1.25" max="2.10" step="0.05" value="1.62" class="apple-slider">
+                  <span class="slider-scale"><span>紧凑</span><span>舒展</span></span>
+                </label>
               </div>
+            </div>
 
-              <div class="form-item flex-1">
-                <label class="item-label">
-                  <span>段落间距</span>
-                  <span class="item-desc" id="opt-spacing-label">6px</span>
-                </label>
-                <input type="range" id="opt-spacing-range" min="0" max="20" step="2" value="6" class="apple-slider">
+            <div class="typo-pane" data-pane="sidebar" hidden>
+              <div class="pane-switch-row">
+                <div class="row-info"><span class="row-title">分栏位置</span><span class="row-desc">按 Alt+B 或在弹出面板中打开分栏对照</span></div>
+                <div class="segmented-control" id="opt-sidebar-side-control"><button type="button" class="segment-item" data-value="left">左侧</button><button type="button" class="segment-item active" data-value="right">右侧</button></div>
               </div>
-              <div class="form-item flex-1">
-                <label class="item-label">
-                  <span>行距</span>
-                  <span class="item-desc" id="opt-lineheight-label">1.62</span>
-                </label>
-                <input type="range" id="opt-lineheight-range" min="1.25" max="2.10" step="0.05" value="1.62" class="apple-slider">
+              <div class="pane-switch-row">
+                <div class="row-info"><span class="row-title">联动滚动</span><span class="row-desc">滚动原文时，分栏中的译文同步跟随</span></div>
+                <label class="apple-switch"><input type="checkbox" id="opt-sidebar-sync" checked><span class="switch-knob"></span></label>
               </div>
-            </div>
-            <div class="card-row compact-row">
-              <div class="row-info"><span class="row-title">分栏对照视图位置</span></div>
-              <div class="segmented-control compact-segment" id="opt-sidebar-side-control"><button type="button" class="segment-item" data-value="left">左侧</button><button type="button" class="segment-item active" data-value="right">右侧</button></div>
-            </div>
-            <div class="card-row compact-row">
-              <div class="row-info"><span class="row-title">分栏联动滚动</span></div>
-              <label class="apple-switch"><input type="checkbox" id="opt-sidebar-sync" checked><span class="switch-knob"></span></label>
             </div>
           </div>
 
-          <!-- Right Live Interactive Preview -->
-          <div class="macos-card preview-card-sticky">
-            <div class="preview-safari-bar">
-              <div class="safari-dots">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
+          <div class="preview-card-sticky">
+            <div class="macos-card preview-card">
+              <div class="preview-safari-bar">
+                <div class="safari-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="safari-url">example.com</div>
               </div>
-              <div class="safari-url">example.com · 双语阅读模式</div>
-            </div>
-
-            <div class="preview-body">
-              <article class="demo-article">
-                <div class="demo-kicker">DESIGN NOTES</div>
-                <div class="demo-preview-pair" data-preview-pair="heading">
-                  <h3 class="demo-orig-h">Designing Intuitive Human Interfaces</h3>
-                  <div class="demo-trans-h" id="live-trans-h">设计直观的人机交互界面</div>
-                </div>
-                <div class="demo-preview-pair" data-preview-pair="paragraph-1">
-                  <p class="demo-orig-p">Clarity, contrast, and alignment create an effortless reading experience across devices.</p>
-                  <div class="demo-trans-p" id="live-trans-p">清晰度、对比度与对齐原则共同构成自然、轻松的阅读体验。</div>
-                </div>
-                <figure class="demo-preview-figure">
-                  <img src="assets/readme/hero-background.png" alt="阅读界面配图示例">
-                  <figcaption>Images and captions stay inside the article flow.</figcaption>
-                </figure>
-                <div class="demo-preview-pair" data-preview-pair="paragraph-2">
-                  <p class="demo-orig-p">A good interface preserves hierarchy without asking the reader to notice the interface itself.</p>
-                  <div class="demo-trans-p live-trans-extra">优秀的界面会保留清晰层级，却不会迫使读者把注意力放在界面本身。</div>
-                </div>
-                <blockquote>“The best reading tools quietly disappear behind the content.”</blockquote>
-              </article>
+              <div class="preview-body">
+                <article class="demo-article">
+                  <div class="demo-kicker">DESIGN NOTES</div>
+                  <div class="demo-preview-pair" data-preview-pair="heading">
+                    <h3 class="demo-orig-h">Designing Intuitive Human Interfaces</h3>
+                    <div class="demo-trans-h" id="live-trans-h">设计直观的人机交互界面</div>
+                  </div>
+                  <div class="demo-preview-pair" data-preview-pair="paragraph-1">
+                    <p class="demo-orig-p">Clarity, contrast, and alignment create an effortless reading experience across devices.</p>
+                    <div class="demo-trans-p" id="live-trans-p">清晰度、对比度与对齐原则共同构成自然、轻松的阅读体验。</div>
+                  </div>
+                  <div class="demo-preview-pair" data-preview-pair="paragraph-2">
+                    <p class="demo-orig-p">A good interface preserves hierarchy without asking the reader to notice the interface itself.</p>
+                    <div class="demo-trans-p live-trans-extra">优秀的界面会保留清晰层级，却不会迫使读者把注意力放在界面本身。</div>
+                  </div>
+                  <blockquote>“The best reading tools quietly disappear behind the content.”</blockquote>
+                </article>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Tab 4: Interaction & Shortcuts -->
+      <!-- ═══ 查词与交互 ═══ -->
       <section id="tab-interaction" class="tab-view">
-        <div class="view-header">
+        <header class="view-header">
           <h2 class="view-title">查词与交互</h2>
-        </div>
+          <p class="view-subtitle">控制网页上出现的查词窗、段落按钮、悬浮入口与图片翻译。</p>
+        </header>
 
-        <div class="macos-card interaction-card interaction-dictionary-card">
-          <div class="dict-trigger-panel">
-            <div class="card-row dict-trigger-head">
-              <div class="row-info"><span class="row-title">网页查词</span></div>
+        <div class="group">
+          <div class="group-title">网页查词</div>
+          <div class="macos-card">
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z"/></svg></span>
+              <div class="row-info"><span class="row-title">启用网页查词</span><span class="row-desc">选择在网页上唤出查词窗的方式</span></div>
               <label class="apple-switch"><input type="checkbox" id="opt-dict-enabled"><span class="switch-knob"></span></label>
             </div>
-            <select id="opt-dict-trigger" class="visually-hidden-select" tabindex="-1" aria-hidden="true"><option value="both">双击与划选</option><option value="double_click">双击</option><option value="selection">划选</option><option value="none">关闭</option></select>
-            <div class="trigger-mode-grid" id="dict-trigger-mode-grid">
-              <button type="button" data-value="double_click"><b>双击</b><span>双击词语立即弹出</span></button>
-              <button type="button" data-value="selection"><b>划选</b><span>选中文字后显示工具条</span></button>
-              <button type="button" data-value="both"><b>两者</b><span>同时保留两种方式</span></button>
+            <div class="card-row card-row-block card-row-indent">
+              <select id="opt-dict-trigger" class="visually-hidden-select" tabindex="-1" aria-hidden="true"><option value="both">双击与划选</option><option value="double_click">双击</option><option value="selection">划选</option><option value="none">关闭</option></select>
+              <div class="trigger-mode-grid" id="dict-trigger-mode-grid">
+                <button type="button" data-value="double_click"><b>双击</b><span>双击词语立即弹出</span></button>
+                <button type="button" data-value="selection"><b>划选</b><span>选中文字后显示工具条</span></button>
+                <button type="button" data-value="both"><b>两者都要</b><span>同时保留两种方式</span></button>
+              </div>
+            </div>
+            <div class="card-row card-row-indent">
+              <div class="row-info"><span class="row-title">划选时需按住</span></div>
+              <select id="opt-modifier-key" class="apple-select"><option value="none">无需按键</option><option value="alt">⌥ Option / Alt</option><option value="ctrl">⌃ Control</option><option value="shift">⇧ Shift</option></select>
             </div>
           </div>
-
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">启用 AI 查词与问答</span><span class="row-desc">关闭后，查词窗不再显示 AI 内容、快捷提问与输入框。</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-enable-dictionary-ai"><span class="switch-knob"></span></label>
-          </div>
-
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">查词引擎</span></div>
-            <select id="opt-dictionary-mode" class="apple-select"><option value="standard">标准词典</option><option value="ai">AI 查词（需配置 API）</option></select>
-          </div>
-
-          <div class="dictionary-ai-preferences" id="dictionary-ai-preferences" hidden>
-            <div class="dictionary-ai-preferences-head">
-              <span>AI 回答偏好</span>
-              <small>仅在使用 AI 查词时生效</small>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">表达风格</span></div>
-              <select id="opt-dictionary-ai-answer-style" class="apple-select">
-                <option value="professional">专业严谨</option>
-                <option value="balanced">平衡自然</option>
-                <option value="conversational">通俗口语</option>
-              </select>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">表情符号</span></div>
-              <select id="opt-dictionary-ai-emoji-level" class="apple-select">
-                <option value="none">不使用</option>
-                <option value="light">少量点缀</option>
-                <option value="rich">较丰富</option>
-              </select>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">内容组织</span></div>
-              <select id="opt-dictionary-ai-layout" class="apple-select">
-                <option value="bullets">偏好列点</option>
-                <option value="paragraphs">偏好段落</option>
-                <option value="mixed">自动混合</option>
-              </select>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">解释深度</span></div>
-              <select id="opt-dictionary-ai-depth" class="apple-select">
-                <option value="simple">简明入门</option>
-                <option value="standard">标准</option>
-                <option value="deep">深入理解</option>
-              </select>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">故事与寓言</span><span class="row-desc">可先用一个短故事建立直觉，再在结尾揭示并解释概念。</span></div>
-              <select id="opt-dictionary-ai-story-mode" class="apple-select">
-                <option value="off">不使用</option>
-                <option value="as-needed">按需使用</option>
-                <option value="story-first">故事优先</option>
-              </select>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">AI 内容位置</span></div>
-              <select id="opt-dictionary-ai-position" class="apple-select">
-                <option value="first">词典内容之前</option>
-                <option value="last">词典内容之后</option>
-              </select>
-            </div>
-            <div class="card-row">
-              <div class="row-info"><span class="row-title">专业概念严谨模式</span><span class="row-desc">明确事实、推断与知识边界，不虚构实时搜索或资料来源。</span></div>
-              <label class="apple-switch"><input type="checkbox" id="opt-dictionary-ai-concept-rigor"><span class="switch-knob"></span></label>
-            </div>
-            <div class="card-row dictionary-ai-prompt-row">
-              <div class="row-info"><span class="row-title">自定义查词指令</span><span class="row-desc">可补充希望 AI 重点回答的内容；留空时使用完整的内置词义、语境、搭配与例句模板。它与 OpenAI 卡片中的“翻译指令”相互独立。</span></div>
-              <textarea id="opt-dictionary-ai-custom-prompt" class="apple-textarea dictionary-ai-prompt-input" rows="4" placeholder="例如：优先解释此处义，再列出常用义、词性、搭配和自然例句。"></textarea>
-            </div>
-          </div>
-
         </div>
 
-        <div class="macos-card interaction-card interaction-page-card">
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">显示段落翻译按键</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-enable-hover"><span class="switch-knob"></span></label>
-          </div>
+        <div class="group">
+          <div class="group-title">AI 查词</div>
+          <div class="macos-card">
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/></svg></span>
+              <div class="row-info"><span class="row-title">AI 查词与问答</span><span class="row-desc">在查词窗中显示 AI 解释、快捷提问与输入框</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-enable-dictionary-ai"><span class="switch-knob"></span></label>
+            </div>
+            <div class="card-row card-row-indent">
+              <div class="row-info"><span class="row-title">查词引擎</span></div>
+              <select id="opt-dictionary-mode" class="apple-select"><option value="standard">标准词典</option><option value="ai">AI 查词（需配置 API）</option></select>
+            </div>
 
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">显示段落操作栏</span><span class="row-desc">在译文旁显示原文朗读、译文朗读、高亮与复制操作。</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-enable-paragraph-actions"><span class="switch-knob"></span></label>
+            <div class="dictionary-ai-preferences" id="dictionary-ai-preferences" hidden>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">表达风格</span></div>
+                <select id="opt-dictionary-ai-answer-style" class="apple-select">
+                  <option value="professional">专业严谨</option>
+                  <option value="balanced">平衡自然</option>
+                  <option value="conversational">通俗口语</option>
+                </select>
+              </div>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">表情符号</span></div>
+                <select id="opt-dictionary-ai-emoji-level" class="apple-select">
+                  <option value="none">不使用</option>
+                  <option value="light">少量点缀</option>
+                  <option value="rich">较丰富</option>
+                </select>
+              </div>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">内容组织</span></div>
+                <select id="opt-dictionary-ai-layout" class="apple-select">
+                  <option value="bullets">偏好列点</option>
+                  <option value="paragraphs">偏好段落</option>
+                  <option value="mixed">自动混合</option>
+                </select>
+              </div>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">解释深度</span></div>
+                <select id="opt-dictionary-ai-depth" class="apple-select">
+                  <option value="simple">简明入门</option>
+                  <option value="standard">标准</option>
+                  <option value="deep">深入理解</option>
+                </select>
+              </div>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">故事与寓言</span><span class="row-desc">先用一个短故事建立直觉，再揭示并解释概念</span></div>
+                <select id="opt-dictionary-ai-story-mode" class="apple-select">
+                  <option value="off">不使用</option>
+                  <option value="as-needed">按需使用</option>
+                  <option value="story-first">故事优先</option>
+                </select>
+              </div>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">AI 内容位置</span></div>
+                <select id="opt-dictionary-ai-position" class="apple-select">
+                  <option value="first">词典内容之前</option>
+                  <option value="last">词典内容之后</option>
+                </select>
+              </div>
+              <div class="card-row card-row-indent">
+                <div class="row-info"><span class="row-title">专业概念严谨模式</span><span class="row-desc">区分事实、推断与知识边界，不虚构资料来源</span></div>
+                <label class="apple-switch"><input type="checkbox" id="opt-dictionary-ai-concept-rigor"><span class="switch-knob"></span></label>
+              </div>
+              <div class="card-row card-row-block card-row-indent">
+                <div class="row-info"><span class="row-title">自定义查词指令</span><span class="row-desc">留空时使用内置的词义、语境、搭配与例句模板</span></div>
+                <textarea id="opt-dictionary-ai-custom-prompt" class="apple-textarea" rows="3" placeholder="例如：优先解释此处义，再列出常用义、词性、搭配和自然例句。"></textarea>
+              </div>
+            </div>
           </div>
-
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">网页翻译悬浮入口</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-enable-floating-ball"><span class="switch-knob"></span></label>
-          </div>
-
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">智能语言识别</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-auto-detect-language"><span class="switch-knob"></span></label>
-          </div>
-
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">图片翻译</span><span class="row-desc">使用扩展内置的 Tesseract.js 在浏览器本地识别；首次使用会下载并缓存对应语言模型。原图不上传到 OCR 服务，识别后的纯文本再交给当前翻译引擎。</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-enable-image-translation"><span class="switch-knob"></span></label>
-          </div>
-
-          <div class="card-row image-ocr-language-row">
-            <div class="row-info"><span class="row-title">OCR 识别语言</span><span class="row-desc">“自动模式”会优先跟随网页语言或源语言；切换到新语言时，首次识别会下载并缓存对应模型。</span></div>
-            <select id="opt-image-ocr-language" class="apple-select">
-              <option value="auto">自动模式（跟随网页）</option>
-              <option value="eng">英语</option>
-              <option value="jpn">日语</option>
-              <option value="chi_sim">简体中文</option>
-              <option value="chi_tra">繁体中文</option>
-              <option value="kor">韩语</option>
-              <option value="fra">法语</option>
-              <option value="deu">德语</option>
-              <option value="spa">西班牙语</option>
-              <option value="ita">意大利语</option>
-              <option value="por">葡萄牙语</option>
-              <option value="rus">俄语</option>
-              <option value="nld">荷兰语</option>
-              <option value="pol">波兰语</option>
-              <option value="tur">土耳其语</option>
-              <option value="ukr">乌克兰语</option>
-              <option value="ara">阿拉伯语</option>
-              <option value="vie">越南语</option>
-              <option value="tha">泰语</option>
-              <option value="ind">印度尼西亚语</option>
-              <option value="eng+jpn">英语 + 日语</option>
-              <option value="eng+chi_sim">英语 + 简体中文</option>
-              <option value="eng+chi_tra">英语 + 繁体中文</option>
-            </select>
-          </div>
-
-          <div class="card-row image-translation-font-row">
-            <div class="row-info"><span class="row-title">图片译文字体</span><span class="row-desc">控制译图中的中文排版；手写文楷适合漫画、白板与手写体图片。</span></div>
-            <select id="opt-image-translation-font" class="apple-select">
-              <option value="system">现代黑体</option>
-              <option value="rounded">柔和圆体</option>
-              <option value="serif">正文宋体</option>
-              <option value="handwriting">手写文楷</option>
-            </select>
-          </div>
-
         </div>
 
-        <div class="macos-card interaction-card interaction-shortcuts-card">
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">划选时按住附加键</span></div>
-            <select id="opt-modifier-key" class="apple-select"><option value="none">无修饰键</option><option value="alt">⌥ Option / Alt</option><option value="ctrl">⌃ Control</option><option value="shift">⇧ Shift</option></select>
-          </div>
-
-          <div class="card-row shortcut-flat-row">
-            <div class="row-info"><span class="row-title">页面快捷序列</span></div>
-            <div class="shortcut-sequence-fields">
-              <label><span>隐藏悬浮胶囊</span><input id="opt-floating-shortcut" class="apple-input compact-code" maxlength="4" value="ZZ"></label>
-              <label><span>进入沉浸阅读</span><input id="opt-reader-shortcut" class="apple-input compact-code" maxlength="4" value="AA"></label>
+        <div class="group">
+          <div class="group-title">网页翻译</div>
+          <div class="macos-card">
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4"/></svg></span>
+              <div class="row-info"><span class="row-title">悬浮翻译入口</span><span class="row-desc">在网页边缘显示可拖动的翻译胶囊</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-enable-floating-ball"><span class="switch-knob"></span></label>
+            </div>
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg></span>
+              <div class="row-info"><span class="row-title">段落翻译按钮</span><span class="row-desc">鼠标经过段落时显示单段翻译按钮</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-enable-hover"><span class="switch-knob"></span></label>
+            </div>
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span>
+              <div class="row-info"><span class="row-title">段落操作栏</span><span class="row-desc">在译文旁显示朗读、高亮与复制操作</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-enable-paragraph-actions"><span class="switch-knob"></span></label>
+            </div>
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+              <div class="row-info"><span class="row-title">智能语言识别</span><span class="row-desc">已是目标语言的网页不显示悬浮入口，也不会自动翻译</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-auto-detect-language"><span class="switch-knob"></span></label>
+            </div>
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span>
+              <div class="row-info"><span class="row-title">输入框快捷翻译</span><span class="row-desc">在输入框中按 Ctrl + Enter 翻译全文；划选文字后可替换为译文</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-enable-input-box"><span class="switch-knob"></span></label>
             </div>
           </div>
-          <div class="card-row highlight-style-row">
-            <div class="row-info"><span class="row-title">文字高亮</span></div>
-            <div class="micro-choice-grid" id="highlight-style-card-grid">
-              <button type="button" class="micro-choice-card active" data-value="soft-marker"><span class="mini-highlight-demo soft">重点文字</span><b>柔和</b></button>
-              <button type="button" class="micro-choice-card" data-value="full-marker"><span class="mini-highlight-demo full">重点文字</span><b>荧光</b></button>
-              <button type="button" class="micro-choice-card" data-value="underline-marker"><span class="mini-highlight-demo line">重点文字</span><b>细线</b></button>
+        </div>
+
+        <div class="group">
+          <div class="group-title">图片翻译</div>
+          <div class="macos-card">
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></span>
+              <div class="row-info"><span class="row-title">图片翻译</span><span class="row-desc">在本机识别图片文字，原图不上传；识别结果交给当前翻译引擎</span></div>
+              <label class="apple-switch"><input type="checkbox" id="opt-enable-image-translation"><span class="switch-knob"></span></label>
+            </div>
+            <div class="card-row card-row-indent image-ocr-language-row">
+              <div class="row-info"><span class="row-title">识别语言</span><span class="row-desc">首次使用某种语言时会下载识别模型</span></div>
+              <select id="opt-image-ocr-language" class="apple-select">
+                <option value="auto">自动（跟随网页）</option>
+                <option value="eng">英语</option>
+                <option value="jpn">日语</option>
+                <option value="chi_sim">简体中文</option>
+                <option value="chi_tra">繁体中文</option>
+                <option value="kor">韩语</option>
+                <option value="fra">法语</option>
+                <option value="deu">德语</option>
+                <option value="spa">西班牙语</option>
+                <option value="ita">意大利语</option>
+                <option value="por">葡萄牙语</option>
+                <option value="rus">俄语</option>
+                <option value="nld">荷兰语</option>
+                <option value="pol">波兰语</option>
+                <option value="tur">土耳其语</option>
+                <option value="ukr">乌克兰语</option>
+                <option value="ara">阿拉伯语</option>
+                <option value="vie">越南语</option>
+                <option value="tha">泰语</option>
+                <option value="ind">印度尼西亚语</option>
+                <option value="eng+jpn">英语 + 日语</option>
+                <option value="eng+chi_sim">英语 + 简体中文</option>
+                <option value="eng+chi_tra">英语 + 繁体中文</option>
+              </select>
+            </div>
+            <div class="card-row card-row-indent image-translation-font-row">
+              <div class="row-info"><span class="row-title">译文字体</span><span class="row-desc">手写文楷适合漫画、白板与手写体图片</span></div>
+              <select id="opt-image-translation-font" class="apple-select">
+                <option value="system">现代黑体</option>
+                <option value="rounded">柔和圆体</option>
+                <option value="serif">正文宋体</option>
+                <option value="handwriting">手写文楷</option>
+              </select>
             </div>
           </div>
+        </div>
 
-          <div class="card-row">
-            <div class="row-info"><span class="row-title">输入框快捷翻译</span><span class="row-hint">Ctrl + Enter 翻译全文；划选文字后可选择语言并替换</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-enable-input-box"><span class="switch-knob"></span></label>
+        <div class="group">
+          <div class="group-title">高亮与快捷键</div>
+          <div class="macos-card">
+            <div class="card-row highlight-style-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg></span>
+              <div class="row-info"><span class="row-title">文字高亮样式</span></div>
+              <div class="micro-choice-grid" id="highlight-style-card-grid">
+                <button type="button" class="micro-choice-card active" data-value="soft-marker"><span class="mini-highlight-demo soft">重点文字</span><b>柔和</b></button>
+                <button type="button" class="micro-choice-card" data-value="full-marker"><span class="mini-highlight-demo full">重点文字</span><b>荧光</b></button>
+                <button type="button" class="micro-choice-card" data-value="underline-marker"><span class="mini-highlight-demo line">重点文字</span><b>细线</b></button>
+              </div>
+            </div>
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg></span>
+              <div class="row-info"><span class="row-title">显示 / 隐藏悬浮胶囊</span><span class="row-desc">焦点不在输入框时快速连按</span></div>
+              <input id="opt-floating-shortcut" class="apple-input compact-code" maxlength="4" value="ZZ" aria-label="显示或隐藏悬浮胶囊的按键序列">
+            </div>
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2Z"/><path d="M22 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8Z"/></svg></span>
+              <div class="row-info"><span class="row-title">进入 / 退出沉浸阅读</span><span class="row-desc">焦点不在输入框时快速连按</span></div>
+              <input id="opt-reader-shortcut" class="apple-input compact-code" maxlength="4" value="AA" aria-label="进入或退出沉浸阅读的按键序列">
+            </div>
           </div>
+          <p class="group-footnote">全局快捷键（Alt+T 翻译网页、Alt+B 分栏、Alt+S 划词）可在 chrome://extensions/shortcuts 中修改。</p>
         </div>
       </section>
 
-      <!-- Local MDX/MDD Dictionaries -->
-      <section id="tab-local-dict" class="tab-view">
-        <div class="view-header"><h2 class="view-title">接入本地词典</h2></div>
-
-        <div class="macos-card local-dict-test-card">
-          <div class="local-dict-test-head">
-            <div class="row-info"><span class="row-title">查词与权限检查</span><span class="row-hint">用于确认词典是否命中、样式资源是否可读，以及恢复浏览器重启后的读取权限。</span></div>
-          </div>
-          <div class="local-dict-test-row">
-            <input type="text" id="local-dict-test-input" class="apple-input" placeholder="测试查词，例如 about / 言葉">
-            <button type="button" class="test-btn" id="btn-test-local-dict">测试查词</button>
-            <button type="button" class="test-btn local-dict-reauthorize" id="btn-reauthorize-local-dict">继续授权</button>
-          </div>
-          <span id="local-dict-test-status" class="local-dict-test-status">没有接入词典时无需授权；推荐使用整个文件夹，一次覆盖 CSS、图片、字体与音频资源。</span>
-        </div>
-
-        <div class="macos-card local-dict-card">
-          <div class="local-dict-head">
-            <div class="row-info local-dict-title-line"><span class="row-title">本地词典</span><span class="row-hint local-dict-inline-status" id="local-dict-status"></span></div>
-            <div class="local-dict-actions">
-              <button type="button" class="test-btn primary-small" id="btn-add-local-dict-folder">添加文件夹（推荐）</button>
-              <button type="button" class="test-btn" id="btn-add-local-dict-files">添加 MDX / MDD / CSS</button>
-              <button type="button" class="test-btn local-dict-remove-folder" id="btn-remove-local-dict-folder" title="解除整个文件夹来源，不删除电脑文件" hidden>移除词典源</button>
-            </div>
-          </div>
-          <div class="local-dict-import-note">同名词典同时存在“单文件”和“文件夹”来源时，完整文件夹会自动优先，避免旧 MDX 遮住 CSS、图片或发音资源。</div>
-          <div class="local-dict-list" id="local-dict-list"><div class="local-dict-empty">还没有添加本地词典。</div></div>
-        </div>
-      </section>
-
-      <!-- Tab 5: Vocabulary -->
-      <section id="tab-vocab" class="tab-view">
-        <div class="view-header">
-          <h2 class="view-title">生词本</h2>
-          <p class="view-subtitle local-data-note">生词与高亮保存在浏览器本地。建议定期导出备份，重装浏览器或清除扩展数据前尤其如此。</p>
-
-        </div>
-
-        <div class="macos-card vocab-manager-card">
-          <div class="vocab-top-toolbar vocab-toolbar">
-            <div class="vocab-search-field">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-              <input type="text" id="input-vocab-search" placeholder="搜索单词、音标或释义" autocomplete="off">
-            </div>
-            <select id="vocab-lang-filter" class="apple-select vocab-lang-select">
-              <option value="all">全部语言</option><option value="zh">中文</option><option value="en">英语</option><option value="ja">日语</option><option value="ko">韩语</option><option value="fr">法语</option><option value="de">德语</option><option value="es">西班牙语</option><option value="ru">俄语</option><option value="other">其他</option>
-            </select>
-            <div class="vocab-view-switch" id="vocab-view-switch" aria-label="生词本视图">
-              <button type="button" class="active" data-view="list" title="列表" aria-label="列表"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
-              <button type="button" data-view="gallery" title="画廊" aria-label="画廊"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></button>
-            </div>
-            <button type="button" id="btn-export-vocab-csv" class="test-btn vocab-export">导出当前 CSV</button>
-          </div>
-          <div class="collection-filters" id="vocab-scope" aria-label="时间与网站筛选">
-            <label>从 <input type="datetime-local" data-filter="from"></label><label>至 <input type="datetime-local" data-filter="until"></label>
-            <label>网站 <select data-filter="site"><option value="">全部网站</option></select></label>
-            <label>排序 <select data-filter="sort"><option value="newest">最新收藏在前</option><option value="oldest">最早收藏在前</option><option value="name">按文字排序</option></select></label>
-            <button type="button" data-period="today">今天</button><button type="button" data-period="week">近 7 天</button><button type="button" data-period="all">清除筛选</button>
-            <span class="collection-scope-count" aria-live="polite"></span>
-          </div>
-          <div class="vocab-list-box" id="vocab-list-container" data-view="list">
-            <div class="vocab-empty">生词本暂无记录。在网页查词卡片中点击收藏即可收录。</div>
-          </div>
-        </div>
-      </section>
-
-      <section id="tab-highlights" class="tab-view">
-        <div class="view-header"><h2 class="view-title">高亮收藏</h2><p class="view-subtitle local-data-note">高亮原文、译文和来源保存在浏览器本地。建议定期导出 Markdown 备份，清除扩展数据前尤其如此。</p></div>
-        <div class="macos-card highlight-manager-card">
-          <div class="highlight-toolbar">
-            <input type="text" id="input-highlight-search" class="apple-input" placeholder="搜索高亮内容">
-            <span class="highlight-count" id="highlight-count">0 条</span>
-            <div class="highlight-export-actions">
-              <button type="button" id="btn-copy-highlights" class="test-btn compact-action">复制当前结果</button>
-              <button type="button" id="btn-export-highlights-md" class="test-btn compact-action">导出当前 Markdown</button>
-            </div>
-          </div>
-          <div class="collection-filters" id="highlight-scope" aria-label="时间与网站筛选">
-            <label>从 <input type="datetime-local" data-filter="from"></label><label>至 <input type="datetime-local" data-filter="until"></label>
-            <label>网站 <select data-filter="site"><option value="">全部网站</option></select></label>
-            <label>排序 <select data-filter="sort"><option value="newest">最新收藏在前</option><option value="oldest">最早收藏在前</option><option value="name">按文字排序</option></select></label>
-            <button type="button" data-period="today">今天</button><button type="button" data-period="week">近 7 天</button><button type="button" data-period="all">清除筛选</button>
-            <span class="collection-scope-count" aria-live="polite"></span>
-          </div>
-          <div class="highlight-manager-list" id="highlight-manager-list"><div class="vocab-empty">还没有高亮收藏。</div></div>
-        </div>
-      </section>
-
-      <!-- Automatic translation -->
+      <!-- ═══ 自动翻译 ═══ -->
       <section id="tab-auto-translate" class="tab-view">
-        <div class="view-header"><h2 class="view-title">自动翻译</h2><p class="view-subtitle">控制进入外文网页时是否自动开始翻译；具体网站例外请在“网页黑名单”中设置。</p></div>
+        <header class="view-header">
+          <h2 class="view-title">自动翻译</h2>
+          <p class="view-subtitle">打开外文网页时自动开始翻译，不用每次手动点击。</p>
+        </header>
+
+        <div class="macos-card hero-toggle-card">
+          <span class="row-icon row-icon-lg"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg></span>
+          <div class="row-info"><span class="row-title">自动翻译所有外文网页</span><span class="row-desc">识别到外文页面后，按当前翻译模式自动翻译。黑名单中停用了“自动翻译”的网站除外。</span></div>
+          <label class="apple-switch"><input type="checkbox" id="opt-auto-translate"><span class="switch-knob"></span></label>
+        </div>
+
+        <div class="group group-spaced">
+          <div class="group-title">使用的翻译引擎</div>
+          <select id="opt-auto-translate-engine" class="visually-hidden-select" tabindex="-1" aria-hidden="true"><option value="google">Google 翻译</option><option value="primary">首选翻译引擎</option></select>
+          <div class="option-tile-grid" id="auto-translate-engine-tiles">
+            <button type="button" class="option-tile" data-value="google">
+              <span class="brand-mark"><img src="icons/brands/google.svg" alt=""></span>
+              <span class="option-tile-copy"><b>Google 翻译</b><small>免费，不消耗 AI 额度。推荐用于自动翻译。</small></span>
+              <span class="option-tile-check"></span>
+            </button>
+            <button type="button" class="option-tile" data-value="primary">
+              <span class="brand-mark mark-primary"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/></svg></span>
+              <span class="option-tile-copy"><b>首选翻译引擎</b><small id="auto-engine-primary-desc">使用“翻译引擎”中设定的首选服务，质量更好，会消耗额度。</small></span>
+              <span class="option-tile-check"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">总是自动翻译的网站</div>
+          <div class="macos-card">
+            <div class="card-row">
+              <div class="domain-add-row"><input id="opt-auto-domain-input" class="apple-input" placeholder="输入域名，例如 nytimes.com"><button type="button" id="btn-add-auto-domain" class="test-btn primary-small">添加</button></div>
+            </div>
+            <div id="auto-domain-list" class="domain-list"></div>
+          </div>
+          <p class="group-footnote">即使关闭上方总开关，这些网站及其子域名也会自动翻译。</p>
+        </div>
+      </section>
+
+      <!-- ═══ 网站黑名单 ═══ -->
+      <section id="tab-rules" class="tab-view">
+        <header class="view-header">
+          <h2 class="view-title">网站黑名单</h2>
+          <p class="view-subtitle">在指定网站上停用部分或全部功能。</p>
+        </header>
+
         <div class="macos-card">
           <div class="card-row">
-            <div class="row-info"><span class="row-title">自动翻译外文网页</span><span class="row-hint">识别到外文页面后自动执行当前翻译模式</span></div>
-            <label class="apple-switch"><input type="checkbox" id="opt-auto-translate"><span class="switch-knob"></span></label>
+            <div class="domain-add-row"><input id="opt-exclude-domain-input" class="apple-input" placeholder="输入域名，例如 example.com"><button type="button" id="btn-add-exclude-domain" class="test-btn primary-small">添加到黑名单</button></div>
           </div>
-          <div class="card-row" id="auto-translate-engine-row">
-            <div class="row-info"><span class="row-title">自动翻译引擎</span></div>
-            <select id="opt-auto-translate-engine" class="apple-select"><option value="google">Google</option><option value="primary">当前主引擎</option></select>
-          </div>
-        </div>
-      </section>
-
-      <!-- Website blacklist -->
-      <section id="tab-rules" class="tab-view">
-        <div class="view-header"><h2 class="view-title">网页黑名单</h2><p class="view-subtitle">为不希望扩展介入的网站停用指定功能。</p></div>
-
-        <div class="domain-list-card blacklist-editor">
-          <div class="domain-default-rules blacklist-default-card" id="domain-default-rules">
-            <div class="domain-default-copy"><div class="domain-default-title">默认停用功能</div><div class="domain-default-hint">新加入黑名单的网站默认关闭这些功能；每个网站仍可单独调整。</div></div>
-            <div class="domain-default-chips">
+          <div class="card-row card-row-block domain-default-rules" id="domain-default-rules">
+            <div class="row-info"><span class="row-title">新网站默认停用</span><span class="row-desc">新加入的网站会继承这些设置，之后仍可单独调整</span></div>
+            <div class="domain-default-chips chip-group">
               <label><input type="checkbox" data-default-scope="floating"><span>悬浮入口</span></label>
               <label><input type="checkbox" data-default-scope="hover"><span>段落翻译</span></label>
               <label><input type="checkbox" data-default-scope="selection"><span>划词查词</span></label>
@@ -753,84 +768,224 @@
               <label><input type="checkbox" data-default-scope="auto"><span>自动翻译</span></label>
             </div>
           </div>
-          <div class="domain-list-head blacklist-add-card">
-            <div class="domain-head-copy"><div class="row-title">添加网站</div><div class="domain-head-hint">输入域名即可，例如 example.com；无需填写 https://。</div></div>
-            <div class="domain-add-row"><input id="opt-exclude-domain-input" class="apple-input" placeholder="example.com"><button type="button" id="btn-add-exclude-domain" class="test-btn">新增域名</button></div>
+        </div>
+
+        <div class="group group-spaced">
+          <div class="group-title">已添加的网站</div>
+          <div class="macos-card">
+            <div id="exclude-domain-list" class="domain-list"></div>
           </div>
-          <div id="exclude-domain-list" class="domain-list blacklist-domain-list"></div>
         </div>
       </section>
 
-      <!-- Tab 7: Backup & Cache -->
+      <!-- ═══ 本地词典 ═══ -->
+      <section id="tab-local-dict" class="tab-view">
+        <header class="view-header">
+          <h2 class="view-title">本地词典</h2>
+          <p class="view-subtitle">接入电脑上的 MDict 词典（MDX / MDD），查词时与在线释义一起显示。</p>
+        </header>
+
+        <div class="macos-card local-dict-card">
+          <div class="local-dict-head">
+            <span class="row-icon row-icon-lg"><svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg></span>
+            <div class="row-info local-dict-title-line"><span class="row-title">我的词典</span><span class="row-desc local-dict-inline-status" id="local-dict-status"></span></div>
+            <div class="local-dict-actions">
+              <button type="button" class="test-btn local-dict-remove-folder" id="btn-remove-local-dict-folder" title="解除文件夹来源，不会删除电脑上的文件" hidden>移除文件夹</button>
+              <button type="button" class="test-btn" id="btn-add-local-dict-files">添加文件</button>
+              <button type="button" class="test-btn primary-small" id="btn-add-local-dict-folder">添加文件夹</button>
+            </div>
+          </div>
+          <div class="local-dict-list" id="local-dict-list"><div class="local-dict-empty">还没有添加本地词典。</div></div>
+        </div>
+
+        <div class="group group-spaced">
+          <div class="group-title">试查一个词</div>
+          <div class="macos-card local-dict-test-card">
+            <div class="local-dict-test-row">
+              <div class="vocab-search-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+                <input type="text" id="local-dict-test-input" placeholder="例如 about、言葉" autocomplete="off">
+              </div>
+              <button type="button" class="test-btn" id="btn-test-local-dict">查询</button>
+            </div>
+            <div class="local-dict-test-foot">
+              <span id="local-dict-test-status" class="local-dict-test-status">确认词典能否命中、样式资源是否完整。</span>
+              <button type="button" class="link-btn local-dict-reauthorize" id="btn-reauthorize-local-dict">恢复读取权限</button>
+            </div>
+          </div>
+          <p class="group-footnote">推荐添加整个文件夹，一次覆盖 CSS、图片、字体与发音。浏览器重启后若读取失效，点“恢复读取权限”即可，无需重新导入。</p>
+        </div>
+      </section>
+
+      <!-- ═══ 生词本 ═══ -->
+      <section id="tab-vocab" class="tab-view tab-wide">
+        <header class="view-header view-header-split">
+          <div>
+            <h2 class="view-title">生词本</h2>
+            <p class="view-subtitle local-data-note">在查词窗中点击星标即可收藏。数据保存在本机浏览器。</p>
+          </div>
+          <div class="view-header-stat"><b id="vocab-total-count">0</b><span>个生词</span></div>
+        </header>
+
+        <div class="collection-toolbar">
+          <div class="vocab-search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+            <input type="text" id="input-vocab-search" placeholder="搜索单词、音标或释义" autocomplete="off">
+          </div>
+          <div class="segmented-control vocab-status-switch" id="vocab-status-switch" aria-label="掌握状态"><button type="button" class="segment-item active" data-value="all">全部</button><button type="button" class="segment-item" data-value="learning">学习中</button><button type="button" class="segment-item" data-value="mastered">已掌握</button></div>
+          <div class="vocab-view-switch" id="vocab-view-switch" aria-label="生词本视图">
+            <button type="button" class="active" data-view="list" title="列表" aria-label="列表"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+            <button type="button" data-view="gallery" title="卡片" aria-label="卡片"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
+          </div>
+          <button type="button" id="btn-export-vocab-csv" class="test-btn">
+            <svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>导出当前 CSV
+          </button>
+        </div>
+        <select id="vocab-lang-filter" class="visually-hidden-select" tabindex="-1" aria-hidden="true">
+          <option value="all">全部语言</option><option value="zh">中文</option><option value="en">英语</option><option value="ja">日语</option><option value="ko">韩语</option><option value="fr">法语</option><option value="de">德语</option><option value="es">西班牙语</option><option value="ru">俄语</option><option value="other">其他</option>
+        </select>
+        <div class="filter-chips" id="vocab-lang-chips" role="tablist" aria-label="按语言筛选"></div>
+        <div class="collection-filters" id="vocab-scope" aria-label="时间与网站筛选">
+          <label><span>网站</span><select data-filter="site"><option value="">全部网站</option></select></label>
+          <label><span>排序</span><select data-filter="sort"><option value="newest">最新收藏在前</option><option value="oldest">最早收藏在前</option><option value="name">按文字排序</option></select></label>
+          <label><span>从</span><input type="datetime-local" data-filter="from"></label>
+          <label><span>至</span><input type="datetime-local" data-filter="until"></label>
+          <span class="collection-period"><button type="button" data-period="today">今天</button><button type="button" data-period="week">近 7 天</button><button type="button" data-period="all">清除</button></span>
+          <span class="collection-scope-count" aria-live="polite"></span>
+        </div>
+
+        <div class="vocab-list-box" id="vocab-list-container" data-view="list">
+          <div class="vocab-empty">生词本暂无记录。在网页查词卡片中点击收藏即可收录。</div>
+        </div>
+      </section>
+
+      <!-- ═══ 高亮收藏 ═══ -->
+      <section id="tab-highlights" class="tab-view tab-wide">
+        <header class="view-header view-header-split">
+          <div>
+            <h2 class="view-title">高亮收藏</h2>
+            <p class="view-subtitle local-data-note">高亮原文、译文和来源保存在浏览器本地，按文章分组，可筛选与导出。</p>
+          </div>
+          <div class="view-header-stat"><b id="highlight-count">0</b><span>条高亮</span></div>
+        </header>
+        <div class="collection-toolbar">
+          <div class="vocab-search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+            <input type="text" id="input-highlight-search" placeholder="搜索原文或译文" autocomplete="off">
+          </div>
+          <button type="button" id="btn-copy-highlights" class="test-btn"><svg class="btn-icon" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg><span>复制当前结果</span></button>
+          <button type="button" id="btn-export-highlights-md" class="test-btn"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>导出当前 Markdown</button>
+        </div>
+        <div class="collection-filters" id="highlight-scope" aria-label="时间与网站筛选">
+          <label><span>网站</span><select data-filter="site"><option value="">全部网站</option></select></label>
+          <label><span>排序</span><select data-filter="sort"><option value="newest">最新收藏在前</option><option value="oldest">最早收藏在前</option><option value="name">按文字排序</option></select></label>
+          <label><span>从</span><input type="datetime-local" data-filter="from"></label>
+          <label><span>至</span><input type="datetime-local" data-filter="until"></label>
+          <span class="collection-period"><button type="button" data-period="today">今天</button><button type="button" data-period="week">近 7 天</button><button type="button" data-period="all">清除</button></span>
+          <span class="collection-scope-count" aria-live="polite"></span>
+        </div>
+        <div class="highlight-manager-list" id="highlight-manager-list"><div class="vocab-empty">还没有高亮收藏。</div></div>
+      </section>
+
+      <!-- ═══ 备份与缓存 ═══ -->
       <section id="tab-backup" class="tab-view">
-        <div class="view-header">
-          <h2 class="view-title">缓存与备份管理</h2>
+        <header class="view-header">
+          <h2 class="view-title">备份与缓存</h2>
+          <p class="view-subtitle">所有数据都只保存在本机浏览器。换电脑、重装浏览器或清除扩展数据前，请先导出备份。</p>
+        </header>
 
-        </div>
-
-        <div class="macos-card">
-          <div class="card-row">
-            <div class="row-info">
-              <span class="row-title">本地翻译缓存</span>
-              <span class="row-hint" id="cache-stats-badge">当前已缓存 0 条翻译记录</span>
-            </div>
-            <button type="button" id="btn-clear-cache" class="test-btn">清空缓存</button>
-          </div>
-        </div>
-
-        <div class="macos-card">
-          <div class="card-row">
-            <div class="row-info">
-              <span class="row-title">配置备份与迁移</span>
-              <span class="row-hint">导出所有 API 密钥、提示词与排版设置为 JSON 文件</span>
-            </div>
+        <div class="backup-grid">
+          <div class="macos-card backup-card">
+            <span class="row-icon row-icon-lg"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg></span>
+            <b>完整备份</b>
+            <p>设置、生词本与高亮收藏，一个文件全部带走。</p>
             <div class="form-actions">
-              <button type="button" id="btn-export-settings" class="test-btn">导出配置</button>
-              <button type="button" id="btn-import-trigger" class="test-btn">导入配置</button>
-              <input type="file" id="input-import-file" accept=".json" style="display: none;">
+              <button type="button" id="btn-export-full-backup" class="test-btn primary-small">导出</button>
+              <button type="button" id="btn-import-full-backup" class="test-btn">恢复</button>
+              <input type="file" id="input-full-backup-file" accept=".json" hidden>
             </div>
           </div>
-        </div>
-
-        <div class="macos-card">
-          <div class="card-row">
-            <div class="row-info">
-              <span class="row-title">完整本地数据备份</span>
-              <span class="row-hint">一次备份设置、生词本与高亮收藏。不会打包本地词典文件、OCR 模型或翻译缓存；备份可能包含 API Key，请妥善保管。</span>
-            </div>
+          <div class="macos-card backup-card">
+            <span class="row-icon row-icon-lg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span>
+            <b>仅设置</b>
+            <p>API 配置、提示词与排版偏好，适合在多台电脑间同步。</p>
             <div class="form-actions">
-              <button type="button" id="btn-export-full-backup" class="test-btn">完整备份</button>
-              <button type="button" id="btn-import-full-backup" class="test-btn">恢复备份</button>
-              <input type="file" id="input-full-backup-file" accept=".json" style="display:none;">
+              <button type="button" id="btn-export-settings" class="test-btn">导出</button>
+              <button type="button" id="btn-import-trigger" class="test-btn">导入</button>
+              <input type="file" id="input-import-file" accept=".json" hidden>
+            </div>
+          </div>
+        </div>
+        <p class="group-footnote">备份不包含本地词典文件、OCR 模型与翻译缓存。备份文件中可能有 API Key，请妥善保管。</p>
+
+        <div class="group group-spaced">
+          <div class="group-title">缓存</div>
+          <div class="macos-card">
+            <div class="card-row">
+              <span class="row-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+              <div class="row-info"><span class="row-title">翻译缓存</span><span class="row-desc" id="cache-stats-badge">当前已缓存 0 条翻译记录</span></div>
+              <button type="button" id="btn-clear-cache" class="test-btn danger-text">清空缓存</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Tab 8: About -->
+      <!-- ═══ 关于 ═══ -->
       <section id="tab-about" class="tab-view">
-        <div class="view-header">
-          <h2 class="view-title">项目与赞赏</h2>
+        <div class="about-hero">
+          <div class="about-icon-wrap"><img src="icons/icon128.png" alt="" class="about-icon"></div>
+          <h3 class="about-name">极简翻译</h3>
+          <p class="about-tagline">安静、清晰的双语网页阅读</p>
+          <span class="about-ver" id="about-version-label">版本 1.0 · Manifest V3</span>
         </div>
 
-        <div class="macos-card project-hero-card">
-          <img class="project-promo-image" src="assets/readme/zh-CN/hero.png" alt="极简翻译：简单查词，优雅阅读">
-          <div class="project-hero-copy">
-            <h3 class="about-name">极简翻译</h3>
-            <p class="project-intro">极简翻译是一款面向网页阅读的开源浏览器扩展，基于 Apache-2.0 协议发布。工具坚持本地优先，不设自建云端账号系统；设置、生词与本地词典数据保存在浏览器中。它提供原网页双语、沉浸阅读、本地 MDX 词典与本机图片 OCR 等功能，尽量保留网页原有的排版与交互。如果现有功能对你的日常阅读有所帮助，欢迎赞赏支持。</p>
-            <div class="project-meta-row">
-              <div class="project-values"><span>免费使用</span><span>本地优先</span><span>持续开源</span></div>
-              <p class="about-ver" id="about-version-label">版本 1.0 · Manifest V3</p>
-            </div>
+        <div class="feature-trio">
+          <div class="feature-card">
+            <span class="row-icon"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+            <b>本地优先</b>
+            <p>没有账号与云端，设置和收藏只存在你的浏览器里。</p>
+          </div>
+          <div class="feature-card">
+            <span class="row-icon"><svg viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg></span>
+            <b>开源免费</b>
+            <p>基于 Apache-2.0 协议发布，代码公开，可自由使用。</p>
+          </div>
+          <div class="feature-card">
+            <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2Z"/><path d="M22 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8Z"/></svg></span>
+            <b>专注阅读</b>
+            <p>尽量保留原网页排版，译文安静地待在原文旁边。</p>
           </div>
         </div>
 
-        <div class="project-resource-links" aria-label="项目与使用">
-          <button type="button" id="btn-open-welcome"><span>使用指南</span><span class="resource-arrow">前往</span></button>
-          <button type="button" id="btn-open-reading-lab"><span>阅读测试台</span><span class="resource-arrow">前往</span></button>
-          <button type="button" id="btn-open-donation-url"><span>请开发者喝一杯茶</span><span class="resource-arrow">前往</span></button>
-          <button type="button" id="btn-open-project-url"><span>查看开源项目</span><span class="resource-arrow">前往</span></button>
+        <img class="project-promo-image" src="assets/readme/zh-CN/hero.png" alt="极简翻译：简单查词，优雅阅读">
+
+        <div class="macos-card about-links-card">
+          <button type="button" class="card-row card-row-link" id="btn-open-welcome">
+            <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2Z"/><path d="M22 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8Z"/></svg></span>
+            <span class="row-info"><span class="row-title">使用指南</span><span class="row-desc">从网页翻译、查词到阅读模式的上手引导</span></span>
+            <svg class="row-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5"/></svg>
+          </button>
+          <button type="button" class="card-row card-row-link" id="btn-open-reading-lab">
+            <span class="row-icon"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/></svg></span>
+            <span class="row-info"><span class="row-title">阅读测试台</span><span class="row-desc">逐个打开实站样本，记录阅读模式的问题</span></span>
+            <svg class="row-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5"/></svg>
+          </button>
         </div>
+
+        <div class="support-grid">
+          <button type="button" class="support-card support-donate" id="btn-open-donation-url">
+            <span class="support-card-icon"><svg viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg></span>
+            <span class="support-card-copy"><b>请开发者喝杯茶</b><small>如果它让你的阅读更轻松一点</small></span>
+            <svg class="support-card-arrow" viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>
+          </button>
+          <button type="button" class="support-card support-github" id="btn-open-project-url">
+            <span class="support-card-icon"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-10.2 6"/></svg></span>
+            <span class="support-card-copy"><b>开源项目主页</b><small>反馈问题、提交建议或参与开发</small></span>
+            <svg class="support-card-arrow" viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>
+          </button>
+        </div>
+
+        <p class="about-legal">© 2026 龙猫君与极简翻译贡献者 · Apache-2.0<br>本地识字使用 Tesseract.js，词典解析使用 pako 与 MDict 开源实现。</p>
       </section>
 
     </main>
@@ -839,6 +994,6 @@
   <script src="vendor/pako_inflate.min.js"></script>
   <script src="vendor/mdict-lite.js"></script>
   <script src="collection-filters.js"></script>
-  <script src="options.js?v=1.0-ui-fix"></script>
+  <script src="options.js"></script>
 </body>
 </html>
