@@ -14,5 +14,7 @@ assert.equal((await exercise('SAVE_READER_NOTES',{...sender,frameId:1},[])).resp
 const read=await exercise('GET_READER_NOTES',sender);assert.equal(read.response.legacy.length,1);assert.equal(read.response.legacy[0].orig,'own');
 const write=await exercise('SAVE_READER_NOTES',sender,[{id:'one',anchors:[],note:'text'}]);assert.equal(write.response.success,true);assert.deepEqual(Object.keys(write.write),['readerNotes:https://example.com/article']);
 assert.equal((await exercise('SAVE_READER_NOTES',sender,[{id:'bad',anchors:[],image:'https://example.com/track'}])).response.success,false);
+assert.equal((await exercise('SAVE_READER_NOTES',sender,[{id:'webp',anchors:[],image:'data:image/webp;base64,UklGRg=='}])).response.success,true);
+assert.equal((await exercise('SAVE_READER_NOTES',sender,[{id:'svg',anchors:[],image:'data:image/svg+xml;base64,PHN2Zz4='}])).response.success,false);
 assert.equal((await exercise('SAVE_READER_NOTES',sender,Array(1001).fill({id:'one',anchors:[]}))).response.success,false);
 console.log('PASS notes sender, article isolation, legacy scope, image validation and size limit');

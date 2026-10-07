@@ -9,12 +9,15 @@ async page=>{
  await page.locator('#raccoon-reader-share [data-signature]').fill('龙猫君 · 阅读笔记');await page.locator('#raccoon-reader-share [data-signature]').press('Tab');
  await page.locator('#raccoon-reader-share [data-color=dawn]').click();await page.waitForTimeout(300);
  download=page.waitForEvent('download');await page.locator('#raccoon-reader-share .download').click();await (await download).saveAs('output/playwright/share-polish-signed.png');
- await page.screenshot({path:'output/playwright/share-polish-preview.png'});await page.keyboard.press('Escape');
+ const layoutOptions=await page.locator('#raccoon-reader-share [data-layout] option').evaluateAll(nodes=>nodes.map(node=>node.value));
+ if(JSON.stringify(layoutOptions)!==JSON.stringify(['card','editorial','compact','film','postcard']))throw Error(`Share card styles are incomplete: ${JSON.stringify(layoutOptions)}`);
+ await page.keyboard.press('Escape');
  const density=await worker.evaluate(async()=>{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});const result=await chrome.scripting.executeScript({target:{tabId:tab.id},func:async()=>{
-   const source=document.createElement('canvas');source.width=4800;source.height=1600;source.getContext('2d').fillStyle='#e56f29';source.getContext('2d').fillRect(0,0,4800,1600);
+   const source=document.createElement('canvas');source.width=4800;source.height=2400;source.getContext('2d').fillStyle='#e56f29';source.getContext('2d').fillRect(0,0,4800,2400);
    const canvas=await JijianReaderShare.compose({image:source.toDataURL(),rect:{x:100,y:100,width:2000,height:400},viewport:{width:2400,height:800},title:'test',url:location.href,color:'#fff',showTitle:false,showLink:false,showQR:false});
-   return {width:canvas.width,height:canvas.height,pixel:[...canvas.getContext('2d').getImageData(200,200,1,1).data]};
+   const layouts=[];for(const layout of ['card','editorial','compact','film','postcard']){const output=await JijianReaderShare.compose({image:source.toDataURL(),rect:{x:100,y:100,width:2000,height:400},viewport:{width:2400,height:800},title:'test',url:location.href,color:'#fff',layout});layouts.push({layout,width:output.width,height:output.height});}
+   return {width:canvas.width,height:canvas.height,pixel:[...canvas.getContext('2d').getImageData(200,200,1,1).data],layouts};
  }});return result[0].result;});
- if(density.width!==4128||density.height!==928||density.pixel.join(',')!=='229,111,41,255')throw Error('Native pixel preservation failed: '+JSON.stringify(density));
- return {nativeCapture:true,optionalTitleLinkQR:true,signature:true,gradient:true,density};
+ if(density.width!==4128||density.height!==1392||density.pixel.join(',')!=='229,111,41,255'||new Set(density.layouts.map(item=>item.height)).size!==5)throw Error('Native pixel preservation or distinct share layouts failed: '+JSON.stringify(density));
+ return {nativeCapture:true,optionalTitleLinkQR:true,signature:true,gradient:true,layoutOptions,density};
 }

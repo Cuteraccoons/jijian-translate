@@ -39,7 +39,7 @@ if (!content.includes("rememberInlineStyles(record, ['position', 'padding-bottom
 if (!content.includes('function setTranslationBadgeSafely')) fail('badge messaging context guard missing');
 if (!background.includes('const TRANSLATION_CACHE_NAMESPACE = "trans:v3"') || !background.includes('const BUNDLE_SIZE = engine === "google" ? 1 : 8')) fail('paragraph-safe Google translation mapping missing');
 if (!background.includes('Array.from(memoryCache.entries()).slice(-3000)')) fail('recent translation cache entries are not persisted');
-if (!content.includes('const CONCURRENCY = 2') || !content.includes('const completedChunks = new Map()') || !content.includes('flushCompletedChunks')) fail('translation request fan-out or ordered commit buffer missing');
+if (!content.includes('const CONCURRENCY = 3') || !content.includes('const completedChunks = new Map()') || !content.includes('flushCompletedChunks')) fail('translation request fan-out or ordered commit buffer missing');
 if (!content.includes("sidebarPreviousDisplayMode || 'bilingual'") || !content.includes('function requestSidebarClose()')) fail('temporary sidebar mode restoration missing');
 if (!content.includes('translationRunGeneration') || !content.includes('runId !== translationRunGeneration')) fail('stale async translation run cancellation missing');
 if (!content.includes('function refreshRenderedTranslationContrast') || !content.includes('applyAdaptiveTranslationColor(transNode, transNode')) fail('post-insertion contrast recalculation missing');
@@ -82,6 +82,9 @@ if (content.includes('reader-toggle-divider') || content.includes('readerDivider
 if (!css.includes('.reader-meta-bar{\n  border-bottom:0!important') || !css.includes('.reader-outline-item.level-3{opacity:.72!important')) fail('reader metadata rule or outline hierarchy finish missing');
 if (!css.includes('data-surface="card"') || !css.includes('data-surface="flat"') || !css.includes('.reader-surface-switch button.active')) fail('reader surface layout or outlined selection state missing');
 if (!background.includes('async function translateUnitWithRetry') || !background.includes('const CONCURRENCY = engine === "google" ? 3 : 4')) fail('resilient bounded Google retry missing');
+if (!background.includes('const dictionaryLookupInflight = new Map()') || !background.includes('const translationRequestInflight = new Map()')) fail('concurrent duplicate dictionary/translation requests are not coalesced');
+if (!background.includes('const googleQuickTranslationInflight = new Map()') || !background.includes('15 * 60 * 1000')) fail('quick dictionary translations are not cached/coalesced in memory');
+if (!background.includes('const pending = new JiJianMDict.MDictLite(file, kind).init()') || !background.includes('reader.suggest(q, 8)')) fail('local dictionary initialization is not shared or conservative fallback is missing');
 if (!content.includes('renderStyle:savedRenderStyle') || !content.includes('data-render-style="${escapeHtml(renderStyle)}"')) fail('reader render-style inheritance missing');
 if (!content.includes('readerRenderStyleValues') || !background.includes('readerRenderStyle') || !css.includes('.reader-trans-p[data-render-style="card"]')) fail('reader-specific translation style controls missing');
 if (!content.includes('reader-speech-player') || !content.includes('readerSpeechHighlightMode') || !background.includes('readerSpeechHighlightMode') || !css.includes('.reader-speech-progress')) fail('reader speech progress or highlight controls missing');

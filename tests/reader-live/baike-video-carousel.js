@@ -32,6 +32,7 @@ async page => {
     duplicate: document.querySelectorAll('.swiper-slide-duplicate .videoCover_fixture').length,
     scrollY: window.scrollY
   }));
+  await page.evaluate(() => { window.__readerLastScrollAt=performance.now();window.addEventListener('scroll',()=>{window.__readerLastScrollAt=performance.now();},{passive:true}); });
   await worker.evaluate(async url => {
     const tab = (await chrome.tabs.query({})).find(item => item.url === url);
     for (let attempt = 0; attempt < 15; attempt++) {
@@ -40,6 +41,8 @@ async page => {
     }
   }, page.url());
   await page.waitForSelector("#raccoon-reader-root .reader-baike-videos", { timeout: 25000 });
+  await page.waitForFunction(() => document.querySelectorAll('#raccoon-reader-root .reader-baike-video-slide img').length >= 3, { timeout: 6000 });
+  await page.waitForFunction(initialScrollY => Math.abs(window.scrollY-initialScrollY)<2&&performance.now()-window.__readerLastScrollAt>350, source.scrollY, { timeout: 12000 });
   const opened = await page.evaluate(initialScrollY => {
     const root = document.querySelector('#raccoon-reader-root');
     const section = root.querySelector('.reader-baike-videos');
@@ -51,11 +54,19 @@ async page => {
       captionLayout: [...section.querySelectorAll('.reader-baike-video-slide')].slice(0, 3).map(slide => {
         const title=slide.querySelector('figcaption span').getBoundingClientRect();
         const link=slide.querySelector('figcaption a').getBoundingClientRect();
-        return { titleBottom:title.bottom, linkTop:link.top, linkDisplay:getComputedStyle(slide.querySelector('figcaption a')).display };
+        const media=slide.querySelector('.reader-baike-video-media').getBoundingClientRect();
+        const card=slide.getBoundingClientRect();
+        const style=getComputedStyle(slide);
+        return { titleBottom:title.bottom, linkTop:link.top, linkDisplay:getComputedStyle(slide.querySelector('figcaption a')).display,mediaHeight:media.height,cardHeight:card.height,borderWidth:style.borderTopWidth,borderRadius:style.borderTopLeftRadius };
       }),
       images: section.querySelectorAll('img').length,
       videos: [...section.querySelectorAll('video')].map(video => ({ controls: video.controls, autoplay: video.autoplay, preload: video.preload, poster: video.getAttribute('poster') })),
       controls: section.querySelectorAll('[data-reader-video-nav]').length,
+      collapseControl: { label: section.querySelector('.reader-baike-video-toggle')?.textContent.trim(), expanded: section.querySelector('.reader-baike-video-toggle')?.getAttribute('aria-expanded'), controlsNearTitle: !!section.querySelector('.reader-baike-video-heading-actions .reader-baike-video-toggle') },
+      controlOrder: [...section.querySelector('.reader-baike-video-heading-actions').children].map(node=>node.classList.contains('reader-baike-video-controls')?'arrows':'collapse'),
+      sectionMarginTop: getComputedStyle(section).marginTop,
+      collapseIconCount: section.querySelectorAll('.reader-baike-video-toggle svg').length,
+      playbackLinkColor: getComputedStyle(section.querySelector('figcaption a')).color,
       cards: section.querySelectorAll('[data-reader-video-slide]').length,
       missingPosterFallback: { text: section.querySelectorAll('[data-reader-video-slide]')[5]?.querySelector('.reader-baike-video-placeholder')?.textContent.trim(), links: section.querySelectorAll('[data-reader-video-slide]')[5]?.querySelectorAll('a[href]').length },
       viewport: viewport ? { clientWidth: viewport.clientWidth, scrollWidth: viewport.scrollWidth, overflowX: getComputedStyle(viewport).overflowX } : null,
@@ -68,10 +79,20 @@ async page => {
   if (response?.status() !== 200) throw Error(`Fixture HTTP status ${response?.status()}`);
   if (source.cards !== 6 || source.loadedPosters !== 0 || source.duplicate !== 1) throw Error(`Fixture source changed: ${JSON.stringify(source)}`);
   if (opened.cards !== 6 || opened.titles.join('|') !== Array.from({ length: 6 }, (_, index) => `样例视频 ${index + 1}`).join('|') || opened.duplicateTitle) throw Error(`Video order or clone filtering failed: ${JSON.stringify(opened)}`);
-  if (opened.headingCount !== '（6个）' || opened.countRows !== 0 || opened.captionLayout.some(layout => layout.linkTop < layout.titleBottom - 1 || layout.linkDisplay === 'inline')) throw Error(`Video count or original-page link placement failed: ${JSON.stringify(opened)}`);
+  if (opened.headingCount !== '（6个）' || opened.countRows !== 0 || opened.captionLayout.some(layout => layout.linkTop < layout.titleBottom - 1 || layout.linkDisplay === 'inline' || layout.borderWidth !== '1px' || layout.borderRadius !== '10px')) throw Error(`Video count, framed card, or original-page link placement failed: ${JSON.stringify(opened)}`);
+  if (Math.max(...opened.captionLayout.map(layout=>layout.cardHeight))-Math.min(...opened.captionLayout.map(layout=>layout.cardHeight))>1 || Math.max(...opened.captionLayout.map(layout=>layout.mediaHeight))-Math.min(...opened.captionLayout.map(layout=>layout.mediaHeight))>1) throw Error(`Top video cards should share a consistent card and media height: ${JSON.stringify(opened.captionLayout)}`);
+  if (opened.collapseControl.label !== '收起' || opened.collapseControl.expanded !== 'true' || !opened.collapseControl.controlsNearTitle) throw Error(`Top video section should expose a clear collapse control beside its heading: ${JSON.stringify(opened.collapseControl)}`);
+  if (opened.controlOrder.join('|') !== 'arrows|collapse' || opened.sectionMarginTop !== '11px' || opened.collapseIconCount !== 0) throw Error(`Video controls should keep arrows left, a simple collapse label right, and a tighter section margin: ${JSON.stringify({ order:opened.controlOrder,marginTop:opened.sectionMarginTop,icons:opened.collapseIconCount })}`);
+  if (opened.playbackLinkColor === 'rgb(0, 0, 0)') throw Error(`Original-page playback link should appear blue: ${opened.playbackLinkColor}`);
   if (opened.images < 3 || opened.visibleCards !== 3 || opened.controls !== 2 || opened.viewport?.scrollWidth <= opened.viewport?.clientWidth) throw Error(`Initial carousel did not load and show three posters: ${JSON.stringify(opened)}`);
   if (opened.videos.length !== 1 || !opened.videos[0].controls || opened.videos[0].autoplay || opened.videos[0].preload !== 'none' || !opened.videos[0].poster) throw Error(`Direct video should be controllable, poster-backed and never autoplay: ${JSON.stringify(opened.videos)}`);
   if (opened.missingPosterFallback.text !== '封面暂未加载' || opened.missingPosterFallback.links < 2) throw Error(`Missing poster should keep a clear fallback and original-page links: ${JSON.stringify(opened.missingPosterFallback)}`);
+  await page.locator('.reader-baike-videos .reader-baike-video-toggle').click();
+  await page.waitForFunction(() => document.querySelector('.reader-baike-videos .reader-baike-video-viewport')?.hidden === true, { timeout: 3000 });
+  const collapsed = await page.evaluate(() => { const section=document.querySelector('#raccoon-reader-root .reader-baike-videos'),toggle=section.querySelector('.reader-baike-video-toggle');return {hidden:section.querySelector('.reader-baike-video-viewport').hidden,label:toggle.textContent.trim(),expanded:toggle.getAttribute('aria-expanded'),navHidden:section.querySelector('.reader-baike-video-controls').hidden}; });
+  if (!collapsed.hidden || collapsed.label !== '展开' || collapsed.expanded !== 'false' || !collapsed.navHidden) throw Error(`Video collapse should hide the media and navigation while leaving a reopen control: ${JSON.stringify(collapsed)}`);
+  await page.locator('.reader-baike-videos .reader-baike-video-toggle').click();
+  await page.waitForFunction(() => document.querySelector('.reader-baike-videos .reader-baike-video-viewport')?.hidden === false, { timeout: 3000 });
   await page.locator('.reader-baike-videos [data-reader-video-nav="next"]').click();
   await page.waitForFunction(() => document.querySelector('.reader-baike-videos [data-reader-video-nav="next"]')?.disabled, { timeout: 3000 });
   const forward = await page.evaluate(() => { const section=document.querySelector('#raccoon-reader-root .reader-baike-videos'),viewport=section.querySelector('.reader-baike-video-viewport');return {left:viewport.scrollLeft,previousDisabled:section.querySelector('[data-reader-video-nav="previous"]').disabled,nextDisabled:section.querySelector('[data-reader-video-nav="next"]').disabled}; });
@@ -88,5 +109,6 @@ async page => {
   });
   if (narrow.visible !== 1 || narrow.contentScrollWidth > narrow.contentWidth + 1) throw Error(`Narrow carousel overflow or visible-card count failed: ${JSON.stringify(narrow)}`);
   if (!opened.followingText || !opened.scrollRestored) throw Error(`Following prose or page scroll position was lost: ${JSON.stringify(opened)}`);
+  await page.unrouteAll();
   return { status: response?.status(), source, opened, navigation, narrow, translation: "disabled; original view only" };
 }

@@ -14,6 +14,7 @@ async page => {
     <main class="J-lemma-content">
       <h1>目录映射样例</h1>
       <p>这段自有 fixture 引言用于保证测试容器被识别为文章正文，并验证大纲目标的稳定映射、重复标题和目录锚点跳转行为。</p>
+      <ul class="para_list_fixture"><li><strong>创立背景</strong></li><li><strong>成立合伙企业</strong></li><li>保留在正文中的普通项目</li></ul>
       <nav class="catalog_fixture" aria-label="源目录"><a href="#first-section">目录中第一节</a><a href="#missing-source-target">不存在的目标</a></nav>
       <h2 id="first-section">第一节</h2>
       <p>第一节的正文用于让第一条大纲有可见目标，并为后续章节的滚动定位提供足够内容。</p>
@@ -72,6 +73,9 @@ async page => {
       outline: items.map(item => ({ text: item.querySelector(".reader-outline-label")?.textContent.trim(), level: Number(item.dataset.headingLevel), id: item.dataset.targetId, exists: !!root.querySelector(`#${CSS.escape(item.dataset.targetId)}`) })),
       sourceNavigationLeaked: content.textContent.includes("目录中第一节") || content.textContent.includes("另一个目录项"),
       contentHeadings: [...content.querySelectorAll(".reader-paragraph-pair[data-heading='true']")].map(pair => ({ text: pair.querySelector(".reader-orig-p")?.textContent.trim(), id: pair.id, level: Number(pair.dataset.headingLevel) })),
+      listHeadingRows: [...content.querySelectorAll(".reader-paragraph-pair[data-heading='true']")].filter(pair => ["创立背景","成立合伙企业"].includes(pair.querySelector(".reader-orig-p")?.textContent.trim())).map(pair => ({ text:pair.querySelector(".reader-orig-p")?.textContent.trim(), level:Number(pair.dataset.headingLevel), listWrapper:!!pair.closest(".reader-list-block") })),
+      ordinaryParaListItems: [...content.querySelectorAll(".reader-paragraph-pair")].filter(node => node.innerText.trim()==="保留在正文中的普通项目").length,
+      duplicateListHeadingInWrapper: ["创立背景","成立合伙企业"].some(label => [...content.querySelectorAll(".reader-paragraph-pair")].some(node => node.innerText.trim()===label&&!node.matches("[data-heading='true']"))),
       articleRect: root.querySelector("#reader-scroll-area").getBoundingClientRect().toJSON(),
       outlineRect: root.querySelector("#reader-outline-panel").getBoundingClientRect().toJSON(),
       outlineViewRect: root.querySelector("[data-reader-nav-view='outline']").getBoundingClientRect().toJSON(),
@@ -161,17 +165,19 @@ async page => {
     }, id);
   }
   const expectedHeadings = source.headings.filter(heading => heading.level >= 2);
-  const actualHeadings = initial.contentHeadings;
+  const actualHeadings = initial.contentHeadings.filter(heading => !["创立背景","成立合伙企业"].includes(heading.text));
   const headingOrderMatches = expectedHeadings.length === actualHeadings.length && expectedHeadings.every((heading, index) => heading.text === actualHeadings[index]?.text && heading.level === actualHeadings[index]?.level);
-  const allOutlineTargetsExist = initial.outline.length === actualHeadings.length && initial.outline.every(item => item.exists);
+  const allOutlineTargetsExist = initial.outline.length === actualHeadings.length + 2 && initial.outline.every(item => item.exists);
+  const shortListHeadingsRecognized = initial.listHeadingRows.map(item => item.text).join("|") === "创立背景|成立合伙企业" && initial.listHeadingRows.every(item => item.level === 3 && !item.listWrapper) && initial.ordinaryParaListItems === 1 && !initial.duplicateListHeadingInWrapper;
   const longHeading = initial.rowMetrics.find(row => row.text === source.headings.find(heading => heading.id === "long-heading")?.text);
   const narrowRowsFit = initial.rowMetrics.every(row => row.gutter >= 0 && row.rightInset <= 16 && row.scrollWidth <= row.width + 6);
   const longHeadingFullyVisible = !!longHeading && longHeading.labelScrollHeight <= longHeading.labelClientHeight + 1 && longHeading.labelOverflowY === "visible";
   const clicksPass = clickChecks.length === targets.length && clickChecks.every(check => check.passed) && new Set(clickChecks.filter(check => check.label === "同名章节").map(check => check.targetId)).size === 2;
   const wrapperAnchorPass = !!wrapperAnchor?.exists && wrapperAnchor.top >= -2 && wrapperAnchor.top < wrapperAnchor.areaHeight - 40 && !wrapperAnchor.url.endsWith("#wrapped-section");
-  const assertions = { headingOrderMatches, allOutlineTargetsExist, sourceNavigationExcluded: !initial.sourceNavigationLeaked, clicksPass, wrapperAnchorPass, narrowRowsFit, longHeadingFullyVisible, wideRowsFit, wideLongHeadingFullyVisible, wideEndClickPass: wideEndClick?.text === "末尾章节" && wideEndClick.top >= -2 && wideEndClick.top < wideEndClick.areaHeight - 40 };
+  const assertions = { headingOrderMatches, allOutlineTargetsExist, shortListHeadingsRecognized, sourceNavigationExcluded: !initial.sourceNavigationLeaked, clicksPass, wrapperAnchorPass, narrowRowsFit, longHeadingFullyVisible, wideRowsFit, wideLongHeadingFullyVisible, wideEndClickPass: wideEndClick?.text === "末尾章节" && wideEndClick.top >= -2 && wideEndClick.top < wideEndClick.areaHeight - 40 };
   const result = { status: response?.status(), source, initial, clickChecks, wrapperLinkCount, wrapperAnchor, wide, wideEndClick, assertions, translation: "disabled; original view only" };
   const failed = Object.entries(assertions).filter(([, passed]) => !passed);
   if (response?.status() !== 200 || failed.length) throw Error(`Baike heading mapping assertions failed: ${JSON.stringify({ failed, result })}`);
+  await page.unrouteAll();
   return result;
 }
