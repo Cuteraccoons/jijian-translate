@@ -41,7 +41,7 @@ API Key、自定义服务地址、模型配置与自定义翻译指令保存在�
 
 ## 联系方式
 
-一般隐私问题可以通过 [GitHub Issues](https://github.com/Cuteraccoons/minimalist-translate/issues) 反馈，请勿在公开 Issue 中提交 API Key、私人网页内容或其他敏感信息。涉及敏感信息或安全问题时，请使用仓库的 Private vulnerability reporting。
+一般隐私问题可以通过 [GitHub Issues](https://github.com/Cuteraccoons/jijian-translate/issues) 反馈，请勿在公开 Issue 中提交 API Key、私人网页内容或其他敏感信息。涉及敏感信息或安全问题时，请使用仓库的 Private vulnerability reporting。
 
 ## 截图分享
 

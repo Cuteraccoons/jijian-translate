@@ -96,7 +96,7 @@ const DEFAULT_SETTINGS = {
   floatingShortcut: "zz",
   readerShortcut: "aa",
   donationUrl: "https://www.ifdian.net/a/longmaojun",
-  projectUrl: "https://github.com/Cuteraccoons/minimalist-translate",
+  projectUrl: "https://github.com/Cuteraccoons/jijian-translate",
   verifiedEngines: {},
 
   // 发音设置

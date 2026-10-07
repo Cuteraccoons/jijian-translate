@@ -2,15 +2,15 @@
   <a href="./README.md">简体中文</a> · <strong>English</strong> · <a href="./README.ja.md">日本語</a>
 </p>
 
-<h1 align="center">极简翻译 · Minimalist Translate</h1>
+<h1 align="center">极简翻译 · Jijian Translate</h1>
 
 <p align="center">
-  <img src="./assets/readme/en/hero.png" width="100%" alt="Minimalist Translate with nine reading and translation features beside a raccoon reading at a desk.">
+  <img src="./assets/readme/en/hero.png" width="100%" alt="Jijian Translate with nine reading and translation features beside a raccoon reading at a desk.">
 </p>
 
-> **Available now:** Install Minimalist Translate from the [Chrome Web Store](https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd), or use [Releases](https://github.com/Cuteraccoons/minimalist-translate/releases/latest) for a manual installation.
+> **Available now:** Install Jijian Translate from the [Chrome Web Store](https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd), or use [Releases](https://github.com/Cuteraccoons/jijian-translate/releases/latest) for a manual installation.
 
-Minimalist Translate is an open-source Chrome extension for reading foreign-language webpages without turning them into a separate translation document. It keeps links, tabs, buttons, and page structure usable while adding bilingual reading, focused reader views, dictionary lookup, and on-device image OCR.
+Jijian Translate is an open-source Chrome extension for reading foreign-language webpages without turning them into a separate translation document. It keeps links, tabs, buttons, and page structure usable while adding bilingual reading, focused reader views, dictionary lookup, and on-device image OCR.
 
 ## Read in the view that fits the page
 
@@ -52,7 +52,7 @@ Google Translate can be used as the basic engine. The following integrations req
 
 ## Install locally
 
-1. Download and extract the latest package from [Releases](https://github.com/Cuteraccoons/minimalist-translate/releases/latest).
+1. Download and extract the latest package from [Releases](https://github.com/Cuteraccoons/jijian-translate/releases/latest).
 2. Open `chrome://extensions/` in Chrome.
 3. Enable **Developer mode**.
 4. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
@@ -72,7 +72,7 @@ See the [privacy notice](PRIVACY.md) for the complete service and permission bou
 
 ## Project and appreciation
 
-If Minimalist Translate helps with your reading, you can leave an optional appreciation through [Afdian](https://www.ifdian.net/a/longmaojun). It recognizes the open-source work already released and does not purchase exclusive features, scheduling, or maintenance commitments.
+If Jijian Translate helps with your reading, you can leave an optional appreciation through [Afdian](https://www.ifdian.net/a/longmaojun). It recognizes the open-source work already released and does not purchase exclusive features, scheduling, or maintenance commitments.
 
 ## Contributing
 
@@ -84,4 +84,4 @@ OpenAI Codex was used as an assistive tool during development and code review.
 
 ## License
 
-Minimalist Translate is released under the [Apache License 2.0](LICENSE). Third-party components remain subject to their own licenses and notices; see [NOTICE](NOTICE) and the notice files under `vendor/`.
+Jijian Translate is released under the [Apache License 2.0](LICENSE). Third-party components remain subject to their own licenses and notices; see [NOTICE](NOTICE) and the notice files under `vendor/`.
