@@ -111,6 +111,8 @@
     if(pill)pillVisibilityObserver.observe(pill,options);
   }
   function render(index, preserveReader=false) {
+    document.body.classList.remove('guide-finished');
+    q('#skip-guide').hidden=false;
     current=index;const step=steps[index];
     document.body.dataset.guideStep=index;document.body.dataset.guideKey=step.key;
     q('#step-title').textContent=step.title;q('#step-description').textContent=step.description;q('#step-description').hidden=!step.description;
@@ -153,6 +155,9 @@
   async function finish() {
     if(moving)return;
     dispatch('reset');render(7);q('#step-title').textContent='准备好了，开始阅读吧！';
+    const finishNote=q('#step-description');finishNote.textContent='以后可以在设置的“关于”页重新打开这份指南。';finishNote.hidden=false;q('#skip-guide').hidden=true;
+    // The finish screen stands alone: no feature cards, centred on the page.
+    document.body.classList.add('guide-finished');q('#welcome-extras').hidden=true;
     q('#guide-next').hidden=true;q('#guide-complete').hidden=true;
     await chrome.storage.local.set({welcomeCompleted:true,welcomeProgress:0});
   }

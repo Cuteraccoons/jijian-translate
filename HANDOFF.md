@@ -87,6 +87,14 @@
 - Bug：内容脚本注入的 `fonts/smiley.css` 用相对地址，被网页按自身域名解析（GitHub 上报 404 和 CSP 错误）。改为内容脚本专用的 `fonts/smiley-content.css`，用 `chrome-extension://__MSG_@@extension_id__/` 地址；阅读器与 Popup 仍用原文件。来源卡片里的 `decodeURI` 遇到不规范编码会抛错，已兜底；`buildReaderToolPanes` 调用也包了 try/catch，避免布局异常中断阅读模式其余初始化。
 - 维护者看到的报错只给出了 `#reader-speech-player` 这一行，无界面复现没有抛错，播放器能正常显示；若仍出现，请从扩展“错误”页复制完整报错文字。
 
+### 1.0.6c 脚注与新手指引（同日）
+
+- **脚注**：原文模式下维基百科、Paul Graham、Dan Luu 实页的脚注本来就能跳转；坏的是译文。`appendTranslatedCitations` 以前只认 `sup a`，并给所有链接加 `target="_blank"`，网页双语模式下点中文里的脚注会新开标签页。现在同页锚点不加 `_blank`，并识别 doc-noteref、`.footnote-ref`、`.footnote-anchor`、`rel=footnote`、`fnref*` 和指向本页锚点的 `[1]`／`1` 式链接；不带括号的数字只在紧跟句末标点时才当作脚注号。
+- **阅读模式点页内链接会退出**：找不到映射目标时以前不拦截，浏览器跳锚点触发 `popstate`，阅读模式把它当作“返回”而关闭。现在所有同页锚点都拦截，先查映射，再查阅读器内同 id 元素。`wiki-references-navigation.js` 原先断言“坏链接不拦截”，已改为“拦截且阅读模式仍开着”。锚点映射另外收录正文前面的短锚点（Substack 的 `<a id="footnote-4">4</a><div><p>…`）。
+- 新增 `tests/reader-live/footnotes-translated.js`：五种脚注写法，分别在网页双语翻译与阅读模式双语下验证（翻译为本地模拟）。
+- **新手指引**：“更多功能”8 张卡片（宽屏 4 列，窄屏 2 列）；完成后 `body.guide-finished` 只显示居中的“准备好了，开始阅读吧！”和一行说明，隐藏卡片与“稍后再看”，回到上一步时恢复。
+- `baike-body-media.js` 单独连续运行 7 次均通过，只在整套连续运行时偶发失败。
+
 ### 验证（本轮）
 
 - `release-audit`（12 项）、`translation-core-audit`、`reader-notes-audit`、`reader-capture-audit` 通过。`baike-body-media.js` 偶发一次失败，单独重跑两次均通过。
