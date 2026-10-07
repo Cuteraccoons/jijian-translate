@@ -66,5 +66,6 @@ async page => {
   if (!result.oneRowOutput.includes("未被采集为表格的单行图片内容") || result.oneRowImageCount !== 1) throw Error(`Dropped parent also swallowed its child content: ${JSON.stringify(result)}`);
   if (result.facts.length !== 1 || !result.facts[0].includes("地区") || !result.facts[0].includes("示例市")) throw Error(`Baike basic info regression: ${JSON.stringify(result.facts)}`);
   if (result.ordinaryTableRows !== 2 || !result.ordinaryTableText.includes("示例设备")) throw Error(`Ordinary data table regression: ${JSON.stringify(result)}`);
+  await page.unrouteAll();
   return { status: response?.status(), source, result, translation: "disabled; original view only" };
 }

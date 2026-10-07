@@ -48,6 +48,7 @@
     readerFontSize: "17.5",
     readerLineHeight: "1.82",
     readerParagraphSpacing: "28",
+    readerFirstLineIndent: false,
     readerWritingMode: "horizontal", // horizontal | vertical
     readerOutlineCollapsed: false,
     readerToolsCollapsed: false,
@@ -335,7 +336,12 @@
     }
   });
 
-  window.addEventListener("popstate", () => scheduleRouteTranslationRefresh());
+  window.addEventListener("popstate", event => {
+    if (isReaderOpen && readerHistoryToken && event.state?.__jijianReaderModeToken !== readerHistoryToken) {
+      closeReaderMode({ fromHistory:true });
+    }
+    scheduleRouteTranslationRefresh();
+  });
   window.addEventListener("hashchange", () => scheduleRouteTranslationRefresh());
 
   function isForeignLanguagePage() {
@@ -911,10 +917,11 @@
       chunks.push(blocks.slice(i, i + CHUNK_SIZE).map(b => ({ id: b.id, text: b.text })));
     }
 
-    // Two outer workers keep API pressure bounded. Responses may finish in any
+    // Three outer workers reduce wait time on long pages while keeping API
+    // pressure bounded. Responses may finish in any
     // order, but DOM commits are buffered and released strictly from the current
     // viewport downward so later sections never appear before the lead content.
-    const CONCURRENCY = 2;
+    const CONCURRENCY = 3;
     let nextChunkIdx = 0;
     let nextCommitIdx = 0;
     const completedChunks = new Map();
@@ -2718,6 +2725,7 @@
    */
   let readerRoot = null;
   let readerKeydownHandler = null;
+  let readerHistoryToken = null;
   let readerContainerCache = { url:"", element:null };
   let readerImageInfoCache = new WeakMap();
   let readerBaikeBlocks = new WeakMap();
@@ -2750,7 +2758,24 @@
     if (String(node?.getAttribute?.("role") || "").toLowerCase() === "heading") {
       return Math.min(6, Math.max(1, parseInt(node.getAttribute("aria-level") || "2", 10) || 2));
     }
+    if (location.hostname === "baike.baidu.com" && node?.nodeType === Node.ELEMENT_NODE) {
+      const text = String(node.innerText || node.textContent || "").replace(/\s+/g, " ").trim();
+      const className = typeof node.className === "string" ? node.className : "";
+      if (text.length >= 2 && text.length <= 48 && /(?:para|section|sub)?[_-]?(?:title|heading)/i.test(className)) return 3;
+      if (node.tagName === "LI" && text.length >= 2 && text.length <= 36 && !node.querySelector("a[href],ul,ol")) {
+        const label = [...node.querySelectorAll("strong,b,[class*=title i]")]
+          .map(item => String(item.innerText || item.textContent || "").replace(/\s+/g, " ").trim())
+          .find(value => value.length >= 2 && value.length <= 36);
+        if (label && text.replace(/^[\s•·▪◆]+|[\s。:：]+$/gu, "") === label) return 3;
+      }
+    }
     return 0;
+  }
+
+  function readerBaikeListHeadingIsNested(node) {
+    if (location.hostname !== "baike.baidu.com" || node?.tagName !== "LI" || !readerHeadingLevel(node)) return false;
+    const wrapper = node.parentElement?.closest('[class^="para_"],.para');
+    return !!wrapper && !readerHeadingLevel(wrapper);
   }
 
   function appendTranslatedCitations(target, text, source) {
@@ -2842,6 +2867,41 @@
       // These pages create IMG only after visibility; warming IMG selectors alone misses them.
       try{for(const node of targets.slice(0,32)){node.scrollIntoView({block:'center',behavior:'instant'});await new Promise(resolve=>setTimeout(resolve,70));}}
       finally{window.scrollTo({top:start,behavior:'instant'});}
+      const galleries=[...document.querySelectorAll('.J-lemma-content [data-module-type="album"]')].filter(node=>node.querySelector('[class^="galleryWrapper_"] [class^="swiperLi_"]')).slice(0,6);
+      const galleryStart=window.scrollY;
+      try{
+        for(const gallery of galleries){
+          const slides=[...gallery.querySelectorAll('[class^="swiperLi_"]')];
+          if(slides.length<2||slides.every(slide=>!!slide.querySelector('img[src]')))continue;
+          gallery.scrollIntoView({block:'center',behavior:'instant'});
+          await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+          const next=gallery.querySelector('[class^="swiperNextBtn_"]');
+          const previous=gallery.querySelector('[class^="swiperPrevBtn_"]');
+          if(!next||next.classList.contains('disabled_IpL_G'))continue;
+          let moves=0;
+          const maxMoves=Math.ceil(slides.length/3)+1;
+          while(moves<maxMoves&&!slides.every(slide=>!!slide.querySelector('img[src]'))&&!next.classList.contains('disabled_IpL_G')){
+            const loadedBefore=slides.filter(slide=>!!slide.querySelector('img[src]')).length;
+            next.click();moves++;
+            await new Promise(resolve=>{
+              let finished=false;
+              const finish=()=>{if(finished)return;finished=true;clearTimeout(timer);observer.disconnect();resolve();};
+              const check=()=>{if(slides.filter(slide=>!!slide.querySelector('img[src]')).length>loadedBefore||slides.every(slide=>!!slide.querySelector('img[src]')))finish();};
+              const observer=new MutationObserver(check);
+              observer.observe(gallery,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});
+              const timer=setTimeout(finish,1000);
+              check();
+            });
+          }
+          // Restore the source page to its original first slide after all lazy
+          // cards have been requested, so Reader Mode does not move the host.
+          for(let move=0;move<moves;move++){
+            if(!previous||previous.classList.contains('disabled_IpL_G'))break;
+            previous.click();
+            await new Promise(resolve=>setTimeout(resolve,220));
+          }
+        }
+      }finally{window.scrollTo({top:galleryStart,behavior:'instant'});}
     }
     const lazyCandidates = document.querySelectorAll("img[loading='lazy'],img[data-src],img[data-lazy-src],img[data-original],source[data-srcset]");
     if (lazyCandidates.length === 0) return;
@@ -3011,17 +3071,17 @@
         if (!candidates.includes(resolved)) candidates.push(resolved);
       } catch (_) {}
     };
-    // The currently rendered asset is the best source after the warm-up pass.
-    // Prefer it over lazy-loading placeholders or static poster variants so
-    // animated GIF/WebP images keep moving in reading mode.
+    // Prefer deferred full-size URLs over the tiny preview/loader currently
+    // painted by long Baidu pages. Animated originals still take precedence.
     [
-      node.currentSrc,
-      node.src,
-      node.getAttribute("src"),
       node.getAttribute("data-original"),
       node.getAttribute("data-src"),
       node.getAttribute("data-lazy-src"),
-      node.getAttribute("data-url")
+      node.getAttribute("data-url"),
+      node.getAttribute("data-srcset")?.split(",")[0]?.trim().split(/\s+/)[0],
+      node.currentSrc,
+      node.getAttribute("src"),
+      node.src
     ].forEach(addCandidate);
     const srcset = String(node.getAttribute("srcset") || node.getAttribute("data-srcset") || "");
     if (srcset && !srcset.startsWith("data:")) {
@@ -3038,6 +3098,14 @@
     const src = animatedSource || candidates[0] || "";
     const width = Number(node.naturalWidth) || Number(node.getAttribute("width")) || 0;
     const height = Number(node.naturalHeight) || Number(node.getAttribute("height")) || 0;
+    const renderedSource=String(node.getAttribute('src')||'').trim();
+    const hasDeferredSource=!![
+      node.getAttribute("data-original"),node.getAttribute("data-src"),
+      node.getAttribute("data-lazy-src"),node.getAttribute("data-url")
+    ].some(value=>{
+      const deferred=String(value||'').trim();
+      return deferred&&deferred!==renderedSource&&!/^data:image\/gif;base64,R0lGODlhAQABA/i.test(deferred);
+    });
     const renderedRect = node.getBoundingClientRect();
     const displayWidth = renderedRect.width > 0 ? Math.round(renderedRect.width) : Number(node.getAttribute("width")) || 0;
     const displayHeight = renderedRect.height > 0 ? Math.round(renderedRect.height) : Number(node.getAttribute("height")) || 0;
@@ -3051,17 +3119,24 @@
     const alignmentHint=`${mediaContainer.className || ''} ${getComputedStyle(mediaContainer).float}`;
     const side=/left|right|mw-halign/.test(alignmentHint);
     const illustrated=!!node.closest('figure,.thumb,.tright,.tleft,.infobox,.mw-halign-center');
-    const isIcon=(layoutWidth>0 && layoutHeight>0 && Math.max(layoutWidth,layoutHeight)<=(illustrated?32:48)) || node.closest('.mw-indicator,.mw-editsection')!==null;
-    const compact=!isIcon && (side || (relativeWidth<.58 && layoutWidth<520));
+    const intrinsicWidth=Number(node.naturalWidth)||Number(node.getAttribute('width'))||0;
+    const intrinsicHeight=Number(node.naturalHeight)||Number(node.getAttribute('height'))||0;
+    const tinyIntrinsic=intrinsicWidth>0&&intrinsicHeight>0&&Math.max(intrinsicWidth,intrinsicHeight)<=(illustrated?32:48);
+    const tinyRendered=layoutWidth>0&&layoutHeight>0&&Math.max(layoutWidth,layoutHeight)<=(illustrated?32:48);
+    const isIcon=(!hasDeferredSource&&(tinyIntrinsic||tinyRendered)) || node.closest('.mw-indicator,.mw-editsection')!==null;
+    const assetHint=`${src} ${node.getAttribute('alt')||''} ${node.className||''}`;
+    const descriptiveAsset=!/(?:icon|avatar|logo|emoji|sprite|pixel|placeholder|loading|spinner|badge|watermark)/i.test(assetHint);
+    const deferredFullImage=location.hostname==='baike.baidu.com'&&hasDeferredSource&&tinyRendered&&descriptiveAsset&&!isIcon;
+    const compact=!isIcon && !deferredFullImage && (side || (relativeWidth<.58 && layoutWidth<520));
     const wide=!compact && !isIcon;
     const classes=[animatedSource?'reader-img-animated':'',wide?'reader-img-wide':'',compact?'reader-img-inline':'',isIcon?'reader-img-icon':''].filter(Boolean).join(' ');
     const info = {
       src,
-      width,
-      height,
-      displayWidth,
-      displayHeight,
-      relativeWidth, isIcon, side:compact, alignment:/left/.test(alignmentHint)?"left":"right",
+      width:deferredFullImage?0:width,
+      height:deferredFullImage?0:height,
+      displayWidth:deferredFullImage?0:displayWidth,
+      displayHeight:deferredFullImage?0:displayHeight,
+      relativeWidth, isIcon, deferredFullImage, side:compact, alignment:/left/.test(alignmentHint)?"left":"right",
       candidates,
       classes,
       alt: String(node.getAttribute("alt") || "文章配图").trim() || "文章配图"
@@ -3096,7 +3171,7 @@
     container.querySelectorAll('.chess-pieces').forEach(board=>candidates.add(board.closest('table')||board));
     container.querySelectorAll('figure,[role="img"],[class*="mockup"],[class*="diagram"],div[style*="position"]').forEach(node=>{
       const box=node.getBoundingClientRect();
-      if(box.width<60||box.height<40||box.width>1800||box.height>1800||node.textContent.length>1200||node.querySelector('form,iframe,video,article'))return;
+      if(box.width<60||box.height<40||box.width>1800||box.height>1800||node.textContent.length>1200||node.querySelector('form,iframe,video,audio,article,a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]'))return;
       const parts=[...node.querySelectorAll('img,div,span')];
       const layers=parts.filter(part=>getComputedStyle(part).position==='absolute');
       if(layers.length>=2&&node.querySelector('img'))candidates.add(node);
@@ -3165,13 +3240,77 @@
     const baike=location.hostname==='baike.baidu.com';
     const baikeRoots=[];
     if(baike){
-      for(const [selector,kind] of [['.J-basic-info,.basic-info','facts'],['[class^="worksWrap_"],[class^="albumWrap_"]','gallery'],['[class^="movieItem_"],[class^="albumItem_"]','card']]){
-        container.querySelectorAll(selector).forEach(node=>{if(!baikeRoots.some(parent=>parent.contains(node))){readerBaikeBlocks.set(node,kind);baikeRoots.push(node);}});
+      const addBaikeRoot=(node,kind)=>{
+        if(baikeRoots.some(parent=>parent.contains(node)))return false;
+        readerBaikeBlocks.set(node,kind);baikeRoots.push(node);return true;
+      };
+      const baikeImageRow=table=>{
+        if(!table||table.querySelector('table'))return null;
+        const rows=[...table.rows].filter(row=>String(row.textContent||'').trim()||row.querySelector('img'));
+        if(rows.length!==1)return null;
+        const cells=[...rows[0].cells];
+        if(cells.length<2)return null;
+        const cellImages=cells.map(cell=>[...cell.querySelectorAll('img')].filter(image=>!!getReaderImageInfo(image).src));
+        if(cellImages.some(images=>!images.length))return null;
+        const semantic=table.matches('.infobox,.wikitable,[data-infobox],[role="grid"],[class*="table" i]')||!!table.querySelector('th,caption,thead,[role="rowheader"]');
+        if(table.getAttribute('role')!=='presentation'&&semantic)return null;
+        const images=cellImages.flatMap((items,cellIndex)=>items.map(image=>{
+          const figure=image.closest('figure');
+          const caption=String(figure?.querySelector('figcaption')?.textContent||'').trim();
+          const captionHolder=cells[cellIndex].cloneNode(true);
+          captionHolder.querySelectorAll('img,svg,script,style').forEach(node=>node.remove());
+          const cellText=String(captionHolder.textContent||'').replace(/\s+/g,' ').trim();
+          const alt=String(image.getAttribute('alt')||'').trim();
+          return {image,caption:caption||cellText||alt,href:image.closest('a[href]')?.href||''};
+        }));
+        return images.length>=2?{images,caption:String(table.querySelector('caption')?.textContent||'').trim()}:null;
+      };
+      container.querySelectorAll('.J-basic-info,.basic-info').forEach(node=>addBaikeRoot(node,'facts'));
+      container.querySelectorAll('[data-module-type="table"]').forEach(node=>{
+        const table=node.querySelector('table');
+        const row=table?.rows.length===1?table.rows[0]:null;
+        const albums=[...node.querySelectorAll('[data-module-type="album"]')];
+        const cells=[...(row?.cells||[])];
+        if(albums.length>=2&&albums.length===cells.length&&cells.every(cell=>cell.querySelector('[data-module-type="album"]'))){
+          addBaikeRoot(node,{kind:'module-album-row',albums});
+        }else if(table){
+          const imageRow=baikeImageRow(table);
+          addBaikeRoot(table,imageRow?{kind:'module-image-row',...imageRow}:{kind:'table'});
+        }
+      });
+      const groupedTypes=new Set(['movie','teleplay','musicAlbum','musicSingle','musicForOthers','magazine']);
+      container.querySelectorAll('[data-module-type]').forEach(node=>{
+        const type=node.dataset.moduleType;
+        if(type==='album'){
+          const hasCarousel=!!node.querySelector('[class^="galleryWrapper_"],[class^="swiperLi_"]');
+          addBaikeRoot(node,{kind:hasCarousel?'module-gallery-carousel':'module-album-card'});
+        }else if(type==='video')addBaikeRoot(node,{kind:'module-videos'});
+        else if(type==='map')addBaikeRoot(node,{kind:'module-map'});
+        else if(groupedTypes.has(type))addBaikeRoot(node,{kind:'module-work-carousel',type});
+      });
+      container.querySelectorAll('[class^="worksWrap_"]').forEach(node=>addBaikeRoot(node,{kind:'representative-work-carousel'}));
+      container.querySelectorAll('[class^="albumWrap_"]').forEach(node=>addBaikeRoot(node,'gallery'));
+      for(const [selector,kind] of [['[class^="movieItem_"],[class^="albumItem_"]','card']]){
+        container.querySelectorAll(selector).forEach(node=>{
+          if(node.closest('[data-module-type="album"],[data-module-type="movie"],[data-module-type="teleplay"],[data-module-type="musicAlbum"],[data-module-type="musicSingle"],[data-module-type="musicForOthers"],[data-module-type="magazine"],[data-module-type="table"]'))return;
+          addBaikeRoot(node,kind);
+        });
       }
-      container.querySelectorAll('[data-module-type="album"],[data-module-type="video"]').forEach(node=>{
-        if(baikeRoots.some(parent=>parent.contains(node)))return;
-        readerBaikeBlocks.set(node,{kind:node.dataset.moduleType==='video'?'module-videos':'module-gallery'});
-        baikeRoots.push(node);
+      container.querySelectorAll('[class*="reference" i],[class*="refer" i],[data-module-type*="reference" i]').forEach(node=>{
+        const links=node.querySelectorAll('a[href]').length;
+        const text=String(node.textContent||'').trim();
+        if(links>=3&&text.length>=80)addBaikeRoot(node,{kind:'references'});
+      });
+      container.querySelectorAll('table').forEach(table=>{
+        if(baikeRoots.some(parent=>parent.contains(table))||table.querySelector('table'))return;
+        const imageRow=baikeImageRow(table);
+        if(imageRow){addBaikeRoot(table,{kind:'module-image-row',...imageRow});return;}
+        if(table.getAttribute('role')==='presentation')return;
+        const rows=[...table.rows].filter(row=>String(row.textContent||'').trim());
+        const hasMultipleColumns=rows.some(row=>row.cells.length>1);
+        const semantic=table.querySelector('th,caption,thead,[role="rowheader"]')||table.matches('[class*="table" i]');
+        const largeText=String(table.textContent||'').trim().length>12000;
+        if((rows.length===1&&hasMultipleColumns&&semantic)||(rows.length>=2&&hasMultipleColumns&&(semantic||rows.length>=8))||(rows.length>=2&&largeText))addBaikeRoot(table,{kind:'table'});
       });
     }
     const composites=discoverReaderComposites(container);
@@ -3188,7 +3327,7 @@
       layoutTables.set(table,layout);return layout;
     };
     const isHackerNews=location.hostname==='news.ycombinator.com';
-    const selector = "figure, table, details, video, audio, iframe[src], hr, p, h1, h2, h3, h4, h5, h6, [role='heading'][aria-level], blockquote, pre, li, dt, dd, figcaption, a[download], a[href$='.pdf'], a[href$='.epub'], a[href$='.zip'], a[href*='.mp4'], a[href*='.webm'], a[href*='.ogv'], img";
+    const selector = "figure, table, details, video, audio, iframe[src], hr, p, h1, h2, h3, h4, h5, h6, [role='heading'][aria-level], blockquote, pre, li, dt, dd, figcaption, a[download], a[href$='.pdf'], a[href$='.epub'], a[href$='.zip'], a[href*='.mp4'], a[href*='.webm'], a[href*='.ogv'], a[href*='.mp3'], a[href*='.wav'], a[href*='.ogg'], a[href*='.m4a'], a[href*='.opus'], a[href*='.flac'], img";
     const seenText = new Set();
     const bookPage=/(?:gutenberg\.org|wikisource\.org|aozora\.gr\.jp|standardebooks\.org|marxists\.org)$/.test(location.hostname);
     const gutenberg=/(^|\.)gutenberg\.org$/.test(location.hostname);
@@ -3215,17 +3354,30 @@
 
     for (const node of raw) {
       if(baike&&node.closest('[class^="catalog_"],[class^="catalogWrapper_"],.lemma-catalog,[class^="lemmaStructured_"],[class^="dynamicWiki_"],[class^="tashuoWrap_"],[class^="personalAuth_"]'))continue;
+      if(baike&&(node.matches('.pager__ZuDR,[class*="innerPager_"]')||readerBaikeFindNativePager(node)===node))continue;
       if(baikeRoots.includes(node)){appendResult(node);continue;}
       if(baikeRoots.some(parent=>parent.contains(node)))continue;
-      if(baike&&node.parentElement.closest('[class^="para_"],.para'))continue;
+      if(baike&&node.parentElement.closest('[class^="para_"],.para')&&!readerBaikeListHeadingIsNested(node))continue;
       if(baike&&node.matches('[class^="para_"],.para')){
         let alreadyOwnedByReaderBlock=false;
         for(let parent=node.parentElement;parent&&!alreadyOwnedByReaderBlock;parent=parent.parentElement)alreadyOwnedByReaderBlock=readerOwnedNodes.has(parent);
+        const nestedReaderBlocks=baikeRoots.filter(block=>block!==node&&node.contains(block));
+        if(nestedReaderBlocks.length){
+          const remaining=node.cloneNode(true);
+          remaining.querySelectorAll('[data-module-type],table,.pager__ZuDR,[class*="innerPager_"]').forEach(module=>module.remove());
+          readerBaikeFindNativePager(remaining)?.remove();
+          if(!getHostOriginalText(remaining).trim())continue;
+        }
         if(!alreadyOwnedByReaderBlock&&getHostOriginalText(node).trim())appendResult(node);
         continue;
       }
       if(supplemental.includes(node)){appendResult(node);continue;}
       if(supplemental.some(parent=>parent.contains(node)))continue;
+      if(node.tagName==='LI'){
+        const listAncestor=node.parentElement?.closest('li');
+        if(listAncestor&&result.some(parent=>parent.tagName==='LI'&&parent.contains(node)))continue;
+      }
+      if(node.tagName==='P'&&node.parentElement?.closest('li')&&result.some(parent=>parent.tagName==='LI'&&parent.contains(node)))continue;
       if(node.tagName!=="PRE"&&node.closest("pre"))continue;
       const composite=readerCompositeAncestor(node);
       if(composite&&composite!==node)continue;
@@ -3244,19 +3396,33 @@
       if (isReaderMaintenanceContainer(node)) continue;
       if(location.hostname==='science.nasa.gov'&&node.closest('.usa-article-scroll-wrapper,.slick-cloned,.swiper-slide-duplicate,.hds-topic-cards'))continue;
       if(isHackerNews&&node.parentElement?.closest('.commtext,.toptext'))continue;
+      const isEmbeddedMediaCandidate=['VIDEO','AUDIO','IFRAME'].includes(node.tagName)||(node.tagName==='A'&&/\.(?:mp4|webm|ogv|mp3|wav|ogg|oga|m4a|opus|flac)(?:$|[?#])/i.test(node.href||''));
+      if(isEmbeddedMediaCandidate){
+        if(node.tagName==='A'&&node.closest('audio,video,iframe'))continue;
+        if(node.tagName==='A'){
+          const semanticOwner=node.parentElement?.closest('figure,table,details,p,li,dt,dd');
+          if(semanticOwner&&result.includes(semanticOwner))continue;
+        }
+        const inlineOwner=node.parentElement?.closest('p,li,dt,dd');
+        if(inlineOwner&&getHostOriginalText(inlineOwner).trim().length>=6)continue;
+        const figure=node.closest('figure');
+        if(figure){const rect=figure.getBoundingClientRect();if(rect.width===0&&rect.height===0)continue;}
+      }
+      if(node.tagName==='FIGURE'){const rect=node.getBoundingClientRect();if(rect.width===0&&rect.height===0)continue;}
       let semanticParent=node.parentElement?.closest('figure,table,details');
-      while(semanticParent?.tagName==='TABLE'&&isLayoutTable(semanticParent))semanticParent=semanticParent.parentElement?.closest('figure,table,details');
+      while(semanticParent?.tagName==='TABLE'&&isLayoutTable(semanticParent)&&!readerTableHasSupportedEmbeddedMedia(semanticParent))semanticParent=semanticParent.parentElement?.closest('figure,table,details');
       if(semanticParent&&semanticParent!==node)continue;
       if(readerCompositeNodes.has(node)){appendResult(node);continue;}
-      if(node.tagName==='TABLE'&&isLayoutTable(node))continue;
+      if(node.tagName==='TABLE'&&isLayoutTable(node)&&!readerTableHasSupportedEmbeddedMedia(node))continue;
       const ancestor = node.closest("section, div, ul, ol");
       const noiseHint = `${ancestor?.id || ""} ${typeof ancestor?.className === "string" ? ancestor.className : ""}`.trim();
       if (noiseContainerRe.test(noiseHint)&&!isHackerNews) continue;
 
       if (node.tagName === "FIGURE") {
         const media = Array.from(node.querySelectorAll("img")).some(img => !!getReaderImageInfo(img).src);
+        const embeddedMedia = [...node.querySelectorAll('audio,video,iframe')].some(mediaNode=>!!readerEmbeddedMediaElementHtml(mediaNode));
         const caption = String(node.querySelector("figcaption")?.innerText || "").trim();
-        if (media || caption.length >= 6) appendResult(node);
+        if (media || embeddedMedia || caption.length >= 6) appendResult(node);
         continue;
       }
 
@@ -3264,20 +3430,22 @@
         const codeLines=node.querySelectorAll('td.code .line,.code .line');
         if(node.closest('.syntaxhighlighter')&&codeLines.length){const pre=document.createElement('pre');const code=document.createElement('code');code.textContent=[...codeLines].map(line=>line.textContent.replace(/\u00a0/g,' ')).join('\n');pre.append(code);appendResult(pre);continue;}
         if(node.matches('.regionlistitem-table')){const cell=node.querySelector('.regionlistitem-textholder');if(cell){const paragraph=document.createElement('p');paragraph.innerHTML=readerInlineHtml(cell);appendResult(paragraph);}continue;}
+        const embeddedMedia=readerTableHasSupportedEmbeddedMedia(node);
         const rows = Array.from(node.rows || []).filter(row => {
           // Wikipedia collapsible tables hide their rows from innerText while
           // keeping the source text in the DOM. Use textContent here so the
           // table can preserve those rows in the reader's own disclosure.
           const hasText = String(row.textContent || "").trim().length >= 3;
           const hasInlineMedia = Array.from(row.querySelectorAll?.("img") || []).some(image => !!getReaderImageInfo(image).src);
-          return hasText || hasInlineMedia;
+          const hasEmbeddedMedia=[...row.querySelectorAll?.('audio,video,iframe,a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".oga" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]')||[]].some(mediaNode=>!!readerEmbeddedMediaElementHtml(mediaNode));
+          return hasText || hasInlineMedia || hasEmbeddedMedia;
         });
         const hint = `${node.id || ""} ${typeof node.className === "string" ? node.className : ""}`;
         const textLength = String(node.textContent || "").trim().length;
         const isArticleInfobox = /(?:^|\s)infobox(?:\s|$)/i.test(hint) || node.hasAttribute("data-infobox");
         const isWikipediaDataTable = wikipedia && node.matches("table.wikitable");
         const withinExistingTableBounds = rows.length <= 80 && textLength <= 12000;
-        if (rows.length >= 2 && (isArticleInfobox || isWikipediaDataTable || withinExistingTableBounds) && (isArticleInfobox || !/(?:navbox|sidebar|metadata|toccolours)/i.test(hint))) appendResult(node);
+        if ((rows.length >= 2 && (isArticleInfobox || isWikipediaDataTable || withinExistingTableBounds) || (embeddedMedia&&rows.length>=1)) && (isArticleInfobox || embeddedMedia || !/(?:navbox|sidebar|metadata|toccolours)/i.test(hint))) appendResult(node);
         continue;
       }
 
@@ -3287,10 +3455,8 @@
         continue;
       }
 
-      if (["VIDEO", "AUDIO", "IFRAME"].includes(node.tagName) || (node.tagName === "A" && /\.(?:mp4|webm|ogv)(?:$|[?#])/i.test(node.href || ""))) {
-        const src = node.currentSrc || node.getAttribute("src") || node.getAttribute("href") || node.querySelector?.("source")?.getAttribute("src") || "";
-        const safeEmbeddedFrame = node.tagName !== "IFRAME" || /(?:youtube(?:-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/|player\.bilibili\.com\/player\.html)/i.test(src);
-        if (src && safeEmbeddedFrame) appendResult(node);
+      if (["VIDEO", "AUDIO", "IFRAME"].includes(node.tagName) || (node.tagName === "A" && /\.(?:mp4|webm|ogv|mp3|wav|ogg|oga|m4a|opus|flac)(?:$|[?#])/i.test(node.href || ""))) {
+        if(readerEmbeddedMediaElementHtml(node))appendResult(node);
         continue;
       }
 
@@ -3315,9 +3481,10 @@
 
       // A list item that already contains semantic paragraphs/headings is only a
       // wrapper. Keep its children, not both parent and child copies.
-      if (["LI","BLOCKQUOTE"].includes(node.tagName) && node.querySelector(":scope > p, :scope > blockquote, :scope > pre, :scope > div > p")) continue;
+      if(node.tagName==='LI'&&node.querySelector(":scope > p, :scope > blockquote, :scope > pre, :scope > div > p")&&![...node.querySelectorAll('ul,ol')].some(list=>list.closest('li')===node))continue;
+      if(node.tagName==='BLOCKQUOTE'&&node.querySelector(":scope > p, :scope > blockquote, :scope > pre, :scope > div > p"))continue;
       const text = getHostOriginalText(node);
-      const isHeading = readerHeadingLevel(node) > 0;
+    const isHeading = readerHeadingLevel(node) > 0;
       if (text.length < (isHeading ? 2 : (node.tagName === "LI" ? 6 : 10))) continue;
       if (!bookPage && !isHeading && seenText.has(text)) continue;
 
@@ -3331,6 +3498,17 @@
       seenText.add(text);
       appendResult(node);
       accumulatedText += text.length;
+    }
+    if(wikipedia){
+      const mediaSelector='audio,video,iframe[src],a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".oga" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]';
+      for(const media of container.querySelectorAll(mediaSelector)){
+        if(media.tagName==='A'&&media.closest('audio,video,iframe'))continue;
+        if(result.includes(media)||!readerEmbeddedMediaElementHtml(media))continue;
+        const figure=media.closest('figure');
+        if(figure){const rect=figure.getBoundingClientRect();if(rect.width===0&&rect.height===0)continue;}
+        if(result.some(owner=>owner!==media&&owner.contains?.(media)))continue;
+        appendResult(media);
+      }
     }
     return result.flatMap(node=>{
       if(readerBaikeBlocks.has(node)||readerCompositeNodes.has(node)||supplemental.includes(node))return [node];
@@ -3474,6 +3652,7 @@
     if (!sourceNode) return "";
     if (readerIsWikipediaMath(sourceNode)) return readerMathHtml(sourceNode);
     if(readerCompositeNodes.has(sourceNode))return readerCompositeHtml(sourceNode);
+    if(sourceNode.tagName==='PRE')return `<code class="reader-inline-code-block">${escapeHtml(readerOriginalTextPreservingWhitespace(sourceNode))}</code>`;
     const holder = document.createElement("div");
     const clone = sourceNode.cloneNode(true);
     holder.appendChild(clone);
@@ -3491,29 +3670,60 @@
     } catch (_) {}
     const sourceElements=[...sourceNode.querySelectorAll('*')],cloneElements=[...clone.querySelectorAll('*')];
     const preservedComposites=[];
+    const preservedMedia=[];
     sourceElements.forEach((source,index)=>{if(readerCompositeNodes.has(source)){const token=`JJCOMPOSITEPLACEHOLDER${preservedComposites.length}END`;preservedComposites.push(readerCompositeHtml(source));cloneElements[index].replaceWith(document.createTextNode(token));}});
     sourceElements.forEach((source,index)=>{
       const copy=cloneElements[index];if(!copy)return;
+      if(['AUDIO','VIDEO','IFRAME'].includes(source.tagName)||(source.tagName==='A'&&/\.(?:mp4|webm|ogv|mp3|wav|ogg|oga|m4a|opus|flac)(?:$|[?#])/i.test(source.href||''))){
+        const mediaHtml=readerEmbeddedMediaElementHtml(source);
+        if(mediaHtml){const token=`JJEMBEDDEDMEDIAPLACEHOLDER${preservedMedia.length}END`;preservedMedia.push(`<div class="reader-inline-embedded-media">${mediaHtml}</div>`);copy.replaceWith(document.createTextNode(token));}
+        else copy.remove();
+        return;
+      }
       if(readerIsWikipediaMath(source)){
         const mathHolder=document.createElement("div");
         mathHolder.innerHTML=readerMathHtml(source);
         copy.replaceWith(...Array.from(mathHolder.childNodes));
         return;
       }
+      if(source.tagName==='PRE'){
+        const code=document.createElement('code');
+        code.className='reader-inline-code-block';
+        code.textContent=readerOriginalTextPreservingWhitespace(source);
+        copy.replaceWith(code);
+        return;
+      }
       if(readerBaikeBlocks.has(source)){copy.remove();return;}
       const css=getComputedStyle(source);
-      if(source.hidden || source.getAttribute('aria-hidden')==='true' || css.display==='none' || css.visibility==='hidden' || /(?:^|\s)(?:geo-nondefault|geo-multi-punct)(?:\s|$)/.test(source.className||'')){copy.remove();return;}
+      const isRubyFallback=source.tagName==='RP'&&!!source.closest('ruby');
+      if(!isRubyFallback&&(source.hidden || source.getAttribute('aria-hidden')==='true' || css.display==='none' || css.visibility==='hidden' || /(?:^|\s)(?:geo-nondefault|geo-multi-punct)(?:\s|$)/.test(source.className||''))){copy.remove();return;}
       if(source.tagName==='IMG'){
         const info=getReaderImageInfo(source);copy.setAttribute('src',info.src);
-        copy.setAttribute('data-reader-inline-icon',info.isIcon?'true':'false');copy.setAttribute('width',String(info.displayWidth||info.width));copy.setAttribute('height',String(info.displayHeight||info.height));
+        copy.setAttribute('data-reader-inline-icon',info.isIcon?'true':'false');
+        copy.setAttribute('data-reader-inline-wide',info.deferredFullImage?'true':'false');
+        copy.setAttribute('width',String(info.displayWidth||info.width));copy.setAttribute('height',String(info.displayHeight||info.height));
       }
     });
+    // Some Baidu Baike subheadings are emphasized list items inside a
+    // `para_*` content wrapper. They are also collected as standalone reader
+    // headings, so remove only those heading items from the wrapper copy to
+    // avoid showing the same title twice. Keep ordinary list content intact.
+    if(location.hostname==='baike.baidu.com'&&readerHeadingLevel(sourceNode)===0){
+      sourceElements.forEach((source,index)=>{
+        if(source.tagName==='LI'&&readerBaikeListHeadingIsNested(source))cloneElements[index]?.remove();
+      });
+      clone.querySelectorAll('ul,ol').forEach(list=>{if(!list.querySelector('li'))list.remove();});
+    }
+    if(location.hostname==='baike.baidu.com'){
+      clone.querySelectorAll('.pager__ZuDR,[class*="innerPager_"]').forEach(node=>node.remove());
+      readerBaikeFindNativePager(clone)?.remove();
+    }
     clone.querySelectorAll?.(TRANSLATION_EXTENSION_SELECTOR).forEach(node => node.remove());
     clone.querySelectorAll?.("script,style,noscript,template,.navbar,.mw-collapsible-toggle,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
     // Preserve separators from nested layout wrappers before stripping host
     // markup. Wikipedia facts often place several values in sibling DIV/LI
     // nodes; blindly unwrapping them would concatenate every label.
-    clone.querySelectorAll?.("div,p,li,dt,dd").forEach(node => {
+    clone.querySelectorAll?.("div,p,dt,dd").forEach(node => {
       if (!String(node.textContent || "").trim() || !node.nextSibling) return;
       const spacer = document.createTextNode(" ");
       const lineBreak = document.createElement("br");
@@ -3522,24 +3732,26 @@
     // Reader clean-up keeps semantic structure but deliberately drops MARK.
     // A host highlight covers a source glyph range; copying it to an entire
     // translated paragraph invents a relationship that cannot be aligned.
-    const allowed = new Set(["A","STRONG","B","EM","I","U","S","CODE","KBD","SAMP","SUB","SUP","RUBY","RT","RP","BR","SPAN","SMALL","Q","IMG"]);
+    const allowed = new Set(["A","STRONG","B","EM","I","U","S","CODE","KBD","SAMP","SUB","SUP","RUBY","RT","RP","BR","SPAN","SMALL","Q","IMG","UL","OL","LI"]);
     Array.from(clone.querySelectorAll?.("*") || []).reverse().forEach(node => {
       if(node.matches(".reader-math-expression")||node.closest(".reader-math-expression"))return;
       const tag = node.tagName;
       if (["SCRIPT","STYLE","NOSCRIPT","IFRAME","OBJECT","EMBED"].includes(tag)) { node.remove(); return; }
       if (!allowed.has(tag)) { node.replaceWith(...Array.from(node.childNodes)); return; }
+      const isInlineCodeBlock=tag==='CODE'&&node.classList.contains('reader-inline-code-block');
       if (tag === "IMG") {
-        const src = readerSafeMediaUrl(node.currentSrc || node.getAttribute("src") || node.getAttribute("data-src"));
+        const src = readerSafeMediaUrl(node.getAttribute("src") || node.getAttribute("data-src") || node.currentSrc);
         const alt = String(node.getAttribute("alt") || "").trim();
         const width = Math.max(0, Number(node.getAttribute("width")) || 0);
         const height = Math.max(0, Number(node.getAttribute("height")) || 0);
         const imageHint = `${src} ${alt} ${node.className || ""}`.toLowerCase();
         const isCompactAsset = node.getAttribute('data-reader-inline-icon') === 'true';
+        const isDeferredFullImage = node.getAttribute('data-reader-inline-wide') === 'true';
         Array.from(node.attributes || []).forEach(attr => node.removeAttribute(attr.name));
         if (!src) { node.remove(); return; }
         node.setAttribute("src", src);
         node.setAttribute("alt", alt);
-        node.setAttribute("class", `reader-inline-asset ${isCompactAsset ? "reader-inline-icon" : "reader-inline-photo"}`);
+        node.setAttribute("class", `reader-inline-asset ${isCompactAsset ? "reader-inline-icon" : "reader-inline-photo"}${isDeferredFullImage ? " reader-inline-wide-photo" : ""}`);
         node.setAttribute("loading", "lazy");
         node.setAttribute("decoding", "async");
         if (width > 0 && width <= 640) node.setAttribute("width", String(Math.round(width)));
@@ -3547,7 +3759,14 @@
         return;
       }
       const originalHref = tag === "A" ? node.getAttribute("href") : "";
+      const listType=tag==='OL'&&/^(?:1|a|A|i|I)$/.test(node.getAttribute('type')||'')?node.getAttribute('type'):'';
+      const listStart=tag==='OL'&&/^-?\d+$/.test(node.getAttribute('start')||'')?node.getAttribute('start'):'';
+      const listReversed=tag==='OL'&&node.hasAttribute('reversed');
+      const listValue=tag==='LI'&&/^-?\d+$/.test(node.getAttribute('value')||'')?node.getAttribute('value'):'';
       Array.from(node.attributes || []).forEach(attr => node.removeAttribute(attr.name));
+      if(isInlineCodeBlock){node.className='reader-inline-code-block';return;}
+      if(tag==='OL'){if(listType)node.setAttribute('type',listType);if(listStart)node.setAttribute('start',listStart);if(listReversed)node.setAttribute('reversed','');}
+      if(tag==='LI'&&listValue)node.setAttribute('value',listValue);
       if (tag === "A" && originalHref) {
         try {
           const resolved = new URL(originalHref, location.href);
@@ -3559,7 +3778,7 @@
         } catch (_) { node.replaceWith(...Array.from(node.childNodes)); }
       }
     });
-    const inner = String(clone.innerHTML || "").trim().replace(/JJCOMPOSITEPLACEHOLDER(\d+)END/g,(_,index)=>preservedComposites[Number(index)]||'');
+    const inner = String(clone.innerHTML || "").trim().replace(/JJCOMPOSITEPLACEHOLDER(\d+)END/g,(_,index)=>preservedComposites[Number(index)]||'').replace(/JJEMBEDDEDMEDIAPLACEHOLDER(\d+)END/g,(_,index)=>preservedMedia[Number(index)]||'');
     if (sourceNode.tagName === "A") {
       const sourceHref = sourceNode.getAttribute("href") || "";
       try {
@@ -3576,7 +3795,12 @@
     if (!sourceNode) return "";
     if(sourceNode.tagName==='PRE'){
       const lines=sourceNode.querySelectorAll('.hljs-ln-code,td.code .line');
-      if(lines.length)return [...lines].map(line=>readerOriginalTextPreservingWhitespace(line).replace(/\u00a0/g,' ')).join('\n');
+      if(lines.length){
+        let code=[...lines].map(line=>readerOriginalTextPreservingWhitespace(line).replace(/\u00a0/g,' ')).join('\n');
+        if(String(sourceNode.textContent||'').endsWith('\n')&&!code.endsWith('\n'))code+='\n';
+        return code;
+      }
+      return String(sourceNode.textContent||'');
     }
     try {
       const clone = sourceNode.cloneNode(true);
@@ -3614,13 +3838,19 @@
       }
       return false;
     };
+    const belongsToBaikeMap=image=>{
+      for(let current=image;current;current=current.parentElement){
+        if(readerBaikeBlocks.get(current)?.kind==='module-map')return true;
+      }
+      return false;
+    };
     const baikeAlbumImageLabel=image=>{
       let group=null;
       for(let current=image;current;current=current.parentElement){
-        if(readerBaikeBlocks.get(current)?.kind==='module-gallery'){group=current;break;}
+        if(readerBaikeBlocks.get(current)?.kind==='module-gallery-carousel'){group=current;break;}
       }
       if(!group)return '';
-      const images=[...group.querySelectorAll('img')].filter(item=>!item.closest('.swiper-slide-duplicate')&&!getReaderImageInfo(item).isIcon&&!!getReaderImageInfo(item).src);
+      const images=[...group.querySelectorAll('[class^="swiperLi_"] img')].filter(item=>!item.closest('.swiper-slide-duplicate')&&!getReaderImageInfo(item).isIcon&&!!getReaderImageInfo(item).src);
       if(images.length<2)return '';
       const index=images.indexOf(image);
       if(index<0)return '';
@@ -3632,7 +3862,7 @@
       return index===0?sharedCaption:`组图第${index+1}张`;
     };
     const add = (image, caption = "") => {
-      if(readerCompositeAncestor(image)||belongsToBaikeVideoModule(image))return;
+      if(readerCompositeAncestor(image)||belongsToBaikeVideoModule(image)||belongsToBaikeMap(image))return;
       const info = getReaderImageInfo(image);
       if (!info.src || info.isIcon || seenImages.has(image)) return;
       const hint = `${info.src} ${info.alt} ${image.className || ""}`.toLowerCase();
@@ -3644,7 +3874,7 @@
       if (node.tagName === "IMG") add(node);
       else if (node.querySelectorAll) {
         const caption = node.querySelector("figcaption")?.innerText || "";
-        node.querySelectorAll("img").forEach(image => add(image, caption));
+        node.querySelectorAll("img").forEach(image => add(image, image.closest('figure')?.querySelector('figcaption')?.innerText || caption));
       }
     });
     return entries;
@@ -3670,7 +3900,10 @@
 
   function readerFigureHtml(node, nodeIndex, mediaEntries, mediaIndexByNode, renderStyle) {
     const images = Array.from(node.querySelectorAll("img"));
-    const mediaHtml = images.map(image => readerMediaImageHtml(mediaEntries[mediaIndexByNode.get(image)], mediaIndexByNode.get(image), "reader-figure-image")).filter(Boolean).join("");
+    const imageHtml = images.map(image => readerMediaImageHtml(mediaEntries[mediaIndexByNode.get(image)], mediaIndexByNode.get(image), "reader-figure-image")).filter(Boolean).join("");
+    const mediaNodes=[...node.querySelectorAll('audio,video,iframe,a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".oga" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]')].filter(media=>media.tagName!=='A'||!media.closest('audio,video,iframe'));
+    const embeddedHtml=mediaNodes.map(media=>readerEmbeddedMediaElementHtml(media)).filter(Boolean).map(html=>`<div class="reader-inline-embedded-media">${html}</div>`).join('');
+    const mediaHtml=imageHtml+embeddedHtml;
     const captionNode = node.querySelector("figcaption");
     const captionText = String(captionNode?.innerText || "").trim();
     const captionHtml = captionText
@@ -3699,23 +3932,118 @@
     } catch (_) { return ""; }
   }
 
+  function readerSafeEmbeddedFrameUrl(value) {
+    const safeUrl=readerSafeMediaUrl(value);
+    if(!safeUrl)return '';
+    try{
+      const url=new URL(safeUrl,location.href);
+      const host=url.hostname.toLowerCase();
+      const allowed=(host==='youtube.com'||host==='www.youtube.com'||host==='youtube-nocookie.com'||host==='www.youtube-nocookie.com')&&url.pathname.startsWith('/embed/')
+        ||host==='player.vimeo.com'&&url.pathname.startsWith('/video/')
+        ||host==='player.bilibili.com'&&url.pathname==='/player.html';
+      return allowed&&['http:','https:'].includes(url.protocol)?url.href:'';
+    }catch(_){return '';}
+  }
+
+  function readerSafeEmbeddedSourceUrl(value) {
+    const safe=readerSafeMediaUrl(value);
+    if(!safe)return '';
+    if(/^data:/i.test(safe))return /^data:(?:audio|video)\/[\w.+-]+(?:;|,)/i.test(safe)?safe:'';
+    return /^(?:https?:|blob:)/i.test(safe)?safe:'';
+  }
+
+  function readerEmbeddedMediaElementHtml(node) {
+    if(!node)return '';
+    const sourceTag=node.tagName;
+    const isFrame=sourceTag==='IFRAME';
+    const isLinkedMedia=sourceTag==='A';
+    if(!isFrame&&!isLinkedMedia&&!['AUDIO','VIDEO'].includes(sourceTag))return '';
+    let tag=sourceTag==='AUDIO'?'audio':'video';
+    const frameUrl=isFrame?readerSafeEmbeddedFrameUrl(node.getAttribute('src')||node.getAttribute('data-src')):'';
+    if(isLinkedMedia){
+      const href=readerSafeMediaUrl(node.getAttribute('href'));
+      let isDirectMedia=false;
+      let linkMediaKind='video';
+      try{const url=new URL(href,location.href);const path=url.pathname;const isAudioPath=/\.(?:mp3|wav|ogg|oga|m4a|opus|flac)$/i.test(path);const isVideoPath=/\.(?:mp4|webm|ogv)$/i.test(path);if(!isAudioPath&&!isVideoPath)return '';tag=isAudioPath?'audio':'video';linkMediaKind=isAudioPath?'音频':'视频';isDirectMedia=(isAudioPath||isVideoPath)&&!/(?:^|\/)wiki\/File:/i.test(path)&&!/(?:^|\/)File:/i.test(path);}catch(_){}
+      if(!href)return '';
+      if(!isDirectMedia){
+        const title=String(node.getAttribute('title')||node.textContent||`${linkMediaKind}原文`).replace(/\s+/g,' ').trim().slice(0,160)||`${linkMediaKind}原文`;
+        return `<div class="reader-embedded-player reader-media-link-card" data-reader-media-kind="link"><a class="reader-media-source-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">在原网页查看${linkMediaKind}：${escapeHtml(title)}</a></div>`;
+      }
+    }
+    const sources=[];
+    if(!isFrame){
+      const sourceNodes=[...node.querySelectorAll?.('source')||[]];
+      const rootSrc=readerSafeEmbeddedSourceUrl(node.getAttribute('src')||node.getAttribute('data-src')||(isLinkedMedia?node.getAttribute('href'):''));
+      if(rootSrc)sources.push({src:rootSrc,type:''});
+      sourceNodes.forEach(source=>{
+        const src=readerSafeEmbeddedSourceUrl(source.getAttribute('src')||source.getAttribute('data-src'));
+        if(!src)return;
+        const type=String(source.getAttribute('type')||'').trim();
+        const mimeType=type.split(';',1)[0].trim();
+        sources.push({src,type:/^[\w.+-]+\/[\w.+-]+$/.test(mimeType)?mimeType:''});
+      });
+      if(!sources.length){const current=readerSafeEmbeddedSourceUrl(node.currentSrc||'');if(current)sources.push({src:current,type:''});}
+    }
+    const uniqueSources=[...new Map(sources.map(source=>[source.src,source])).values()];
+    if(isFrame&&!frameUrl)return '';
+    const poster=tag==='video'&&!isLinkedMedia?readerSafeMediaUrl(node.getAttribute('poster')||node.getAttribute('data-poster')):'';
+    const caption=node.closest?.('figure')?.querySelector('figcaption')?.textContent||'';
+    const fallbackText=String(node.textContent||'').replace(/(?:audio playback is not supported in your browser|your browser does not support[^.]*)(?:\.\s*you can download the audio file\.)?/ig,'').trim();
+    const rowContext=node.closest?.('tr')?.innerText||'';
+    let nearbyContext='';
+    for(let parent=node.parentElement,depth=0;parent&&depth<5&&!nearbyContext;parent=parent.parentElement,depth++){
+      const candidate=String(parent.innerText||'').replace(/(?:audio playback is not supported in your browser|your browser does not support[^.]*)(?:\.\s*you can download the audio file\.)?/ig,'').replace(/download the audio file/ig,'').replace(/\s+/g,' ').trim();
+      if(candidate.length>=3&&candidate.length<=120)nearbyContext=candidate;
+    }
+    let resourceTitle='';
+    try{const resource=node.getAttribute('resource');if(resource){const fileUrl=new URL(resource,location.href);resourceTitle=decodeURIComponent(fileUrl.pathname.split('/').pop()||'').replace(/\.[a-z0-9]{2,5}$/i,'').replace(/_/g,' ').trim();}}catch(_){}
+    const articleTitle=String(document.title||'').replace(/\s+-\s+Wikipedia\s*$/i,'').trim();
+    const mediaOrdinal=[...document.querySelectorAll(isFrame?'iframe':tag)].indexOf(node)+1;
+    const root=document.querySelector('article,.mw-parser-output,main')||document.body;
+    const previousHeadings=[...root.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter(heading=>heading.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING);
+    const sectionTitle=String(previousHeadings.at(-1)?.innerText||'').trim();
+    const sectionContext=[sectionTitle,`${tag==='video'?'视频':'音频'} ${Math.max(1,mediaOrdinal)}`].filter(Boolean).join(' · ');
+    const genericTitle=[articleTitle,sectionContext].filter(Boolean).join(' · ')||(tag==='video'?'文章视频':'文章音频');
+    const title=String(node.getAttribute('aria-label')||node.getAttribute('title')||caption||resourceTitle||fallbackText||rowContext||nearbyContext||genericTitle).replace(/\s+/g,' ').trim().slice(0,160)||(tag==='video'?'文章视频':'文章音频');
+    if(!isFrame&&!uniqueSources.length){
+      const resource=readerSafeMediaUrl(node.getAttribute('resource'));
+      if(!resource||!/^https?:/i.test(resource))return '';
+      const mediaName=tag==='video'?'视频':'音频';
+      return `<div class="reader-embedded-player reader-media-link-card" data-reader-media-kind="link"><a class="reader-media-source-link" href="${escapeHtml(resource)}" target="_blank" rel="noopener noreferrer">在原网页查看${mediaName}：${escapeHtml(title)}</a></div>`;
+    }
+    const rect=node.getBoundingClientRect?.()||{width:0,height:0};
+    const sourceWidth=Number(node.getAttribute('width'))||rect.width||16;
+    const sourceHeight=Number(node.getAttribute('height'))||rect.height||9;
+    const ratio=Math.max(.56,Math.min(2.4,sourceWidth/Math.max(1,sourceHeight)));
+    let player='';
+    let sourceLink=frameUrl;
+    if(isFrame){
+      player=`<iframe src="${escapeHtml(frameUrl)}" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+    }else{
+      sourceLink=uniqueSources[0].src;
+      const sourceHtml=uniqueSources.map(source=>`<source src="${escapeHtml(source.src)}"${source.type?` type="${escapeHtml(source.type)}"`:''}>`).join('');
+      player=`<${tag} controls preload="metadata" playsinline${poster?` poster="${escapeHtml(poster)}"`:''} aria-label="${escapeHtml(title)}">${sourceHtml}</${tag}>`;
+    }
+    const sourceLabel=isFrame?'在原网页打开媒体':`在原网页播放${tag==='audio'?'音频':'视频'}`;
+    return `<div class="reader-embedded-player" data-reader-media-kind="${isFrame?'iframe':tag}" data-reader-media-ratio="${ratio.toFixed(4)}" style="--reader-media-ratio:${ratio.toFixed(4)}">${player}<a class="reader-media-source-link" href="${escapeHtml(sourceLink)}" target="_blank" rel="noopener noreferrer">${sourceLabel}</a></div>`;
+  }
+
+  function readerTableHasSupportedEmbeddedMedia(table) {
+    return !!table?.querySelectorAll&&[...table.querySelectorAll('audio,video,iframe,a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".oga" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]')].some(node=>!!readerEmbeddedMediaElementHtml(node));
+  }
+
   function readerEmbeddedMediaHtml(node, nodeIndex) {
     const sourceTag = node.tagName;
-    const isFrame = sourceTag === "IFRAME";
-    const isLinkedVideo = sourceTag === "A";
-    const tag = sourceTag === "AUDIO" ? "audio" : "video";
-    const src = readerSafeMediaUrl(node.currentSrc || node.getAttribute("src") || node.getAttribute("href") || node.querySelector?.("source")?.getAttribute("src"));
-    if (!src) return "";
-    const poster = tag === "video" && !isFrame ? readerSafeMediaUrl(node.getAttribute("poster")) : "";
-    const title = String(node.getAttribute("aria-label") || node.getAttribute("title") || node.textContent || (tag === "video" ? "文章视频" : "文章音频")).trim().slice(0, 160) || (tag === "video" ? "文章视频" : "文章音频");
-    const rect = node.getBoundingClientRect?.() || { width:0, height:0 };
-    const sourceWidth = Number(node.getAttribute("width")) || rect.width || 16;
-    const sourceHeight = Number(node.getAttribute("height")) || rect.height || 9;
-    const ratio = Math.max(.56, Math.min(2.4, sourceWidth / Math.max(1, sourceHeight)));
-    const media = isFrame
-      ? `<iframe src="${escapeHtml(src)}" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
-      : `<${tag} controls preload="metadata" src="${escapeHtml(src)}"${poster ? ` poster="${escapeHtml(poster)}"` : ""} aria-label="${escapeHtml(title)}"></${tag}>`;
-    return `<figure class="reader-embedded-media${isFrame ? " reader-embedded-frame" : ""}${isLinkedVideo ? " reader-linked-video" : ""}" id="reader_embedded_${nodeIndex}" style="--reader-media-ratio:${ratio.toFixed(4)}">${media}<figcaption>${escapeHtml(title)}</figcaption></figure>`;
+    const isLinkedAudio = sourceTag === "A" && /\.(?:mp3|wav|ogg|oga|m4a|opus|flac)(?:$|[?#])/i.test(node.href || "");
+    const isLinkedVideo = sourceTag === "A" && !isLinkedAudio;
+    const media=readerEmbeddedMediaElementHtml(node);
+    if(!media)return '';
+    const isFrame=sourceTag==='IFRAME';
+    const kind=sourceTag==='AUDIO'||isLinkedAudio?'音频':'视频';
+    const title = String(node.getAttribute('aria-label')||node.getAttribute('title')||node.closest?.('figure')?.querySelector('figcaption')?.textContent||`${kind}内容`).replace(/\s+/g,' ').trim().slice(0,160)||`${kind}内容`;
+    const ratio=Number(node.getBoundingClientRect?.().width||16)/Math.max(1,Number(node.getBoundingClientRect?.().height||9));
+    return `<figure class="reader-embedded-media${isFrame ? " reader-embedded-frame" : ""}${isLinkedVideo ? " reader-linked-video" : ""}${isLinkedAudio ? " reader-linked-audio" : ""}" id="reader_embedded_${nodeIndex}" style="--reader-media-ratio:${Math.max(.56,Math.min(2.4,ratio)).toFixed(4)}">${media}<figcaption>${escapeHtml(title)}</figcaption></figure>`;
   }
 
   function readerDetailsHtml(node, nodeIndex, renderStyle) {
@@ -3723,14 +4051,68 @@
     const summaryText = String(summaryNode?.innerText || summaryNode?.textContent || "补充资料").trim() || "补充资料";
     const fullText = String(node.innerText || node.textContent || "").trim();
     const bodyText = fullText.startsWith(summaryText) ? fullText.slice(summaryText.length).trim() : fullText;
+    const bodyClone=node.cloneNode(true);
+    bodyClone.querySelector(":scope > summary")?.remove();
+    const bodyContentHtml=readerInlineHtml(bodyClone)||escapeHtml(bodyText||summaryText);
     const bodyHtml = readerPairHtml({
       id:`r_${nodeIndex}_details`,
-      originalHtml:escapeHtml(bodyText || summaryText),
+      originalHtml:bodyContentHtml,
       pairClass:"reader-details-pair",
       renderStyle,
       canTranslateOne:false
     });
     return `<details class="reader-details-block" open><summary><span>${escapeHtml(summaryText)}</span><small>展开 / 收起</small></summary>${bodyHtml}</details>`;
+  }
+
+  function readerBaikeReferenceItems(node) {
+    const type=readerBaikeBlocks.get(node);
+    let items=type?.items||[...node.querySelectorAll('li,dd')].filter(item=>!item.querySelector('li,dd'));
+    if(!items.length)items=[...node.children].filter(item=>item.querySelector?.('a[href]'));
+    if(!items.length)items=[node];
+    return items;
+  }
+
+  function readerSourceListMarker(item) {
+    const list=item.parentElement;
+    if(list?.tagName==='OL'){
+      const siblings=[...list.children].filter(el=>el.tagName==='LI'),reverse=list.reversed;
+      let number=list.hasAttribute('start')?Number(list.start):(reverse?siblings.length:1);
+      for(const sibling of siblings){if(sibling.hasAttribute('value'))number=Number(sibling.value);if(sibling===item)break;number+=reverse?-1:1;}
+      const alpha=value=>{let n=Math.max(1,Math.floor(value)),result='';while(n>0){n-=1;result=String.fromCharCode(97+n%26)+result;n=Math.floor(n/26);}return list.type==='A'?result.toUpperCase():result;};
+      const roman=value=>{let n=Math.max(1,Math.floor(value)),result='';for(const [amount,symbol] of [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']])while(n>=amount){result+=symbol;n-=amount;}return list.type==='i'?result.toLowerCase():result;};
+      const label=list.type==='a'||list.type==='A'?alpha(number):list.type==='i'||list.type==='I'?roman(number):String(number);
+      return `${label}.`;
+    }
+    return list?.tagName==='UL'?'•':'•';
+  }
+
+  function readerListItemHtml(sourceItem,nodeIndex,renderStyle,nested=false,path='') {
+    const headingLevel=readerHeadingLevel(sourceItem);
+    if(headingLevel){
+      const itemClone=sourceItem.cloneNode(true);
+      itemClone.querySelectorAll('ul,ol').forEach(list=>list.remove());
+      const contentClone=document.createElement('div');
+      contentClone.append(...Array.from(itemClone.childNodes));
+      return readerPairHtml({id:`r_${nodeIndex}`,originalHtml:readerInlineHtml(contentClone)||escapeHtml(getHostOriginalText(contentClone).trim()),headingLevel,renderStyle,canTranslateOne:false});
+    }
+    const nestedLists=[...sourceItem.querySelectorAll('ul,ol')].filter(list=>list.closest('li')===sourceItem);
+    const contentClone=sourceItem.cloneNode(true);
+    contentClone.querySelectorAll('ul,ol').forEach(list=>list.remove());
+    const originalHtml=readerInlineHtml(contentClone)||escapeHtml(getHostOriginalText(contentClone).trim());
+    const id=nested?`r_${nodeIndex}_nested_${path}`:`r_${nodeIndex}`;
+    const pair=readerPairHtml({id,originalHtml,renderStyle,canTranslateOne:true,wrapperClass:nested?'':'reader-list-block',listMarker:nested?'':readerSourceListMarker(sourceItem)});
+    const renderNestedList=list=>{
+      const tag=list.tagName.toLowerCase();
+      const type=tag==='ol'&&/^(?:1|a|A|i|I)$/.test(list.getAttribute('type')||'')?` type="${list.getAttribute('type')}"`:'';
+      const start=tag==='ol'&&/^-?\d+$/.test(list.getAttribute('start')||'')?` start="${list.getAttribute('start')}"`:'';
+      const reversed=tag==='ol'&&list.hasAttribute('reversed')?' reversed=""':'';
+      const items=[...list.children].filter(child=>child.tagName==='LI');
+      return `<${tag}${type}${start}${reversed}>${items.map((child,index)=>{
+        const value=/^-?\d+$/.test(child.getAttribute('value')||'')?` value="${child.getAttribute('value')}"`:'';
+        return `<li${value}>${readerListItemHtml(child,`${nodeIndex}_${path||'root'}_${index}`,renderStyle,true,`${path||'root'}_${index}`)}</li>`;
+      }).join('')}</${tag}>`;
+    };
+    return `${pair}${nestedLists.map(renderNestedList).join('')}`;
   }
 
   // Only an explicit two-column numerical series qualifies. Infoboxes, merged
@@ -3819,8 +4201,36 @@
     });
   }
 
-  function readerBaikeBlockHtml(node,index,renderStyle,mediaEntries=[],mediaIndexByNode=new WeakMap()) {
+  function readerBaikeBlockHtml(node,index,renderStyle,mediaEntries=[],mediaIndexByNode=new WeakMap(),baikeSourceKeys=new WeakMap(),lazyTableSources=null,baikeTablePaginationSources=null) {
     const type=readerBaikeBlocks.get(node);
+    const sourceKeyAttr=source=>{const key=source&&baikeSourceKeys.get(source);return key?` data-reader-baike-source-key="${escapeHtml(key)}"`:'';};
+    const arrowIcon=direction=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${direction==='previous'?'m14.5 5.5-6.5 6.5 6.5 6.5':'m9.5 5.5 6.5 6.5-6.5 6.5'}"/></svg>`;
+    const carouselSection=(label,cards,extraClass='')=>`<section id="r_${index}" class="reader-baike-carousel ${extraClass}" aria-label="${escapeHtml(label)}"><div class="reader-baike-carousel-heading"><span>${escapeHtml(label)} <small>（${cards.length}项）</small></span><div class="reader-baike-carousel-controls" ${cards.length>1?'':'hidden'}><button type="button" data-reader-baike-carousel-nav="previous" aria-label="上一组" title="上一组" disabled>${arrowIcon('previous')}</button><button type="button" data-reader-baike-carousel-nav="next" aria-label="下一组" title="下一组">${arrowIcon('next')}</button></div></div><div class="reader-baike-carousel-viewport" role="region" aria-label="${escapeHtml(label)}" tabindex="0"><div class="reader-baike-carousel-track">${cards.join('')}</div></div></section>`;
+    if(type?.kind==='table')return readerTableHtml(node,index,mediaEntries,mediaIndexByNode,renderStyle,lazyTableSources,baikeTablePaginationSources?.get(node)||null);
+    if(type?.kind==='module-map'){
+      const title=String(node.querySelector('[class^="addressTitle_"]')?.textContent||node.querySelector('h4')?.textContent||'地图位置').replace(/\s+/g,' ').trim();
+      const address=String(node.querySelector('[class^="addressDetail_"]')?.textContent||'').replace(/\s+/g,' ').trim();
+      const detail=node.querySelector('[class^="addressLink_"][href]')||[...node.querySelectorAll('a[href]')].find(link=>{try{return new URL(link.href,location.href).hostname==='api.map.baidu.com';}catch(_){return false;}});
+      const detailUrl=readerSafeMediaUrl(detail?.href||'');
+      const sourceUrl=detailUrl||readerSafeMediaUrl(location.href);
+      const sourceLabel=detailUrl?'在百度地图中查看':'在原网页查看地图';
+      return '<section id="r_'+index+'" class="reader-baike-map-block"><article class="reader-baike-map-card"><span class="reader-baike-map-symbol" aria-hidden="true">⌖</span><div class="reader-baike-map-copy"><h3>'+escapeHtml(title)+'</h3><p>'+(address?escapeHtml(address):'地图交互内容未嵌入阅读模式')+'</p></div><a href="'+escapeHtml(sourceUrl)+'" target="_blank" rel="noopener noreferrer">'+sourceLabel+'</a></article></section>';
+    }
+    if(type?.kind==='module-image-row'){
+      const cards=(type.images||[]).map((item,imageIndex)=>{
+        const mediaIndex=mediaIndexByNode.get(item.image);
+        const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-carousel-image');
+        const caption=String(item.caption||'').trim();
+        const href=readerSafeMediaUrl(item.href||'');
+        return `<figure class="reader-baike-carousel-item reader-baike-gallery-slide" data-reader-baike-slide="${imageIndex}"><div class="reader-baike-carousel-media">${mediaHtml||'<span class="reader-baike-carousel-placeholder">图片暂未加载</span>'}</div>${caption?`<figcaption>${escapeHtml(caption)}</figcaption>`:''}${href?`<a class="reader-baike-carousel-source" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">打开原图</a>`:''}</figure>`;
+      });
+      return carouselSection(type.caption||'图文资料',cards,'reader-baike-module-gallery reader-baike-layout-table-gallery');
+    }
+    if(type?.kind==='references'){
+      const items=readerBaikeReferenceItems(node);
+      const rows=items.map((item,itemIndex)=>`<li id="reader_baike_reference_${index}_${itemIndex}"><span class="reader-baike-reference-number">[${itemIndex+1}]</span><div>${readerInlineHtml(item)||escapeHtml(getHostOriginalText(item).trim())}</div></li>`).join('');
+      return `<details id="r_${index}" class="reader-baike-references"><summary><span>参考资料</span><small>${items.length} 条</small></summary><ol>${rows}</ol></details>`;
+    }
     if(type==='facts'){
       const terms=[...node.querySelectorAll('dt')];
       const isVisible=source=>{
@@ -3853,6 +4263,125 @@
       }).join('');
       return `<section id="r_${index}" class="reader-table-block reader-infobox reader-infobox-long reader-baike-infobox"><div class="reader-table-heading">基本信息</div><div class="reader-fact-list">${rows}</div></section>`;
     }
+    if(type?.kind==='module-album-row'){
+      const albums=type.albums||[...node.querySelectorAll('[data-module-type="album"]')];
+      const cards=albums.map(album=>{
+        const link=album.querySelector('a[class^="albumWrapper_"]')||album.querySelector('a[href*="/pic/"]');
+        const image=album.querySelector('img');
+        const mediaIndex=image?mediaIndexByNode.get(image):undefined;
+        const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-carousel-image');
+        const title=album.querySelector('[class^="desc_"]')?.textContent.trim()||link?.getAttribute('title')||image?.alt||'词条图集';
+        const count=album.querySelector('[class^="total_"]')?.textContent.trim()||'';
+        const href=readerSafeMediaUrl(link?.href||'');
+        return `<article class="reader-baike-carousel-item reader-baike-album-card"><div class="reader-baike-carousel-media"${sourceKeyAttr(album)}>${mediaHtml||'<span class="reader-baike-carousel-placeholder">封面暂未加载</span>'}</div><h3>${escapeHtml(title)}</h3>${count?`<small>${escapeHtml(count)}</small>`:''}${href?`<a class="reader-baike-carousel-source" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">打开原图集</a>`:''}</article>`;
+      });
+      return carouselSection('作品图集',cards,'reader-baike-album-row');
+    }
+    if(type?.kind==='module-gallery-carousel'){
+      const slides=[...node.querySelectorAll('[class^="swiperLi_"]')].filter(slide=>!slide.closest('.swiper-slide-duplicate'));
+      if(!slides.length)return '';
+      const images=slides.map(slide=>slide.querySelector('img')).filter(Boolean);
+      const captions=images.map(image=>String(image.getAttribute('alt')||'').trim());
+      const repeatedCaption=captions.length>1&&captions[0]&&captions.every(caption=>caption===captions[0])?captions[0]:'';
+      const title=String(node.querySelector('[class^="galleryDesc_"]')?.innerText||'').trim();
+      const parentText=String(node.closest('[class^="para_"],.para')?.innerText||'').trim();
+      const cards=slides.map((slide,slideIndex)=>{
+        const image=slide.querySelector('img');
+        const mediaIndex=image?mediaIndexByNode.get(image):undefined;
+        const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-carousel-image');
+        const caption=String(image?.getAttribute('alt')||slide.getAttribute('title')||'').trim();
+        const uniqueCaption=caption&&!repeatedCaption&&caption!==title?`<figcaption>${escapeHtml(caption)}</figcaption>`:'';
+        return `<figure class="reader-baike-carousel-item reader-baike-gallery-slide" data-reader-baike-slide="${slideIndex}"><div class="reader-baike-carousel-media"${sourceKeyAttr(slide)}>${mediaHtml||'<span class="reader-baike-carousel-placeholder">图片暂未加载</span>'}</div>${uniqueCaption}</figure>`;
+      });
+      const label=title||'词条图集';
+      const showSharedCaption=repeatedCaption&&!title.includes(repeatedCaption)&&!parentText.includes(repeatedCaption);
+      return `${carouselSection(label,cards,'reader-baike-module-gallery')}${showSharedCaption?`<p class="reader-baike-carousel-caption">${escapeHtml(repeatedCaption)}</p>`:''}`;
+    }
+    if(type?.kind==='module-album-card'){
+      const link=node.querySelector('a[class^="albumWrapper_"]')||node.querySelector('a[href*="/pic/"]');
+      const image=node.querySelector('img');
+      const mediaIndex=image?mediaIndexByNode.get(image):undefined;
+      const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-carousel-image');
+      const title=node.querySelector('[class^="desc_"]')?.textContent.trim()||link?.getAttribute('title')||image?.alt||'词条图集';
+      const count=node.querySelector('[class^="total_"]')?.textContent.trim()||'';
+      const href=readerSafeMediaUrl(link?.href||'');
+      return `<section id="r_${index}" class="reader-baike-album-card-block"><article class="reader-baike-carousel-item reader-baike-album-card"><div class="reader-baike-carousel-media"${sourceKeyAttr(node)}>${mediaHtml||'<span class="reader-baike-carousel-placeholder">封面暂未加载</span>'}</div><h3>${escapeHtml(title)}</h3>${count?`<small>${escapeHtml(count)}</small>`:''}${href?`<a class="reader-baike-carousel-source" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">打开原图集</a>`:''}</article></section>`;
+    }
+    if(type?.kind==='module-work-carousel'){
+      if(type.type==='musicSingle'||type.type==='musicForOthers'){
+        const minCells=type.type==='musicSingle'?4:5;
+        const rows=[...node.querySelectorAll('tbody tr')].map(row=>[...row.querySelectorAll(':scope > td')]).filter(cells=>cells.length>=minCells);
+        if(!rows.length)return '';
+        const labels={musicSingle:'歌曲作品',musicForOthers:'为他人创作'};
+        const cellHtml=cell=>{
+          if(!cell)return '';
+          const holder=document.createElement('div');
+          holder.innerHTML=readerInlineHtml(cell);
+          holder.querySelectorAll('sup,[data-tag="ref"],[class*="supWrap"]').forEach(reference=>reference.remove());
+          return holder.innerHTML.trim();
+        };
+        const cellText=cell=>{
+          const holder=document.createElement('div');
+          holder.innerHTML=cellHtml(cell);
+          return String(holder.textContent||'').replace(/\s+/g,' ').trim();
+        };
+        const field=(label,value)=>value?`<div><b>${escapeHtml(label)}</b><span>${value}</span></div>`:'';
+        const cards=rows.map(cells=>{
+          const titleHtml=cellHtml(cells[0])||'未命名歌曲';
+          const fields=type.type==='musicSingle'
+            ?[field('风格',cellHtml(cells[1])),field('发行',escapeHtml(cellText(cells[2]))),field('简介',cellHtml(cells[3]))]
+            :[field('职能',cellHtml(cells[1])),field('演唱者',cellHtml(cells[2])),field('专辑',cellHtml(cells[3])),field('发行',escapeHtml(cellText(cells[4])))];
+          return `<article class="reader-baike-carousel-item reader-baike-song-card"><div class="reader-baike-song-mark" aria-hidden="true"><span>♫</span><small>${type.type==='musicSingle'?'歌曲':'创作'}</small></div><div class="reader-baike-song-body"><h3>${titleHtml}</h3><dl class="reader-baike-work-details">${fields.join('')}</dl></div></article>`;
+        });
+        return carouselSection(labels[type.type],cards,'reader-baike-work-carousel reader-baike-song-carousel');
+      }
+      const selectors={musicAlbum:'[class^="albumItem_"]',movie:'[class^="movieItem_"]',teleplay:'[class^="movieItem_"]',magazine:'[class^="magazineItem_"]'};
+      const selector=selectors[type.type];
+      if(!selector)return readerInlineHtml(node);
+      const items=[...node.querySelectorAll(selector)].filter(item=>!item.closest('.swiper-slide-duplicate'));
+      if(!items.length)return '';
+      const labels={musicAlbum:'音乐专辑',movie:'电影作品',teleplay:'电视剧作品',magazine:'杂志封面'};
+      const cards=items.map(item=>{
+        const image=item.querySelector('img');
+        const mediaIndex=image?mediaIndexByNode.get(image):undefined;
+        const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-carousel-image');
+        let titleHtml='',date='',detailsHtml='';
+        if(type.type==='musicAlbum'){
+          const titleNode=item.querySelector('[class^="albumName_"]');
+          titleHtml=readerInlineHtml(titleNode)||escapeHtml(getHostOriginalText(titleNode||item).trim());
+          date=String(item.querySelector('[class^="albumDate_"]')?.innerText||'').replace(/^发行时间\s*/, '').trim();
+        }else if(type.type==='movie'||type.type==='teleplay'){
+          const titleNode=item.querySelector('[class^="titleWrapper_"] a')||item.querySelector('[class^="titleWrapper_"]');
+          titleHtml=readerInlineHtml(titleNode)||escapeHtml(getHostOriginalText(titleNode||item).trim());
+          date=[...(item.querySelector('[class^="titleWrapper_"]')?.querySelectorAll('b')||[])].map(node=>node.textContent.trim()).find(text=>text&&/\b(?:19|20)\d{2}\b/.test(text))||'';
+          const terms=[...item.querySelectorAll('dt')];
+          const visible=source=>{
+            for(let current=source;current;current=current.parentElement){
+              const style=getComputedStyle(current);
+              if(current.hidden||style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse')return false;
+              if(current===item)break;
+            }
+            return true;
+          };
+          const rows=terms.map(term=>{
+            if(!visible(term))return '';
+            const list=term.closest('dl')||item;
+            const listTerms=terms.filter(candidate=>(candidate.closest('dl')||item)===list);
+            const nextTerm=listTerms[listTerms.indexOf(term)+1]||null;
+            const follows=(before,after)=>!!(before.compareDocumentPosition(after)&Node.DOCUMENT_POSITION_FOLLOWING);
+            const values=[...list.querySelectorAll('dd')].filter(value=>(value.closest('dl')||item)===list&&follows(term,value)&&(!nextTerm||follows(value,nextTerm))&&visible(value));
+            const valueHtml=values.map(value=>readerInlineHtml(value)||escapeHtml(value.textContent.trim())).filter(value=>value.trim()).join('<br class="reader-baike-work-value-break">');
+            return valueHtml?`<div><b>${escapeHtml(term.textContent.trim())}</b><span>${valueHtml}</span></div>`:'';
+          }).filter(Boolean);
+          detailsHtml=rows.length?`<dl class="reader-baike-work-details">${rows.join('')}</dl>`:'';
+        }else{
+          titleHtml=readerInlineHtml(item.querySelector('[class^="name_"]'))||escapeHtml(String(item.querySelector('[class^="name_"]')?.textContent||'').trim());
+          date=[item.querySelector('[class^="time_"]')?.textContent,item.querySelector('[class^="location_"]')?.textContent].filter(Boolean).join(' · ');
+        }
+        return `<article class="reader-baike-carousel-item reader-baike-work-card"><div class="reader-baike-carousel-media"${sourceKeyAttr(item)}>${mediaHtml||`<span class="reader-baike-carousel-placeholder">${image?'封面暂未加载':'暂缺封面'}</span>`}</div><h3>${titleHtml||escapeHtml(labels[type.type])}</h3>${date?`<p class="reader-baike-work-date">${escapeHtml(date)}</p>`:''}${detailsHtml}</article>`;
+      });
+      return carouselSection(labels[type.type]||'作品',cards,'reader-baike-work-carousel');
+    }
     if(type?.kind==='videos'){
       const slides=type.covers.map((cover,i)=>{
         const video=cover.querySelector('video');const title=cover.querySelector('[class^="videoTitle_"]')?.textContent.trim()||'词条视频';
@@ -3867,10 +4396,10 @@
         const mediaSrc=readerSafeMediaUrl(videoSource||'');
         const posterHtml=poster?`<img class="reader-baike-video-poster" src="${escapeHtml(poster)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async">`:`<div class="reader-baike-video-placeholder" role="img" aria-label="${escapeHtml(title)}">封面暂未加载</div>`;
         const mediaHtml=mediaSrc?`<video controls preload="none" src="${escapeHtml(mediaSrc)}"${poster?` poster="${escapeHtml(poster)}"`:''} aria-label="${escapeHtml(title)}"></video>`:`<a class="reader-baike-video-source" href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer" aria-label="在原网页播放：${escapeHtml(title)}">${posterHtml}</a>`;
-        return `<figure class="reader-baike-video-slide" data-reader-video-slide="${i}"><div class="reader-baike-video-media">${mediaHtml}</div><figcaption><span>${escapeHtml(title)}</span><a href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer">在原网页播放</a></figcaption></figure>`;
+        return `<figure class="reader-baike-video-slide" data-reader-video-slide="${i}"><div class="reader-baike-video-media"${sourceKeyAttr(cover)}>${mediaHtml}</div><figcaption><span>${escapeHtml(title)}</span><a href="${escapeHtml(location.href)}" target="_blank" rel="noopener noreferrer">在原网页播放</a></figcaption></figure>`;
       }).join('');
       const hasNavigation=type.covers.length>1;
-      return `<section id="r_${index}" class="reader-baike-videos" aria-label="词条视频轮播"><div class="reader-baike-video-heading"><span>词条视频 <small class="reader-baike-video-count">（${type.covers.length}个）</small></span><div class="reader-baike-video-controls" ${hasNavigation?'':'hidden'}><button type="button" data-reader-video-nav="previous" aria-label="上一组三个视频" title="上一组" disabled>‹</button><button type="button" data-reader-video-nav="next" aria-label="下一组三个视频" title="下一组">›</button></div></div><div class="reader-baike-video-viewport" role="region" aria-label="词条视频" tabindex="0"><div class="reader-baike-video-track">${slides}</div></div></section>`;
+      return `<section id="r_${index}" class="reader-baike-videos" aria-label="词条视频轮播"><div class="reader-baike-video-heading"><span>词条视频 <small class="reader-baike-video-count">（${type.covers.length}个）</small></span><div class="reader-baike-video-heading-actions"><div class="reader-baike-video-controls" ${hasNavigation?'':'hidden'}><button type="button" data-reader-video-nav="previous" aria-label="上一组三个视频" title="上一组" disabled>${arrowIcon('previous')}</button><button type="button" data-reader-video-nav="next" aria-label="下一组三个视频" title="下一组">${arrowIcon('next')}</button></div><button type="button" class="reader-baike-video-toggle" aria-controls="reader-baike-video-content-${index}" aria-expanded="true" aria-label="收起这组词条视频"><span data-reader-baike-video-toggle-label>收起</span></button></div></div><div id="reader-baike-video-content-${index}" class="reader-baike-video-viewport" role="region" aria-label="词条视频" tabindex="0"><div class="reader-baike-video-track">${slides}</div></div></section>`;
     }
     if(type?.kind==='module-gallery'){
       const images=[...node.querySelectorAll('img')].filter(image=>!image.closest('.swiper-slide-duplicate')&&!getReaderImageInfo(image).isIcon&&!!getReaderImageInfo(image).src);
@@ -3900,6 +4429,18 @@
       }).join('');
       return `<section id="r_${index}" class="reader-baike-module-videos" aria-label="正文视频">${content}</section>`;
     }
+    if(type?.kind==='representative-work-carousel'){
+      const items=[...node.querySelectorAll('[class^="worksItem_"]')];
+      if(!items.length)return '';
+      const cards=items.map((item,itemIndex)=>{
+        const image=item.querySelector('img');
+        const mediaIndex=image?mediaIndexByNode.get(image):undefined;
+        const mediaHtml=mediaIndex===undefined?'':readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,'reader-baike-carousel-image');
+        const title=String(item.querySelector('[class^="worksTitle_"]')?.textContent||item.getAttribute('title')||'代表作品').trim();
+        return `<article class="reader-baike-carousel-item reader-baike-work-card reader-baike-feature-card" data-reader-baike-work-index="${itemIndex}"><div class="reader-baike-carousel-media"${sourceKeyAttr(item)}>${mediaHtml||'<span class="reader-baike-carousel-placeholder">封面加载后显示</span>'}</div><h3>${escapeHtml(title)}</h3></article>`;
+      });
+      return carouselSection('代表作品',cards,'reader-baike-featured-works');
+    }
     if(type==='gallery'){
       const cards=node.querySelectorAll('[class^="worksItem_"]');
       if(cards.length)return `<section id="r_${index}" class="reader-baike-gallery">${[...cards].map(card=>`<figure>${readerInlineHtml(card)}</figure>`).join('')}</section>`;
@@ -3910,10 +4451,14 @@
   }
 
   function readerSupplementHtml(node,index,renderStyle) {
-    const title=node.querySelector('.navbox-title')?.textContent.replace(/\[?(?:hide|show)\]?/gi,'').trim()||'延伸阅读';
+    const titleNode=node.querySelector('.navbox-title');
+    const titleClone=titleNode?.cloneNode(true);
+    titleClone?.querySelectorAll('.mw-collapsible-toggle,.navbox-editlinks,.noprint,.navbar').forEach(control=>control.remove());
+    const title=String(titleClone?readerOriginalTextPreservingWhitespace(titleClone):'').replace(/\[\s*(?:hide|show)\s*\]/gi,'').replace(/\s+/g,' ').trim()||'延伸阅读';
     const table=node.matches('table')?node:node.querySelector('table');
     const body=table?readerTableHtml(table,index,[],new WeakMap(),renderStyle):readerPairHtml({id:`r_${index}`,originalHtml:readerInlineHtml(node),renderStyle});
-    return `<details class="reader-supplement" open><summary>${escapeHtml(title)}</summary>${body}</details>`;
+    const isNavbox=node.matches('.navbox');
+    return `<details class="reader-supplement${isNavbox?' reader-supplement-navbox':''}"${isNavbox?'':' open'}><summary>${escapeHtml(title)}</summary>${body}</details>`;
   }
 
   function initializeReaderBaikeVideoCarousels(root) {
@@ -3924,17 +4469,29 @@
       const controls=section?.querySelector('.reader-baike-video-controls');
       const previous=section?.querySelector('[data-reader-video-nav="previous"]');
       const next=section?.querySelector('[data-reader-video-nav="next"]');
-      if(!previous||!next)return;
-      if(controls)controls.hidden=viewport.scrollWidth<=viewport.clientWidth+2;
-      previous.disabled=viewport.scrollLeft<=1;
-      next.disabled=viewport.scrollLeft+viewport.clientWidth>=viewport.scrollWidth-2;
+      const collapsed=section?.classList.contains('is-collapsed');
+      if(controls)controls.hidden=collapsed||viewport.scrollWidth<=viewport.clientWidth+2;
+      if(previous)previous.disabled=viewport.scrollLeft<=1;
+      if(next)next.disabled=viewport.scrollLeft+viewport.clientWidth>=viewport.scrollWidth-2;
     };
     const observers=[];
     for(const section of carousels){
       const viewport=section.querySelector('.reader-baike-video-viewport');
       if(!viewport)continue;
+      const toggle=section.querySelector('.reader-baike-video-toggle');
       const previous=section.querySelector('[data-reader-video-nav="previous"]');
       const next=section.querySelector('[data-reader-video-nav="next"]');
+      toggle?.addEventListener('click',()=>{
+        const expanded=toggle.getAttribute('aria-expanded')==='true';
+        const collapsed=expanded;
+        section.classList.toggle('is-collapsed',collapsed);
+        toggle.setAttribute('aria-expanded',String(!collapsed));
+        toggle.setAttribute('aria-label',`${collapsed?'展开':'收起'}这组词条视频`);
+        const label=toggle.querySelector('[data-reader-baike-video-toggle-label]');
+        if(label)label.textContent=collapsed?'展开':'收起';
+        viewport.hidden=collapsed;
+        update(viewport);
+      });
       previous?.addEventListener('click',()=>viewport.scrollBy({left:-viewport.clientWidth,behavior:'smooth'}));
       next?.addEventListener('click',()=>viewport.scrollBy({left:viewport.clientWidth,behavior:'smooth'}));
       let scheduled=false;
@@ -3951,6 +4508,326 @@
     removalObserver.observe(document.documentElement,{childList:true});
   }
 
+  function initializeReaderBaikeCarousels(root) {
+    const sections=[...root.querySelectorAll('.reader-baike-carousel')];
+    if(!sections.length)return;
+    const observers=[];
+    for(const section of sections){
+      const viewport=section.querySelector('.reader-baike-carousel-viewport');
+      const previous=section.querySelector('[data-reader-baike-carousel-nav="previous"]');
+      const next=section.querySelector('[data-reader-baike-carousel-nav="next"]');
+      if(!viewport||!previous||!next)continue;
+      const update=()=>{
+        const maxScroll=viewport.scrollWidth-viewport.clientWidth;
+        section.querySelector('.reader-baike-carousel-controls').hidden=maxScroll<=2;
+        previous.disabled=viewport.scrollLeft<=1;
+        next.disabled=viewport.scrollLeft>=maxScroll-2;
+      };
+      const scrollPage=direction=>{
+        const first=section.querySelector('.reader-baike-carousel-track > .reader-baike-carousel-item');
+        const track=first?.parentElement;
+        const gap=parseFloat(getComputedStyle(track||viewport).columnGap||getComputedStyle(track||viewport).gap)||0;
+        const stride=first?first.getBoundingClientRect().width+gap:viewport.clientWidth;
+        const cardsPerPage=Math.max(1,Math.round((viewport.clientWidth+gap)/Math.max(1,stride)));
+        const currentIndex=Math.round(viewport.scrollLeft/Math.max(1,stride));
+        viewport.scrollTo({left:Math.max(0,(currentIndex+direction*cardsPerPage)*stride),behavior:'smooth'});
+      };
+      previous.addEventListener('click',()=>scrollPage(-1));
+      next.addEventListener('click',()=>scrollPage(1));
+      let scheduled=false;
+      viewport.addEventListener('scroll',()=>{
+        if(scheduled)return;
+        scheduled=true;
+        requestAnimationFrame(()=>{scheduled=false;update();});
+      },{passive:true});
+      const resizeObserver=new ResizeObserver(update);
+      resizeObserver.observe(viewport);observers.push(resizeObserver);
+      update();
+    }
+    const removalObserver=new MutationObserver(()=>{
+      if(root.isConnected)return;
+      observers.forEach(observer=>observer.disconnect());
+      removalObserver.disconnect();
+    });
+    removalObserver.observe(document.documentElement,{childList:true});
+  }
+
+  function initializeReaderBaikeProgressiveMedia(root,sourceContainer,contentNodes,sourceKeys,mediaEntries,mediaIndexByNode) {
+    const scrollArea=root.querySelector('#reader-scroll-area');
+    if(!scrollArea||!sourceContainer)return;
+    const findImageOwner=image=>image.closest('[class^="videoCover_"],[class^="swiperLi_"],[class^="worksItem_"],[class^="albumItem_"],[class^="movieItem_"],[class^="magazineItem_"],[data-module-type="album"]');
+    const refreshImage=image=>{
+      if(!image?.isConnected)return;
+      readerImageInfoCache.delete(image);
+      const info=getReaderImageInfo(image);
+      if(!info.src)return;
+      const owner=findImageOwner(image)||image;
+      const key=sourceKeys.get(owner)||sourceKeys.get(image);
+      if(!key)return;
+      const mediaHolder=root.querySelector(`[data-reader-baike-source-key="${key}"]`);
+      if(!mediaHolder)return;
+      let mediaIndex=mediaEntries.findIndex(entry=>entry.image===image);
+      if(mediaIndex<0){
+        mediaIndex=mediaEntries.length;
+        mediaEntries.push({image,info,caption:info.alt||'文章配图'});
+        mediaIndexByNode.set(image,mediaIndex);
+      }else mediaEntries[mediaIndex].info=info;
+      if(mediaHolder.classList.contains('reader-baike-video-media')){
+        const video=mediaHolder.querySelector('video');
+        if(video){video.poster=info.src;return;}
+      }
+      const current=mediaHolder.querySelector('img');
+      if(current?.getAttribute('src')===info.src)return;
+      if(mediaHolder.classList.contains('reader-baike-video-media')){
+        mediaHolder.innerHTML=`<img class="reader-baike-video-poster" src="${escapeHtml(info.src)}" alt="${escapeHtml(info.alt)}" loading="lazy" decoding="async">`;
+      }else{
+        const extraClass=mediaHolder.classList.contains('reader-baike-carousel-media')?'reader-baike-carousel-image':'';
+        mediaHolder.innerHTML=readerMediaImageHtml(mediaEntries[mediaIndex],mediaIndex,extraClass);
+      }
+    };
+    const refreshMutations=records=>{
+      const images=new Set();
+      records.forEach(record=>{
+        if(record.target?.tagName==='IMG')images.add(record.target);
+        record.addedNodes?.forEach(node=>{
+          if(node.nodeType!==Node.ELEMENT_NODE)return;
+          if(node.tagName==='IMG')images.add(node);
+          node.querySelectorAll?.('img').forEach(image=>images.add(image));
+        });
+      });
+      images.forEach(refreshImage);
+    };
+    const mutationObserver=new MutationObserver(refreshMutations);
+    mutationObserver.observe(sourceContainer,{subtree:true,childList:true,attributes:true,attributeFilter:['src','srcset','data-src','data-original','data-lazy-src','data-url','data-srcset']});
+
+    const targets=[];
+    contentNodes.forEach((node,index)=>{
+      const type=readerBaikeBlocks.get(node);
+      if(!type)return;
+      const sourceNodes=type.kind==='videos'?type.covers.slice(0,3):[node];
+      const hasSourceImage=sourceNodes.some(source=>source.querySelector?.('img'));
+      const canWakeLazySource=type.kind==='representative-work-carousel'||type.kind==='module-gallery-carousel'||type.kind==='module-album-card'||type.kind==='module-album-row'||type.kind==='gallery'||type.kind==='module-work-carousel'&&type.type==='musicAlbum'||sourceNodes.some(source=>source.querySelector?.('[class^="coverPic_"] span,[class^="swiperLi_"] span'));
+      if(type.kind!=='videos'&&!hasSourceImage&&!canWakeLazySource)return;
+      if(!['videos','module-gallery-carousel','module-album-card','module-album-row','module-work-carousel','representative-work-carousel','gallery','card'].includes(type.kind))return;
+      const readerBlock=root.querySelector(`#r_${index}`);
+      if(readerBlock)targets.push({node,sourceNodes,readerBlock,type});
+    });
+    const queuedSources=new WeakSet();
+    const queuedBlocks=new Set();
+    const queue=[];
+    let running=false;
+    let closed=false;
+    const queueDistance=target=>{
+      const area=scrollArea.getBoundingClientRect(),rect=target.readerBlock.getBoundingClientRect();
+      if(rect.bottom<area.top)return area.top-rect.bottom;
+      if(rect.top>area.bottom)return rect.top-area.bottom;
+      return 0;
+    };
+    const sortQueue=()=>queue.sort((left,right)=>queueDistance(left)-queueDistance(right));
+    const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    const twoFrames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const waitForSourceImages=(source,timeout=900)=>new Promise(resolve=>{
+      if(source?.querySelector?.('img')){resolve(true);return;}
+      let done=false;
+      const finish=()=>{if(done)return;done=true;observer.disconnect();clearTimeout(timer);resolve(!!source?.querySelector?.('img'));};
+      const observer=new MutationObserver(()=>{if(source?.querySelector?.('img'))finish();});
+      observer.observe(source,{subtree:true,childList:true,attributes:true,attributeFilter:['src','srcset','data-src','data-original','data-lazy-src','data-url']});
+      const timer=setTimeout(finish,timeout);
+      if(source?.querySelector?.('img'))finish();
+    });
+    const loadedRepresentativeSlides=new WeakMap();
+    const pendingRepresentativeSlides=new WeakMap();
+    const representativeSlides=node=>[...node.querySelectorAll('.swiper-slide')].filter(slide=>!slide.classList.contains('swiper-slide-duplicate'));
+    const loadRepresentativeSlide=(target,slideIndex)=>{
+      const {node}=target;
+      let loaded=loadedRepresentativeSlides.get(node);if(!loaded){loaded=new Set();loadedRepresentativeSlides.set(node,loaded);}
+      if(loaded.has(slideIndex))return Promise.resolve();
+      let pending=pendingRepresentativeSlides.get(node);if(!pending){pending=new Map();pendingRepresentativeSlides.set(node,pending);}
+      if(pending.has(slideIndex))return pending.get(slideIndex);
+      const task=(async()=>{
+        const slides=representativeSlides(node),slide=slides[slideIndex];
+        if(!slide)return;
+        const items=[...slide.querySelectorAll('[class^="worksItem_"]')];
+        const refreshSlideImages=()=>items.flatMap(item=>[...item.querySelectorAll('img')]).forEach(refreshImage);
+        if(items.length&&items.every(item=>item.querySelector('img'))){refreshSlideImages();loaded.add(slideIndex);return;}
+        const swiperElement=node.querySelector('.swiper');
+        const next=node.querySelector('[class*="works-next"]')||node.parentElement?.querySelector('[class*="works-next"]');
+        const previous=node.querySelector('[class*="works-prev"]')||node.parentElement?.querySelector('[class*="works-prev"]');
+        if(!swiperElement||!next||!previous)return;
+        const activeIndex=()=>slides.findIndex(candidate=>candidate.classList.contains('swiper-slide-active'));
+        const sourceY=window.scrollY,originalIndex=Math.max(0,activeIndex());
+        node.scrollIntoView({block:'center',behavior:'instant'});
+        await twoFrames();
+        if(!root.isConnected)return;
+        let currentIndex=activeIndex(),moves=0;
+        while(currentIndex<slideIndex&&moves++<slides.length){next.click();await delay(80);currentIndex=activeIndex();}
+        while(currentIndex>slideIndex&&moves++<slides.length){previous.click();await delay(80);currentIndex=activeIndex();}
+        await new Promise(resolve=>{
+          let finished=false;
+          const finish=()=>{if(finished)return;finished=true;observer.disconnect();clearTimeout(timer);resolve();};
+          const ready=()=>items.length>0&&items.every(item=>item.querySelector('img'));
+          const observer=new MutationObserver(()=>{if(ready())finish();});
+          observer.observe(slide,{subtree:true,childList:true,attributes:true,attributeFilter:['src','srcset','data-src','data-original','data-lazy-src','data-url']});
+          const timer=setTimeout(finish,700);
+          if(ready())finish();
+        });
+        refreshSlideImages();
+        if(items.length&&items.every(item=>item.querySelector('img')))loaded.add(slideIndex);
+        currentIndex=activeIndex();moves=0;
+        while(root.isConnected&&currentIndex>originalIndex&&moves++<slides.length){previous.click();await delay(70);currentIndex=activeIndex();}
+        while(root.isConnected&&currentIndex<originalIndex&&moves++<slides.length){next.click();await delay(70);currentIndex=activeIndex();}
+        window.scrollTo({top:sourceY,behavior:'instant'});
+      })().finally(()=>pending.delete(slideIndex));
+      pending.set(slideIndex,task);
+      return task;
+    };
+    const enqueueVisibleRepresentativeSlides=async target=>{
+      const viewport=target.readerBlock.querySelector('.reader-baike-carousel-viewport');
+      if(!viewport)return;
+      const slides=representativeSlides(target.node);
+      if(!slides.length)return;
+      const ranges=[];let start=0;
+      slides.forEach((slide,index)=>{const count=slide.querySelectorAll('[class^="worksItem_"]').length;ranges.push({index,start,end:start+count});start+=count;});
+      const area=viewport.getBoundingClientRect();
+      const visible=[...target.readerBlock.querySelectorAll('.reader-baike-feature-card')].filter(card=>{const rect=card.getBoundingClientRect();return rect.right>area.left+1&&rect.left<area.right-1;});
+      const slideIndexes=new Set(visible.map(card=>{const itemIndex=Number(card.dataset.readerBaikeWorkIndex);return ranges.find(range=>itemIndex>=range.start&&itemIndex<range.end)?.index;}).filter(Number.isInteger));
+      for(const slideIndex of slideIndexes){if(!root.isConnected)break;await loadRepresentativeSlide(target,slideIndex);}
+    };
+    const enqueue=(target,sources=target.sourceNodes)=>{
+      if(target.type.kind==='representative-work-carousel'){
+        void enqueueVisibleRepresentativeSlides(target);
+        return;
+      }
+      if(target.type.kind==='videos'){
+        for(const source of sources){if(!source||queuedSources.has(source))continue;queuedSources.add(source);queue.push({...target,sourceNodes:[source]});}
+        sortQueue();
+      }else if(!queuedBlocks.has(target.readerBlock)){
+        queuedBlocks.add(target.readerBlock);queue.push(target);sortQueue();
+      }
+      void pump();
+    };
+    const prepareSourceTarget=async({node,sourceNodes,type})=>{
+      if(!root.isConnected)return;
+      const sourceY=window.scrollY;
+      let movedSlides=0;
+      let movedAlbumSlides=0;
+      let albumOriginalIndex=null;
+      try{
+        if(type.kind==='videos'){
+          for(const cover of sourceNodes){
+            if(!root.isConnected)break;
+            cover.scrollIntoView({block:'center',behavior:'instant'});
+            await twoFrames();
+            await delay(110);
+          }
+        }else{
+          node.scrollIntoView({block:'center',behavior:'instant'});
+          await twoFrames();
+          await delay(100);
+        if(!node.querySelector('img')&&(type.kind==='gallery'||type.kind==='module-album-card'||type.kind==='module-album-row'||type.kind==='module-gallery-carousel'||type.kind==='module-work-carousel'&&type.type==='musicAlbum'))await waitForSourceImages(node,1000);
+        }
+        if(type.kind==='module-gallery-carousel'){
+          const gallery=node.querySelector('[class^="galleryWrapper_"]');
+          const slides=[...node.querySelectorAll('[class^="swiperLi_"]')].filter(slide=>!slide.closest('.swiper-slide-duplicate'));
+          const next=gallery?.querySelector('[class^="swiperNextBtn_"]');
+          const previous=gallery?.querySelector('[class^="swiperPrevBtn_"]');
+          const maxMoves=Math.min(8,Math.ceil(slides.length/3));
+          while(movedSlides<maxMoves&&root.isConnected&&next&&!next.classList.contains('disabled_IpL_G')){
+            next.click();movedSlides++;
+            await delay(150);
+          }
+          while(movedSlides>0&&previous&&!previous.classList.contains('disabled_IpL_G')){
+            previous.click();movedSlides--;
+            await delay(80);
+          }
+        }
+        if(type.kind==='module-work-carousel'&&type.type==='musicAlbum'){
+          const slides=[...node.querySelectorAll('.swiper-slide')].filter(slide=>!slide.classList.contains('swiper-slide-duplicate'));
+          const next=node.querySelector('[class*="Next_"]'),previous=node.querySelector('[class*="Prev_"]');
+          const activeIndex=()=>Math.max(0,slides.findIndex(slide=>slide.classList.contains('swiper-slide-active')));
+          albumOriginalIndex=activeIndex();
+          const maxMoves=Math.min(Math.max(0,slides.length-1),8);
+          while(movedAlbumSlides<maxMoves&&root.isConnected&&next&&!next.classList.contains('swiper-button-disabled')){
+            next.click();movedAlbumSlides++;
+            await delay(160);
+            const active=slides[activeIndex()];
+            if(active)await waitForSourceImages(active,800);
+          }
+          while(movedAlbumSlides>0&&root.isConnected&&previous&&!previous.classList.contains('swiper-button-disabled')){
+            previous.click();movedAlbumSlides--;await delay(100);
+          }
+          while(root.isConnected&&activeIndex()>albumOriginalIndex&&previous&&!previous.classList.contains('swiper-button-disabled')){previous.click();await delay(100);}
+          while(root.isConnected&&activeIndex()<albumOriginalIndex&&next&&!next.classList.contains('swiper-button-disabled')){next.click();await delay(100);}
+          movedAlbumSlides=0;
+        }
+      }catch(_){}
+      finally{
+        while(movedSlides>0){
+          const previous=node.querySelector('[class^="swiperPrevBtn_"]');
+          if(!previous||previous.classList.contains('disabled_IpL_G'))break;
+          previous.click();movedSlides--;await delay(70);
+        }
+        if(albumOriginalIndex!==null){
+          let active=[...node.querySelectorAll('.swiper-slide')].filter(slide=>!slide.classList.contains('swiper-slide-duplicate')).findIndex(slide=>slide.classList.contains('swiper-slide-active'));
+          while(active>albumOriginalIndex&&root.isConnected){const previous=node.querySelector('[class*="Prev_"]');if(!previous||previous.classList.contains('swiper-button-disabled'))break;previous.click();await delay(90);active=[...node.querySelectorAll('.swiper-slide')].filter(slide=>!slide.classList.contains('swiper-slide-duplicate')).findIndex(slide=>slide.classList.contains('swiper-slide-active'));}
+          while(active>=0&&active<albumOriginalIndex&&root.isConnected){const next=node.querySelector('[class*="Next_"]');if(!next||next.classList.contains('swiper-button-disabled'))break;next.click();await delay(90);active=[...node.querySelectorAll('.swiper-slide')].filter(slide=>!slide.classList.contains('swiper-slide-duplicate')).findIndex(slide=>slide.classList.contains('swiper-slide-active'));}
+        }
+        window.scrollTo({top:sourceY,behavior:'instant'});
+      }
+    };
+    const pump=async()=>{
+      if(running)return;
+      running=true;
+      try{
+        while(queue.length&&root.isConnected&&!closed){
+          sortQueue();
+          const target=queue.shift();
+          await prepareSourceTarget(target);
+          await delay(110);
+        }
+      }finally{running=false;}
+    };
+    const intersectionObserver=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(!entry.isIntersecting)return;
+        const target=targets.find(item=>item.readerBlock===entry.target);
+        if(!target)return;
+        enqueue(target);
+      });
+    },{root:scrollArea,rootMargin:'520px 0px'});
+    targets.forEach(({readerBlock})=>intersectionObserver.observe(readerBlock));
+    const videoViewport=root.querySelector('.reader-baike-video-viewport');
+    const videoTarget=targets.find(target=>target.type.kind==='videos');
+    if(videoViewport&&videoTarget){
+      let scheduled=false;
+      videoViewport.addEventListener('scroll',()=>{
+        if(scheduled)return;
+        scheduled=true;
+        requestAnimationFrame(()=>{
+          scheduled=false;
+          const area=videoViewport.getBoundingClientRect();
+          const visible=[...videoViewport.querySelectorAll('[data-reader-video-slide]')].filter(slide=>{const rect=slide.getBoundingClientRect();return rect.right>area.left+1&&rect.left<area.right-1;});
+          const covers=visible.map(slide=>videoTarget.type.covers[Number(slide.dataset.readerVideoSlide)]).filter(Boolean);
+          if(covers.length)enqueue(videoTarget,covers);
+        });
+      },{passive:true});
+    }
+    targets.filter(target=>target.type.kind==='representative-work-carousel').forEach(target=>{
+      const viewport=target.readerBlock.querySelector('.reader-baike-carousel-viewport');
+      if(!viewport)return;
+      let timer=0;
+      const schedule=()=>{clearTimeout(timer);timer=setTimeout(()=>void enqueueVisibleRepresentativeSlides(target),100);};
+      viewport.addEventListener('scroll',schedule,{passive:true});
+      viewport.addEventListener('scrollend',schedule,{passive:true});
+    });
+    const removalObserver=new MutationObserver(()=>{
+      if(root.isConnected)return;
+      closed=true;queue.length=0;
+      intersectionObserver.disconnect();mutationObserver.disconnect();removalObserver.disconnect();
+    });
+    removalObserver.observe(document.documentElement,{childList:true});
+  }
+
   function readerSemanticCellColor(cell) {
     const css=getComputedStyle(cell);const match=css.backgroundColor.match(/^rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)(?:[, /]+([\d.]+))?\)$/);
     if(!match||match[4]!==undefined&&Number(match[4])<.95)return '';
@@ -3963,17 +4840,108 @@
     return ` data-reader-source-color="true" style="--reader-cell-bg:rgb(${rgb.join(',')});--reader-cell-ink:${ink}"`;
   }
 
-  function readerTableHtml(node, nodeIndex, mediaEntries, mediaIndexByNode, renderStyle) {
-    const rows = Array.from(node.rows || []).filter(row => {
-      if(row.closest("table")!==node)return false;
+  function readerBaikePagerControlLabel(node) {
+    return String(node?.getAttribute?.('aria-label')||node?.getAttribute?.('title')||node?.textContent||'').replace(/\s+/g,' ').trim();
+  }
+
+  function readerBaikePagerControls(pager) {
+    return [...(pager?.querySelectorAll?.('a,button,[role="button"]')||[])];
+  }
+
+  function readerBaikePagerPageButtons(pager) {
+    return readerBaikePagerControls(pager).filter(control=>/^\d+$/.test(readerBaikePagerControlLabel(control)));
+  }
+
+  function readerBaikeFindNativePager(container) {
+    if(!container?.querySelectorAll)return null;
+    const known=container.matches?.('.pager__ZuDR,[class*="innerPager_"]')?container:container.querySelector('.pager__ZuDR,[class*="innerPager_"]');
+    if(known)return known;
+    const isPagerCandidate=candidate=>{
+      if(!candidate||candidate.matches?.('table')||candidate.querySelector?.('table'))return false;
+      const controls=readerBaikePagerControls(candidate);
+      if(controls.length<4)return false;
+      const labels=controls.map(readerBaikePagerControlLabel);
+      const hasPageNumbers=labels.some(label=>/^\d+$/.test(label));
+      const hasPrevious=labels.some(label=>/上一页|上一頁|\bprev(?:ious)?\b|^‹$|^<$/i.test(label));
+      const hasNext=labels.some(label=>/下一页|下一頁|\bnext\b|^›$|^>$/i.test(label));
+      const hasAllMode=labels.some(label=>/全部显示|全部顯示|显示全部|顯示全部|\ball\b/i.test(label));
+      const hasDefaultMode=labels.some(label=>/默认显示|默認顯示|分页查看|分页显示|分頁查看|default/i.test(label));
+      return hasPageNumbers&&hasPrevious&&hasNext&&hasAllMode&&hasDefaultMode;
+    };
+    const candidates=new Set();
+    const actionControls=readerBaikePagerControls(container).filter(control=>/上一页|上一頁|下一页|下一頁|\bprev(?:ious)?\b|\bnext\b|全部显示|全部顯示|显示全部|顯示全部|默认显示|默認顯示|分页查看|分页显示|分頁查看|default/i.test(readerBaikePagerControlLabel(control)));
+    for(const control of actionControls){
+      let ancestor=control.parentElement;
+      for(let depth=0;ancestor&&ancestor!==container&&depth<7;depth+=1,ancestor=ancestor.parentElement){
+        if(ancestor.matches('nav,[role="group"],div,ul,ol'))candidates.add(ancestor);
+      }
+    }
+    if(container.matches?.('nav,[role="group"],div,ul,ol'))candidates.add(container);
+    const valid=[...candidates].filter(isPagerCandidate);
+    valid.sort((left,right)=>left.querySelectorAll('*').length-right.querySelectorAll('*').length);
+    return valid[0]||null;
+  }
+
+  function readerBaikePagerModeButton(pager,mode) {
+    const pattern=mode==='all'?/全部显示|全部顯示|显示全部|顯示全部|\ball\b/i:/默认显示|默認顯示|分页查看|分页显示|分頁查看|default/i;
+    return readerBaikePagerControls(pager).find(control=>{
+      const classes=String(control.className||'');
+      return pattern.test(readerBaikePagerControlLabel(control))||(mode==='all'?/(?:^|\s)all(?:_|\s|$)/i.test(classes):/(?:^|\s)default(?:_|\s|$)/i.test(classes));
+    })||null;
+  }
+
+  function readerTableSourceRows(table) {
+    return Array.from(table?.rows||[]).filter(row=>{
+      if(row.closest('table')!==table)return false;
+      if(readerBaikeFindNativePager(row))return false;
       const hasText = String(row.textContent || "").trim().length > 0;
       const hasInlineMedia = Array.from(row.querySelectorAll?.("img") || []).some(image => !!getReaderImageInfo(image).src);
-      return hasText || hasInlineMedia;
+      const hasEmbeddedMedia=[...row.querySelectorAll?.('audio,video,iframe,a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".oga" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]')||[]].some(node=>!!readerEmbeddedMediaElementHtml(node));
+      return hasText || hasInlineMedia || hasEmbeddedMedia;
+    });
+  }
+
+  function readerCloneTableRows(rows) {
+    return rows.map(row=>{
+      const clone=row.cloneNode(true);
+      const sourceCells=[...row.cells],cloneCells=[...clone.cells];
+      sourceCells.forEach((cell,index)=>{if(cloneCells[index])cloneCells[index].style.textAlign=getComputedStyle(cell).textAlign;});
+      return clone;
+    });
+  }
+
+  function readerBaikeTablePaginationHtml(state,nodeIndex) {
+    if(!state)return '';
+    const all=state.allMode;
+    return `<nav class="reader-baike-table-pagination" data-reader-baike-table-pagination="${nodeIndex}" aria-label="表格分页"${state.busy?' aria-busy="true"':''}><button type="button" data-reader-baike-table-action="previous" aria-label="上一页" ${all||state.currentPage<=1||state.busy?'disabled':''}>上一页</button><span aria-live="polite">${state.busy?'正在读取…':all?'已显示全部内容':`第 ${state.currentPage} / ${state.pageCount} 页`}</span><button type="button" data-reader-baike-table-action="next" aria-label="下一页" ${all||state.currentPage>=state.pageCount||state.busy?'disabled':''}>下一页</button><button type="button" class="reader-baike-table-all-toggle" data-reader-baike-table-action="${all?'pages':'all'}" ${state.busy?'disabled':''}>${all?'分页查看':'全部显示'}</button></nav>`;
+  }
+
+  function readerTableHtml(node, nodeIndex, mediaEntries, mediaIndexByNode, renderStyle, lazyTableSources=null, paginationState=null) {
+    const suppliedRows=Array.isArray(paginationState?.renderRows)?paginationState.renderRows:null;
+    const rows = (suppliedRows||Array.from(node.rows || [])).filter(row => {
+      if(!suppliedRows&&row.closest("table")!==node)return false;
+      if(readerBaikeFindNativePager(row))return false;
+      const hasText = String(row.textContent || "").trim().length > 0;
+      const hasInlineMedia = Array.from(row.querySelectorAll?.("img") || []).some(image => !!getReaderImageInfo(image).src);
+      const hasEmbeddedMedia=[...row.querySelectorAll?.('audio,video,iframe,a[href$=".mp4" i],a[href$=".webm" i],a[href$=".ogv" i],a[href$=".mp3" i],a[href$=".wav" i],a[href$=".ogg" i],a[href$=".oga" i],a[href$=".m4a" i],a[href$=".opus" i],a[href$=".flac" i]')||[]].some(mediaNode=>!!readerEmbeddedMediaElementHtml(mediaNode));
+      return hasText || hasInlineMedia || hasEmbeddedMedia;
     });
     const caption = String(node.querySelector("caption")?.textContent || "").replace(/\s+/g," ").trim();
     const className = typeof node.className === "string" ? node.className : "";
     const isInfobox = /(?:^|\s)(?:infobox|sidebar)(?:\s|$)/i.test(className) || node.hasAttribute("data-infobox");
+    const baike = location.hostname === 'baike.baidu.com';
     const wikipedia = /(?:^|\.)wikipedia\.org$/i.test(location.hostname);
+    const sourceTextLength=String(suppliedRows?rows.map(row=>row.textContent||'').join(' '):node.textContent||"").trim().length;
+    const overTableBudget=rows.length>80||sourceTextLength>12000;
+    const columnCount = rows.reduce((largest, row) => {
+      const count = Array.from(row.cells || []).reduce((sum, cell) => sum + Math.max(1, Number(cell.getAttribute("colspan")) || 1), 0);
+      return Math.max(largest, count);
+    }, 0);
+    if(baike&&overTableBudget&&lazyTableSources&&!paginationState&&!isInfobox){
+      const countLabel=`${rows.length} 行 · ${columnCount} 列`;
+      lazyTableSources.set(nodeIndex,{node,mediaEntries,mediaIndexByNode,renderStyle});
+      return `<section class="reader-table-block reader-data-table reader-baike-table" id="reader_table_${nodeIndex}"><div class="reader-table-heading"><span>${escapeHtml(caption||"长表格资料")}</span><small>${countLabel}</small></div><details class="reader-table-details" data-reader-table-reason="complete-data" data-reader-table-lazy="true"><summary><span>展开完整数据表</span><small>${countLabel}</small></summary><div class="reader-table-lazy-placeholder" role="status">展开后加载完整数据表</div></details></section>`;
+    }
     const firstCellLabelHolder=document.createElement("div");
     firstCellLabelHolder.innerHTML=readerInlineHtml(rows[0]?.cells?.[0]);
     firstCellLabelHolder.querySelectorAll("br").forEach(node=>node.replaceWith(document.createTextNode(" ")));
@@ -4000,10 +4968,6 @@
       return `<section class="reader-table-block reader-infobox ${flowClass}" id="reader_table_${nodeIndex}"><div class="reader-table-heading"><span>${escapeHtml(label)}</span><small>${rows.length} 项</small></div><div class="reader-fact-list">${factRows}</div></section>`;
     }
 
-    const columnCount = rows.reduce((largest, row) => {
-      const count = Array.from(row.cells || []).reduce((sum, cell) => sum + Math.max(1, Number(cell.getAttribute("colspan")) || 1), 0);
-      return Math.max(largest, count);
-    }, 0);
     const representativeRows = rows
       .map(row => ({
         row,
@@ -4045,8 +5009,7 @@
       return `<tr>${cellHtml}</tr>`;
     }).join("");
     const sourceCollapsed = wikipedia && node.classList.contains("mw-collapsed");
-    const overTableBudget = rows.length > 80 || String(node.textContent || "").trim().length > 12000;
-    const useDisclosure = sourceCollapsed || (wikipedia && overTableBudget);
+    const useDisclosure = !paginationState&&(sourceCollapsed || ((wikipedia || baike) && overTableBudget));
     const disclosureReason = sourceCollapsed ? "source-collapsed" : "complete-data";
     const tableScroll = `<div class="reader-table-scroll" tabindex="0" role="region" aria-label="${escapeHtml(label)}"><table class="reader-semantic-table" style="--reader-table-min-width:${tableMinWidth}px">${colgroup}<tbody>${tableRows}</tbody></table></div>`;
     const disclosureHtml = useDisclosure
@@ -4054,13 +5017,202 @@
       : tableScroll;
     const chartData = useDisclosure ? null : readerChartData(rows);
     const chartHtml = chartData ? `<details class="reader-chart" data-reader-chart="${escapeHtml(JSON.stringify(chartData))}"><summary>数据图 <span>查看这组数值</span></summary><div class="reader-chart-types" role="group" aria-label="图表类型"><button type="button" data-chart-type="bar" aria-pressed="true">柱状</button><button type="button" data-chart-type="line" aria-pressed="false">折线</button><button type="button" data-chart-type="pie" aria-pressed="false">占比</button></div><div class="reader-chart-output"></div><p class="reader-chart-caption" aria-live="polite"></p></details>` : "";
-    return `<section class="reader-table-block reader-data-table" id="reader_table_${nodeIndex}"><div class="reader-table-heading"><span>${escapeHtml(label)}</span><small>${rows.length} 行 · ${columnCount} 列</small></div>${disclosureHtml}${chartHtml}</section>`;
+    const paginationHtml=readerBaikeTablePaginationHtml(paginationState,nodeIndex);
+    return `<section class="reader-table-block reader-data-table${baike?' reader-baike-table':''}${paginationState?' reader-baike-paginated-table':''}" id="reader_table_${nodeIndex}"><div class="reader-table-heading"><span>${escapeHtml(label)}</span><small>${rows.length} 行 · ${columnCount} 列</small></div>${disclosureHtml}${paginationHtml}${chartHtml}</section>`;
+  }
+
+  function initializeReaderBaikeTablePagination(root,paginationSources,mediaEntries,mediaIndexByNode,renderStyle) {
+    if(!paginationSources?.size)return;
+    const states=[...paginationSources.values()];
+    const currentNativePage=state=>{
+      const pager=readerBaikeFindNativePager(state.module);
+      const selected=readerBaikePagerPageButtons(pager).find(item=>item.classList.contains('selected_J2i42')||[...item.classList].some(name=>name.includes('selected'))||item.getAttribute('aria-current')==='page');
+      const page=Number(readerBaikePagerControlLabel(selected));
+      return Number.isFinite(page)&&page>0?page:null;
+    };
+    const nativeSignature=state=>readerTableSourceRows(state.node).map(row=>String(row.textContent||'').trim()).join('\u241f');
+    const waitForNativeState=(state,predicate,previousSignature='')=>new Promise(resolve=>{
+      let done=false;
+      const finish=()=>{if(done)return;done=true;observer.disconnect();clearTimeout(timer);resolve();};
+      const check=()=>{if(predicate()&&nativeSignature(state)!==previousSignature)finish();};
+      const observer=new MutationObserver(check);
+      observer.observe(state.module,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','aria-current']});
+      const timer=setTimeout(finish,1500);
+      check();
+    });
+    const clickNativePage=async(state,page)=>{
+      const pager=readerBaikeFindNativePager(state.module);
+      const link=readerBaikePagerPageButtons(pager).find(item=>Number(readerBaikePagerControlLabel(item))===page);
+      if(!link||currentNativePage(state)===page)return;
+      const previousSignature=nativeSignature(state);
+      const wait=waitForNativeState(state,()=>currentNativePage(state)===page,previousSignature);
+      link.click();
+      await wait;
+    };
+    const clickNativeMode=async(state,mode)=>{
+      const pager=readerBaikeFindNativePager(state.module);
+      const button=readerBaikePagerModeButton(pager,mode);
+      const isSelected=()=>!!button&&(button.classList.contains('selected_J2i42')||[...button.classList].some(name=>name.includes('selected'))||button.getAttribute('aria-pressed')==='true');
+      if(!button||isSelected())return;
+      const previousSignature=nativeSignature(state);
+      const wait=waitForNativeState(state,()=>isSelected(),previousSignature);
+      button.click();
+      await wait;
+    };
+    const restoreNativePage=async(state,page)=>{
+      const pager=readerBaikeFindNativePager(state.module);
+      const allButton=readerBaikePagerModeButton(pager,'all');
+      const allMode=!!allButton&&(allButton.classList.contains('selected_J2i42')||[...allButton.classList].some(name=>name.includes('selected'))||allButton.getAttribute('aria-pressed')==='true');
+      if(allMode)await clickNativeMode(state,'default');
+      if(page&&currentNativePage(state)!==page)await clickNativePage(state,page);
+    };
+    const readPageRows=state=>readerCloneTableRows(readerTableSourceRows(state.node));
+    const ensurePageRows=async(state,page)=>{
+      if(state.pageRows.has(page))return state.pageRows.get(page);
+      const originalPage=currentNativePage(state)||state.sourcePageAtOpen;
+      await clickNativePage(state,page);
+      const rows=readPageRows(state);
+      await restoreNativePage(state,originalPage);
+      state.pageRows.set(page,rows);
+      return rows;
+    };
+    const ensureAllRows=async state=>{
+      if(state.allRows)return state.allRows;
+      const originalPage=currentNativePage(state)||state.sourcePageAtOpen;
+      await clickNativeMode(state,'all');
+      const rows=readPageRows(state);
+      await restoreNativePage(state,originalPage);
+      state.allRows=rows;
+      return rows;
+    };
+    const renderState=(state,rows)=>{
+      state.busy=false;
+      state.renderRows=rows||state.pageRows.get(state.currentPage)||state.pageRows.get(state.sourcePageAtOpen)||[];
+      const table=state.module.querySelector('table')||state.node;
+      const template=document.createElement('template');
+      template.innerHTML=readerTableHtml(table,state.nodeIndex,mediaEntries,mediaIndexByNode,renderStyle,null,state).trim();
+      const replacement=template.content.firstElementChild;
+      const current=root.querySelector(`#reader_table_${state.nodeIndex}`);
+      if(replacement&&current)current.replaceWith(replacement);
+    };
+    root.addEventListener('click',async event=>{
+      const button=event.target.closest?.('[data-reader-baike-table-action]');
+      if(!button||!root.contains(button))return;
+      const pagination=button.closest('[data-reader-baike-table-pagination]');
+      const index=Number(pagination?.dataset.readerBaikeTablePagination);
+      const state=states.find(item=>item.nodeIndex===index);
+      if(!state||state.busy)return;
+      const action=button.dataset.readerBaikeTableAction;
+      state.busy=true;
+      pagination.querySelectorAll('button').forEach(control=>control.disabled=true);
+      pagination.setAttribute('aria-busy','true');
+      const status=pagination.querySelector('[aria-live="polite"]');
+      if(status)status.textContent='正在读取…';
+      try{
+        if(action==='all'){
+          const rows=await ensureAllRows(state);
+          state.allMode=true;
+          renderState(state,rows);
+        }else if(action==='pages'){
+          state.allMode=false;
+          renderState(state,state.pageRows.get(state.currentPage)||state.pageRows.get(state.sourcePageAtOpen));
+        }else{
+          const nextPage=Math.max(1,Math.min(state.pageCount,state.currentPage+(action==='next'?1:-1)));
+          const rows=await ensurePageRows(state,nextPage);
+          state.currentPage=nextPage;
+          state.allMode=false;
+          renderState(state,rows);
+        }
+      }catch(error){
+        console.warn('Failed to update Baidu table page:',error);
+        state.busy=false;
+        renderState(state,state.allMode?state.allRows:state.pageRows.get(state.currentPage)||state.pageRows.get(state.sourcePageAtOpen));
+      }
+    });
+  }
+
+  function collectReaderBaikeTablePaginationSources(contentNodes) {
+    const sources=new Map();
+    if(location.hostname!=='baike.baidu.com')return sources;
+    contentNodes.forEach((node,nodeIndex)=>{
+      if(readerBaikeBlocks.get(node)?.kind!=='table'||node.tagName!=='TABLE')return;
+      let owner=node.closest('[data-module-type]');
+      if(!readerBaikeFindNativePager(owner)){
+        owner=null;
+        for(let ancestor=node.parentElement;ancestor&&ancestor!==document.body;ancestor=ancestor.parentElement){
+          if(readerBaikeFindNativePager(ancestor)&&ancestor.querySelectorAll?.('table').length===1){owner=ancestor;break;}
+        }
+      }
+      const pager=readerBaikeFindNativePager(owner);
+      if(!pager)return;
+      const pageNumbers=readerBaikePagerPageButtons(pager).map(link=>Number(readerBaikePagerControlLabel(link))).filter(page=>Number.isInteger(page)&&page>0);
+      const pageCount=pageNumbers.length?Math.max(...pageNumbers):0;
+      if(pageCount<2)return;
+      const selected=readerBaikePagerPageButtons(pager).find(link=>link.classList.contains('selected_J2i42')||[...link.classList].some(name=>name.includes('selected'))||link.getAttribute('aria-current')==='page');
+      const selectedNumber=Number(readerBaikePagerControlLabel(selected));
+      const currentPage=Number.isInteger(selectedNumber)&&selectedNumber>0?selectedNumber:Math.min(...pageNumbers);
+      const initialRows=readerCloneTableRows(readerTableSourceRows(node));
+      sources.set(node,{node,module:owner,nodeIndex,pageCount,currentPage,sourcePageAtOpen:currentPage,pageRows:new Map([[currentPage,initialRows]]),allRows:null,allMode:false,busy:false,renderRows:initialRows});
+    });
+    return sources;
+  }
+
+  function initializeReaderBaikeLazyTables(root, tableSources) {
+    if(!tableSources?.size)return;
+    for(const [nodeIndex,source] of tableSources){
+      const section=root.querySelector(`#reader_table_${nodeIndex}`);
+      const details=section?.querySelector('details[data-reader-table-lazy="true"]');
+      if(!section||!details)continue;
+      details.addEventListener('toggle',()=>{
+        if(!details.open||details.dataset.readerTableLoading==='true')return;
+        details.dataset.readerTableLoading='true';
+        const placeholder=details.querySelector('.reader-table-lazy-placeholder');
+        if(placeholder)placeholder.textContent='正在整理完整数据表…';
+        requestAnimationFrame(()=>{
+          if(!root.isConnected||!section.isConnected)return;
+          try{
+            const template=document.createElement('template');
+            template.innerHTML=readerTableHtml(source.node,nodeIndex,source.mediaEntries,source.mediaIndexByNode,source.renderStyle).trim();
+            const replacement=template.content.firstElementChild;
+            const expanded=replacement?.querySelector('.reader-table-details');
+            if(expanded)expanded.open=true;
+            if(replacement)section.replaceWith(replacement);
+          }finally{tableSources.delete(nodeIndex);}
+        });
+      });
+    }
+  }
+
+  function showReaderPreparingIndicator() {
+    const host=document.createElement('div');
+    host.id='raccoon-reader-preparing';
+    host.setAttribute('role','status');
+    host.setAttribute('aria-live','polite');
+    host.setAttribute('aria-label','正在整理页面内容');
+    host.style.setProperty('position','fixed','important');
+    host.style.setProperty('top','18px','important');
+    host.style.setProperty('left','50%','important');
+    host.style.setProperty('transform','translateX(-50%)','important');
+    host.style.setProperty('z-index','2147483647','important');
+    host.style.setProperty('pointer-events','none','important');
+    const shadow=host.attachShadow({mode:'open'});
+    shadow.innerHTML='<style>:host{all:initial}.pill{display:flex;align-items:center;gap:10px;padding:11px 16px;border:1px solid rgba(255,255,255,.16);border-radius:999px;background:rgba(35,40,48,.94);box-shadow:0 8px 28px rgba(0,0,0,.22);color:#fff;font:500 14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;white-space:nowrap}.spinner{width:15px;height:15px;box-sizing:border-box;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation:none}}</style><div class="pill"><span class="spinner" aria-hidden="true"></span><span>正在整理页面，马上进入阅读模式…</span></div>';
+    document.documentElement.appendChild(host);
+    return host;
   }
 
   async function openReaderMode() {
     if (document.getElementById("raccoon-reader-root")) return;
+    const preparingIndicator=showReaderPreparingIndicator();
+    try{
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
-    await Promise.all([ensureReaderStylesheet(), warmReaderLazyContent()]);
+      if(location.hostname==='baike.baidu.com'){
+        // Baidu creates media as the reader reaches each section. Do not scroll
+        // through the entire source page before opening; its lazy modules are
+        // copied from their current/deferred image URLs and loaded by the reader.
+        await ensureReaderStylesheet();
+      }else await Promise.all([ensureReaderStylesheet(), warmReaderLazyContent()]);
     readerImageInfoCache = new WeakMap();
     readerBaikeBlocks = new WeakMap();
     readerCompositeNodes = new WeakSet();
@@ -4089,10 +5241,45 @@
       if (index > 12 || readerHeadingLevel(node) < 1 || readerHeadingLevel(node) > 3) return true;
       return !readerHeadingMatchesTitle(readerOriginalTextPreservingWhitespace(node).trim(), title);
     });
+    if(location.hostname==='baike.baidu.com'){
+      for(let index=0;index<contentNodes.length;index++){
+        const heading=contentNodes[index];
+        const label=readerOriginalTextPreservingWhitespace(heading).replace(/\s+/g,' ').trim();
+        if(!/^(?:参考资料|参考文献|引用来源|参考来源)\s*\[?\d*\]?$/u.test(label))continue;
+        const level=readerHeadingLevel(heading)||2;
+        let end=index+1;
+        while(end<contentNodes.length){
+          const candidate=contentNodes[end];
+          const nextLevel=readerHeadingLevel(candidate);
+          if(nextLevel&&nextLevel<=level)break;
+          const classHint=String(candidate.className||'');
+          const referenceLike=candidate.matches?.('li,dd')||candidate.querySelector?.('a[href]')||/(?:reference|refer|citation|cite)/i.test(classHint);
+          if(!referenceLike)break;
+          end++;
+        }
+        const items=contentNodes.slice(index+1,end).filter(node=>getHostOriginalText(node).trim()||node.querySelector?.('a[href]'));
+        if(items.length<2)continue;
+        const group=document.createElement('div');
+        readerBaikeBlocks.set(group,{kind:'references',items});
+        contentNodes.splice(index,end-index,group);
+      }
+    }
     const redditComments = redditThread ? [...document.querySelectorAll('shreddit-comment,.commentarea .thing.comment')] : [];
     if (redditThread) {
       const post=document.querySelector('shreddit-post,[data-testid="post-container"],.sitetable.linklisting .thing.link');
       if(post)contentNodes=collectReaderContentNodes(post);
+    }
+    const baikeSourceKeys=new WeakMap();
+    if(location.hostname==='baike.baidu.com'){
+      let nextSourceKey=0;
+      const assignSourceKey=node=>{if(node&&!baikeSourceKeys.has(node))baikeSourceKeys.set(node,String(++nextSourceKey));};
+      for(const node of contentNodes){
+        const type=readerBaikeBlocks.get(node);
+        if(!type)continue;
+        assignSourceKey(node);
+        node.querySelectorAll?.('[data-module-type="album"],[class^="swiperLi_"],[class^="worksItem_"],[class^="albumItem_"],[class^="movieItem_"],[class^="magazineItem_"]').forEach(assignSourceKey);
+        if(type.kind==='videos')type.covers.forEach(assignSourceKey);
+      }
     }
     const mediaEntries = collectReaderMediaEntries(contentNodes);
     const mediaIndexByNode = new WeakMap();
@@ -4141,6 +5328,7 @@
     const articleLanguage = /^[a-z]{2,8}(?:-[a-z0-9]+)*$/i.test(declaredLanguage || "") ? declaredLanguage : (/[ぁ-ゟ゠-ヿ]/u.test(sampleText) ? "ja" : /[가-힣]/u.test(sampleText) ? "ko" : /[一-鿿]/u.test(sampleText) ? "zh-CN" : "en");
     root.dataset.articleLanguage = articleLanguage;
     root.setAttribute("data-table-style", savedTableStyle);
+    root.dataset.readerFirstLineIndent = String(currentSettings.readerFirstLineIndent === true);
     const initialReaderView = isPageTranslated
       ? (currentSettings.displayMode === "replace" ? "trans" : "bilingual")
       : "orig";
@@ -4183,6 +5371,8 @@
       : latinWordCount + cjkCharacterCount;
     const readerPunctuationCount = (readerTextCorpus.match(/[\p{P}\p{S}]/gu) || []).length;
     const readerBlockCount = contentNodes.filter(node => !["IMG", "HR"].includes(node.tagName)).length;
+    const lazyBaikeTableSources=new Map();
+    const baikeTablePaginationSources=collectReaderBaikeTablePaginationSources(contentNodes);
 
     root.innerHTML = `
       <div class="reader-top-progress-bar" id="reader-top-progress-bar"></div>
@@ -4259,7 +5449,7 @@
             </div>
             <div class="reader-content" id="reader-content">
               ${contentNodes.map((node, idx) => {
-                if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle,mediaEntries,mediaIndexByNode);
+                if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle,mediaEntries,mediaIndexByNode,baikeSourceKeys,lazyBaikeTableSources,baikeTablePaginationSources);
                 if(/(^|\.)wikipedia\.org$/.test(location.hostname)&&node.matches('.navbox,.sistersitebox'))return readerSupplementHtml(node,idx,savedRenderStyle);
                 if(readerCompositeNodes.has(node))return `<div id="r_${idx}">${readerCompositeHtml(node)}</div>`;
                 if(readerIsWikipediaMath(node))return `<div class="reader-math-block" id="r_${idx}">${readerMathHtml(node)}</div>`;
@@ -4270,27 +5460,21 @@
                   return readerMediaImageHtml(mediaEntries[mediaIndex], mediaIndex, inlineSide);
                 }
                 if (node.tagName === "FIGURE") return readerFigureHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle);
-                if (node.tagName === "TABLE") return readerTableHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle);
+                if (node.tagName === "TABLE") return readerTableHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle,lazyBaikeTableSources);
                 if (node.tagName === "DETAILS") return readerDetailsHtml(node, idx, savedRenderStyle);
                 if (["VIDEO", "AUDIO", "IFRAME"].includes(node.tagName) || (node.tagName === "A" && /\.(?:mp4|webm|ogv)(?:$|[?#])/i.test(node.href || ""))) return readerEmbeddedMediaHtml(node, idx);
                 if (node.tagName === "HR") return '<hr class="reader-content-divider" aria-hidden="true">';
+                if(node.tagName==='LI')return readerListItemHtml(node,idx,savedRenderStyle);
                 const headingLevel = readerHeadingLevel(node);
                 const isHeading = headingLevel > 0;
                 const isFigcaption = node.tagName === "FIGCAPTION";
                 const isCode = node.tagName === "PRE" && !(node.textContent.length>600&&!node.querySelector("code")&&/gutenberg\.org|wikisource\.org|marxists\.org/.test(location.hostname));
                 const isQuote = node.tagName === "BLOCKQUOTE" || !!node.closest("blockquote");
-                const isListItem = node.tagName === "LI";
-                const wrapperClass = isCode ? "reader-code-block" : isQuote ? "reader-blockquote" : isListItem ? "reader-list-block" : "";
-                let listMarker="";
-                if(isListItem&&node.parentElement?.tagName==='OL'){
-                  const siblings=[...node.parentElement.children].filter(el=>el.tagName==='LI'),reverse=node.parentElement.reversed;
-                  let number=node.parentElement.hasAttribute('start')?Number(node.parentElement.start):(reverse?siblings.length:1);
-                  for(const sibling of siblings){if(sibling.hasAttribute('value'))number=Number(sibling.value);if(sibling===node)break;number+=reverse?-1:1;}listMarker=String(number)+'.';
-                }
+                const wrapperClass = isCode ? "reader-code-block" : isQuote ? "reader-blockquote" : "";
                 const originalHtml = isCode
                   ? escapeHtml(readerOriginalTextPreservingWhitespace(node))
                   : (readerInlineHtml(node) || escapeHtml(getHostOriginalText(node)));
-                return readerPairHtml({ id:`r_${idx}`, originalHtml, headingLevel, pairClass:isFigcaption ? "reader-figcaption" : "", wrapperClass, listMarker, renderStyle:savedRenderStyle, canTranslateOne:!isFigcaption && !isCode });
+                return readerPairHtml({ id:`r_${idx}`, originalHtml, headingLevel, pairClass:isFigcaption ? "reader-figcaption" : "", wrapperClass, renderStyle:savedRenderStyle, canTranslateOne:!isFigcaption && !isCode });
               }).join("")}
             </div>
           </main>
@@ -4483,6 +5667,13 @@
             <button class="dock-mini-btn" id="drawer-btn-font-inc" title="放大字号">A+</button>
           </div>
 
+          <div class="reader-visibility-controls reader-reading-options" data-reader-tool-section="format">
+            <label for="reader-toggle-first-line-indent">
+              <span class="reader-indent-copy"><b>中文首行缩进</b><small>每段缩进两个汉字</small></span>
+              <span class="reader-info-switch"><input type="checkbox" id="reader-toggle-first-line-indent" ${currentSettings.readerFirstLineIndent === true ? "checked" : ""}><i aria-hidden="true"></i></span>
+            </label>
+          </div>
+
           <button type="button" class="reader-advanced-toggle" id="reader-advanced-toggle" aria-expanded="true" data-reader-tool-section="format">
             <span>高级排版</span>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m7 10 5 5 5-5"/></svg>
@@ -4539,9 +5730,13 @@
       </div>
     `;
 
+    initializeReaderBaikeLazyTables(root,lazyBaikeTableSources);
     document.documentElement.appendChild(root);
     readerRoot = root;
+    initializeReaderBaikeTablePagination(root,baikeTablePaginationSources,mediaEntries,mediaIndexByNode,savedRenderStyle);
     initializeReaderBaikeVideoCarousels(root);
+    initializeReaderBaikeCarousels(root);
+    if(location.hostname==='baike.baidu.com')initializeReaderBaikeProgressiveMedia(root,document.body,contentNodes,baikeSourceKeys,mediaEntries,mediaIndexByNode);
     const languageForText = text => {
       if (/[ぁ-ゟ゠-ヿ]/u.test(text)) return "ja";
       if (/[가-힣]/u.test(text)) return "ko";
@@ -4582,6 +5777,14 @@
     initializeReaderCharts(root);
     globalThis.JijianReaderShare?.attach(root, { title, url:location.href });
     isReaderOpen = true;
+    try {
+      readerHistoryToken=`reader-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      const state=history.state;
+      const nextState=state&&typeof state==='object'&&!Array.isArray(state)
+        ?{...state,__jijianReaderModeToken:readerHistoryToken}
+        :{__jijianReaderModeToken:readerHistoryToken,__jijianPreviousHistoryState:state};
+      history.pushState(nextState,'',location.href);
+    } catch (_) { readerHistoryToken=null; }
     root.addEventListener("click", (event) => {
       const target = event.target?.closest?.('.reader-trans-p[data-render-style="click-reveal"]');
       if (!target) return;
@@ -4791,6 +5994,9 @@
     const clearReaderSearchHit = () => root.querySelectorAll(".reader-search-hit").forEach(node => node.classList.remove("reader-search-hit"));
     const scrollReaderTarget = (targetEl, offset = 28) => {
       if (!targetEl) return;
+      for(let parent=targetEl.parentElement;parent;parent=parent.parentElement){
+        if(parent.tagName==='DETAILS')parent.open=true;
+      }
       root.classList.add("reader-navigation-measured");
       const vertical = root.getAttribute("data-writing-mode") === "vertical";
       const areaRect = scrollArea.getBoundingClientRect();
@@ -5155,6 +6361,14 @@
       if (paragraphVal) paragraphVal.textContent = `${val}px`;
       currentSettings.readerParagraphSpacing = val;
       chrome.runtime.sendMessage({ action: "UPDATE_SETTINGS", settings: { readerParagraphSpacing: val } });
+    });
+
+    const firstLineIndentToggle = root.querySelector("#reader-toggle-first-line-indent");
+    firstLineIndentToggle?.addEventListener("change", () => {
+      const enabled = !!firstLineIndentToggle.checked;
+      root.dataset.readerFirstLineIndent = String(enabled);
+      currentSettings.readerFirstLineIndent = enabled;
+      chrome.runtime.sendMessage({ action: "UPDATE_SETTINGS", settings: { readerFirstLineIndent: enabled } });
     });
 
     root.querySelectorAll(".reader-writing-btn").forEach(btn => {
@@ -5579,6 +6793,16 @@
       const sourceNodes=[node,...node.querySelectorAll('[id],a[name]'),node.closest('.footnote')];
       for(let ancestor=node.parentElement;ancestor;ancestor=ancestor.parentElement){sourceNodes.push(ancestor);if(ancestor===bestContainer)break;}
       sourceNodes.filter(Boolean).forEach(source=>{const id=source.id||source.getAttribute('name');if(id&&!sourceAnchors.has(id))sourceAnchors.set(id,target);});
+      if(readerBaikeBlocks.get(node)?.kind==='references'){
+        readerBaikeReferenceItems(node).forEach((item,itemIndex)=>{
+          const referenceTarget=target.querySelector(`#reader_baike_reference_${index}_${itemIndex}`);
+          if(!referenceTarget)return;
+          [item,...item.querySelectorAll('[id],a[name]')].forEach(source=>{
+            const id=source.id||source.getAttribute('name');
+            if(id&&!sourceAnchors.has(id))sourceAnchors.set(id,referenceTarget);
+          });
+        });
+      }
     });
     root.querySelector('#reader-content').addEventListener('click',event=>{const link=event.target.closest('a[href]');if(!link)return;try{const url=new URL(link.href);if(url.origin!==location.origin||url.pathname!==location.pathname||!url.hash)return;const target=sourceAnchors.get(decodeURIComponent(url.hash.slice(1)));if(target){event.preventDefault();scrollReaderTarget(target);}}catch{}});
     const copyLink = root.querySelector("#reader-copy-link");
@@ -5693,7 +6917,7 @@
             updateProgress();
           }
         };
-        await Promise.all(Array.from({ length:Math.min(2, chunks.length) }, () => worker()));
+        await Promise.all(Array.from({ length:Math.min(3, chunks.length) }, () => worker()));
         if (!root?.isConnected) return;
         if (failedReaderItems) {
           hasTriggeredTranslation = false;
@@ -5724,9 +6948,13 @@
     if (initialReaderView !== "orig") {
       requestReaderTranslation();
     }
+    }finally{
+      preparingIndicator.remove();
+    }
   }
 
-  function closeReaderMode() {
+  function closeReaderMode(options={}) {
+    const returnToSource=!!readerHistoryToken&&history.state?.__jijianReaderModeToken===readerHistoryToken&&!options.fromHistory;
     readerRoot?.cleanupReaderTranslation?.();
     readerRoot?.cleanupReaderNotes?.();
     readerRoot?.cleanupReaderVoices?.();
@@ -5749,6 +6977,8 @@
     }
     activeReaderViewController = null;
     isReaderOpen = false;
+    readerHistoryToken=null;
+    if(returnToSource){try{history.back();}catch(_){}}
   }
 
 

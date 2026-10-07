@@ -66,5 +66,6 @@ async page => {
   await page.locator(`[data-reader-table-style="${style}"]`).click();
   if(await colorCell.evaluate(cell=>getComputedStyle(cell).backgroundColor)!=='rgb(150, 20, 10)')throw Error('Source color changed in '+style+' style');
  }
+ await page.unrouteAll();
  return {source,reader:{...reader,tables:reader.tables.map(({text,...item})=>item),openedRows,wideScroll},passed:true,translation:'disabled; original view only'};
 }

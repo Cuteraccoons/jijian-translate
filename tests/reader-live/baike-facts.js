@@ -92,5 +92,6 @@ async page => {
   if (narrow.factLayout.contentWidth >= 700 || narrow.factLayout.display === "grid" || narrow.factLayout.cards.some((card, index, cards) => index > 0 && (card.x !== cards[0].x || card.y <= cards[index - 1].y))) throw Error(`Narrow facts should remain a single vertical list: ${JSON.stringify(narrow.factLayout)}`);
   if (wide.factLayout.contentWidth < 700 || wide.factLayout.display !== "grid" || wide.factLayout.columns !== 2) throw Error(`Wide Baidu facts should use two cards per row: ${JSON.stringify(wide.factLayout)}`);
   if (wide.factLayout.cards.length !== 7 || wide.factLayout.cards.some((card, index, cards) => card.valueX <= card.keyX || (index % 2 === 1 && (Math.abs(card.y - cards[index - 1].y) > 2 || card.x <= cards[index - 1].x)))) throw Error(`Wide facts should pair label/value columns inside left/right cards: ${JSON.stringify(wide.factLayout)}`);
+  await page.unrouteAll();
   return { status: response?.status(), source, narrow, wide, translation: "disabled; original view only" };
 }

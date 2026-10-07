@@ -1,13 +1,16 @@
 async page=>{
  const worker=page.context().serviceWorkers()[0]||await page.context().waitForEvent('serviceworker');
  await page.setViewportSize({width:1600,height:1000});
- await page.reload();await page.waitForTimeout(500);
+ await page.unrouteAll();
+ await worker.evaluate(async()=>{await chrome.storage.sync.set({readerView:'orig',autoTranslateEnabled:false,readerToolsCollapsed:false,readerFirstLineIndent:false});await chrome.storage.local.remove('readerNotes:https://reader-fixture.example/notes-polish');});
+ await page.route('https://reader-fixture.example/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Notes polish fixture</title></head><body><article><h1>Notes polish fixture</h1><p>Needle bridge <strong>keeps annotations editable</strong> across inline formatting while this paragraph remains available as a note anchor.</p><p>A second paragraph gives the screenshot note a clear region to capture.</p><h2>Natural exports</h2><p>Offline HTML and JSON backups should remain usable after leaving this article.</p></article></body></html>'}));
+ await page.goto('https://reader-fixture.example/notes-polish');
  await worker.evaluate(async()=>{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});await chrome.tabs.sendMessage(tab.id,{action:'TOGGLE_READER_MODE'});});
  await page.waitForSelector('#reader-context-panel');
+ await page.waitForTimeout(350);
  await page.locator('[data-reader-tool-tab=style]').click();
  const colors=await page.locator('.reader-context-themes').evaluate(n=>{const r=[...n.children].map(c=>c.getBoundingClientRect());return {rows:new Set(r.map(x=>x.top)).size,labels:[...n.querySelectorAll('span')].some(c=>getComputedStyle(c).display!=='none')};});
  if(colors.rows!==1||colors.labels)throw Error('Theme swatches not one row');
- await page.screenshot({path:'output/playwright/polish-style.png'});
  const footer=await page.locator('.reader-context-exit').boundingBox();
  await page.locator('.reader-tools-scroll').evaluate(n=>n.scrollTop=n.scrollHeight);
  const after=await page.locator('.reader-context-exit').boundingBox();
@@ -17,7 +20,6 @@ async page=>{
  await page.locator('[data-reader-copy=orig]').click();
  await page.waitForFunction(()=>document.querySelector('[data-reader-copy=orig]').textContent.includes('已复制'));
  await page.locator('.reader-tools-scroll').evaluate(n=>n.scrollTop=0);
- await page.screenshot({path:'output/playwright/polish-info.png'});
  await worker.evaluate(async()=>{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});await chrome.scripting.executeScript({target:{tabId:tab.id},func:async()=>{
   const root=document.querySelector('#raccoon-reader-root');const block=[...root.querySelectorAll('.reader-orig-p')].find(n=>n.textContent.includes('Needle bridge'));
   const range=document.createRange();range.setStart(block.firstChild,0);range.setEnd(block.querySelector('strong').firstChild,6);
@@ -28,7 +30,6 @@ async page=>{
  await page.locator('[data-reader-tool-tab=notes]').click();
  await page.waitForSelector('.reader-note-card');
  if(await page.locator('.reader-note-highlight').count()<2)throw Error('Cross-inline mark lost');
- await page.screenshot({path:'output/playwright/polish-notes.png'});
  await page.locator('.reader-note-highlight').first().dblclick();
  await page.waitForSelector('.reader-note-editor textarea');await page.locator('[data-cancel]').click();
  await page.locator('[data-note-capture]').click();
@@ -36,20 +37,38 @@ async page=>{
  await page.waitForSelector('.reader-note-editor textarea');
  await page.locator('.reader-note-editor textarea').fill('截图中的观察。');await page.locator('[data-save]').click();
  await page.waitForFunction(()=>document.querySelectorAll('.reader-note-card').length===2);
+ const crop=await worker.evaluate(async()=>{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});const [entry]=await chrome.scripting.executeScript({target:{tabId:tab.id},func:async()=>{const canvas=document.createElement('canvas');canvas.width=800;canvas.height=600;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,800,600);ctx.fillStyle='#111';ctx.fillText('高分辨率截图测试',40,80);const result=await globalThis.JijianReaderShare.cropRegion(canvas.toDataURL('image/png'),{x:10.2,y:11.4,width:100.1,height:50.1},{width:400,height:200});const image=new Image();image.src=result.image;await image.decode();return {width:image.naturalWidth,height:image.naturalHeight,mime:result.image.slice(0,result.image.indexOf(';')),scaleX:result.scaleX,scaleY:result.scaleY};}});return entry.result;});
+ if(crop.width!==201||crop.height!==151||crop.scaleX!==2||crop.scaleY!==3)throw Error(`HiDPI crop dimensions are wrong: ${JSON.stringify(crop)}`);
+ if(await page.locator('[data-view-image]').count()!==1||await page.locator('[data-save-image]').count()!==1)throw Error('Screenshot note actions are missing');
+ const capturedPixels=await page.locator('.reader-note-image-frame img').evaluate(img=>({width:img.naturalWidth,height:img.naturalHeight,displayWidth:img.clientWidth,displayHeight:img.clientHeight}));
+ if(capturedPixels.width<=capturedPixels.displayWidth||capturedPixels.height<1)throw Error(`Captured screenshot lost its native pixel density: ${JSON.stringify(capturedPixels)}`);
+ await page.locator('[data-view-image]').click();await page.waitForSelector('.reader-note-image-viewer img');
+ const viewerPixels=await page.locator('.reader-note-image-viewer img').evaluate(img=>({width:img.naturalWidth,height:img.naturalHeight}));
+ if(viewerPixels.width!==capturedPixels.width||viewerPixels.height!==capturedPixels.height)throw Error('Full-size screenshot preview changed the image pixels');
+ await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.reader-note-image-viewer'));
+ if(!await page.locator('#raccoon-reader-root').count())throw Error('Closing the screenshot preview also closed Reader Mode');
+ await page.locator('[data-view-image]').click();
+ const viewerClose=await page.locator('.reader-note-image-viewer [data-view-close]').evaluate(button=>({label:button.getAttribute('aria-label'),radius:getComputedStyle(button).borderRadius,width:getComputedStyle(button).width,svg:!!button.querySelector('svg')}));
+ if(viewerClose.label!=='关闭原图'||viewerClose.radius!=='50%'||viewerClose.width!=='44px'||!viewerClose.svg)throw Error(`Screenshot viewer close control is not the polished circular icon: ${JSON.stringify(viewerClose)}`);
+ await page.locator('.reader-note-image-viewer [data-view-close]').click();await page.waitForFunction(()=>!document.querySelector('.reader-note-image-viewer'));
+ if(!await page.locator('#raccoon-reader-root').count())throw Error('Clicking the screenshot close control also closed Reader Mode');
+ const imageDownloadPromise=page.waitForEvent('download');await page.locator('[data-save-image]').click();const imageDownload=await imageDownloadPromise;
+ if(!/\.(?:png|webp)$/.test(imageDownload.suggestedFilename()))throw Error('Screenshot image export did not download');
+ const htmlDownloadPromise=page.waitForEvent('download');await page.locator('[data-note-export="html"]').click();const htmlDownload=await htmlDownloadPromise;
+ if(!htmlDownload.suggestedFilename().endsWith('.html'))throw Error('Offline HTML export did not download');
+ await page.waitForFunction(()=>document.querySelector('.reader-notes-status')?.textContent.includes('离线网页已导出'));
+ const jsonDownloadPromise=page.waitForEvent('download');await page.locator('[data-note-export="json"]').click();const jsonDownload=await jsonDownloadPromise;
+ if(!jsonDownload.suggestedFilename().endsWith('.json'))throw Error('JSON backup export did not download');
+ await page.waitForFunction(()=>document.querySelector('.reader-notes-status')?.textContent.includes('JSON 备份已导出'));
  await page.locator('.reader-context-exit').click();
  await worker.evaluate(async()=>{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});await chrome.tabs.sendMessage(tab.id,{action:'TOGGLE_READER_MODE'});});
  await page.waitForSelector('#reader-context-panel');await page.locator('[data-reader-tool-tab=notes]').click();
  await page.waitForFunction(()=>document.querySelectorAll('.reader-note-card').length===2);
  if(await page.locator('.reader-note-highlight').count()<2)throw Error('Reopen lost anchor');
- await page.screenshot({path:'output/playwright/polish-notes-persisted.png'});
- // Exercise both print layouts and save their exact print document as a PDF.
- for(const mode of ['notes','article']){
-  await page.locator(`[data-note-print=${mode}]`).click();
-  const frame=page.locator('.reader-notes-print-frame').last();await frame.waitFor({state:'attached'});
-  const html=await frame.getAttribute('srcdoc');
-  if(mode==='article'&&!html.includes('class="row"'))throw Error('Mixed PDF rows absent');
-  const printPage=await page.context().newPage();await printPage.setContent(html);await printPage.evaluate(()=>Promise.all([...document.images].map(img=>img.decode())));
-  await printPage.pdf({path:`output/playwright/reader-${mode}.pdf`,format:'A4',printBackground:true});await printPage.close();
- }
- return {colors,fixedFooter:true,crossInlineHighlight:true,textAndScreenshotNotes:2,persisted:true,pdfLayouts:2};
+ // Keep PDF controls present without opening the browser's native print preview.
+ const pdfOptions=await page.locator('[data-note-print]').evaluateAll(nodes=>nodes.map(node=>node.dataset.notePrint));
+ if(JSON.stringify(pdfOptions)!==JSON.stringify(['notes','article']))throw Error(`PDF export options are missing: ${JSON.stringify(pdfOptions)}`);
+ await page.unrouteAll();
+ if(page.context().pages().length!==1)throw Error(`Expected one browser tab, got ${page.context().pages().length}`);
+ return {colors,fixedFooter:true,crossInlineHighlight:true,textAndScreenshotNotes:2,persisted:true,pdfOptions,crop,capturedPixels,viewerPixels,viewerClose,imageDownload:true,offlineHtmlExport:true,jsonBackupExport:true,singleTab:true};
 }

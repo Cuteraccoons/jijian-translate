@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS = {
   readerFontSize: "17.5",
   readerLineHeight: "1.82",
   readerParagraphSpacing: "28",
+  readerFirstLineIndent: false,
   readerWritingMode: "horizontal", // horizontal | vertical
   readerOutlineCollapsed: false,
   readerToolsCollapsed: false,
@@ -407,7 +408,34 @@ chrome.commands.onCommand.addListener((command) => {
 /**
  * 分层词典引擎（简明翻译 + 完整英文释义 + 英日发音）
  */
-async function googleQuickTranslate(text, sl = "auto", tl = "zh-CN") {
+const googleQuickTranslationCache = new Map();
+const googleQuickTranslationInflight = new Map();
+function googleQuickTranslate(text, sl = "auto", tl = "zh-CN") {
+  const clean = String(text || "").trim();
+  if (!clean) return Promise.resolve("");
+  const key = `${String(sl || "auto")}->${String(tl || "zh-CN")}::${clean}`;
+  const cached = googleQuickTranslationCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    googleQuickTranslationCache.delete(key);
+    googleQuickTranslationCache.set(key, cached);
+    return Promise.resolve(cached.value);
+  }
+  if (cached) googleQuickTranslationCache.delete(key);
+  if (googleQuickTranslationInflight.has(key)) return googleQuickTranslationInflight.get(key);
+  const pending = googleQuickTranslateUncached(clean, sl, tl).then(value => {
+    if (value && typeof value === "object" && value.translated) {
+      googleQuickTranslationCache.set(key, { value, expiresAt:Date.now() + 15 * 60 * 1000 });
+      while (googleQuickTranslationCache.size > 2500) googleQuickTranslationCache.delete(googleQuickTranslationCache.keys().next().value);
+    }
+    return value;
+  }).finally(() => {
+    if (googleQuickTranslationInflight.get(key) === pending) googleQuickTranslationInflight.delete(key);
+  });
+  googleQuickTranslationInflight.set(key, pending);
+  return pending;
+}
+
+async function googleQuickTranslateUncached(text, sl = "auto", tl = "zh-CN") {
   const clean = (text || "").trim();
   if (!clean) return "";
   try {
@@ -703,11 +731,10 @@ async function lookupChineseMoedict(word) {
   const clean = (word || "").trim();
   const empty = { definitions: [], classical: [], pinyin: "", pinyinReadings: [], sourceName: "", translations: {}, resolvedTitle: "", sourceQuery: "" };
   if (!clean) return empty;
+  // Try the exact headword first. The old path always waited for an extra
+  // Google conversion request before asking Moedict, even when the exact
+  // Simplified Chinese headword already existed.
   const candidates = [clean];
-  try {
-    const trad = await googleQuickTranslate(clean, "zh-CN", "zh-TW");
-    if (trad?.translated && trad.translated !== clean) candidates.push(trad.translated.trim());
-  } catch (_) {}
   for (const candidate of [...new Set(candidates)]) {
     try {
       const url = `https://www.moedict.tw/uni/${encodeURIComponent(candidate)}`;
@@ -743,16 +770,17 @@ async function lookupChineseMoedict(word) {
         de: asList(translation.Deutsch ?? data?.Deutsch),
         fr: asList(translation.francais ?? data?.francais)
       };
-      const definitions = await Promise.all(rawDefs.slice(0, 8).map(async item => {
+      const definitionPromise = Promise.all(rawDefs.slice(0, 8).map(async item => {
         let text = item.text;
         try { const simp = await googleQuickTranslate(text, "zh-TW", "zh-CN"); if (simp?.translated) text = simp.translated.trim(); } catch (_) {}
         return { text, type: item.type };
       }));
-      const classicalSimplified = await Promise.all(classical.slice(0, 4).map(async q => {
+      const classicalPromise = Promise.all(classical.slice(0, 4).map(async q => {
         let text = q;
         try { const simp = await googleQuickTranslate(text, "zh-TW", "zh-CN"); if (simp?.translated) text = simp.translated.trim(); } catch (_) {}
         return text;
       }));
+      const [definitions, classicalSimplified] = await Promise.all([definitionPromise, classicalPromise]);
       const resolvedTitle = strip(data?.title || candidate) || candidate;
       const isSemanticRedirect = !!resolvedTitle && !candidates.includes(resolvedTitle);
       // Alias entries can contain definitions but omit the CC-CEDICT / CFDict / HanDeDict
@@ -781,6 +809,20 @@ async function lookupChineseMoedict(word) {
         sourceName: "萌典 · 教育部国语辞典",
         sourceQuery: candidate
       };
+    } catch (_) {}
+  }
+  // Only pay for Simplified → Traditional conversion when the exact entry is
+  // absent. This keeps the common lookup to one dictionary request.
+  if (/^[\u3400-\u9fff]+$/.test(clean)) {
+    try {
+      const trad = await googleQuickTranslate(clean, "zh-CN", "zh-TW");
+      const converted = String(trad?.translated || "").trim();
+      if (converted && converted !== clean) {
+        const fallback = await lookupChineseMoedict(converted);
+        if (fallback.definitions.length || fallback.classical.length || fallback.translations?.en?.length || fallback.translations?.fr?.length || fallback.translations?.de?.length) {
+          return { ...fallback, sourceQuery: converted };
+        }
+      }
     } catch (_) {}
   }
   return empty;
@@ -893,10 +935,17 @@ async function getMdictReader(handle, dict, kind = "mdx") {
   const file = await getDictionaryFile(handle, dict, kind);
   const key = `${dict.source||"folder"}::${dict.name}::${filename}::${file.size}::${file.lastModified}`;
   if (localMdictCache.has(key)) return localMdictCache.get(key);
-  const reader = await new JiJianMDict.MDictLite(file, kind).init();
-  localMdictCache.set(key, reader);
+  // Cache the initialization promise as soon as it starts. Rapid lookups can
+  // otherwise decompress and index the same large MDX several times in parallel.
+  const pending = new JiJianMDict.MDictLite(file, kind).init();
+  localMdictCache.set(key, pending);
   if (localMdictCache.size > 8) localMdictCache.delete(localMdictCache.keys().next().value);
-  return reader;
+  try {
+    return await pending;
+  } catch (error) {
+    if (localMdictCache.get(key) === pending) localMdictCache.delete(key);
+    throw error;
+  }
 }
 
 function stripLocalDictionaryHtml(html) {
@@ -961,8 +1010,11 @@ async function lookupLocalDictionaries(word, aliases = [], force = false) {
         for (const q of queries) {
           const exact = await reader.lookup(q);
           if (exact.length) { definitions = exact; matched = q; break; }
-          // Real-world MDX files sometimes store case variants or homograph suffixes.
-          // Use the reader's nearby-key index only as a conservative fallback, never "contains" search.
+        }
+        // Case/diacritic suggestions are a slow index walk. Try exact spellings
+        // first, then ask for suggestions once per distinct user alias rather
+        // than repeating the same fallback for every upper/lower-case form.
+        if (!definitions.length) for (const q of baseQueries) {
           const candidates = await reader.suggest(q, 8).catch(() => []);
           const norm = (v) => String(v || "").normalize("NFKC").toLocaleLowerCase().replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+$/g, "").trim();
           const wanted = norm(q);
@@ -1025,7 +1077,7 @@ async function lookupLocalDictionaries(word, aliases = [], force = false) {
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(3, queue.length) }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, () => worker()));
   entries.sort((a,b) => a.order - b.order).forEach(x => delete x.order);
   const permissionOk = !errors.some(item => /重新授权|重新选择|权限/.test(String(item?.message || "")));
   return { entries: entries.slice(0, 6), permission: permissionOk, enabledCount: dictionaries.length, errors: errors.slice(0, 4) };
@@ -1158,7 +1210,19 @@ function normalizeDictionaryExample(value) {
   return /^[a-z]/.test(text) ? `${text[0].toUpperCase()}${text.slice(1)}` : text;
 }
 
-async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
+const dictionaryLookupInflight = new Map();
+function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  const key = `${String(sl || "auto")}->${String(tl || "zh-CN")}::${clean.toLocaleLowerCase()}`;
+  if (dictionaryLookupInflight.has(key)) return dictionaryLookupInflight.get(key);
+  const pending = lookupDictionaryUncached(clean, sl, tl).finally(() => {
+    if (dictionaryLookupInflight.get(key) === pending) dictionaryLookupInflight.delete(key);
+  });
+  dictionaryLookupInflight.set(key, pending);
+  return pending;
+}
+
+async function lookupDictionaryUncached(text, sl = "auto", tl = "zh-CN") {
   const clean = (text || "").replace(/\s+/g, " ").trim();
   const cacheKey = `dict::schema-2::${sl}->${tl}::${clean.toLowerCase()}`;
   const cached = getCache(cacheKey);
@@ -1191,6 +1255,7 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
   if (isEnglishWord) {
     // Start the two remote sources together. The old sequential path made a
     // normal lookup pay Google latency first and DictionaryAPI latency second.
+    const localPromise = lookupLocalDictionaries(clean);
     const quickPromise = googleQuickTranslate(clean, "en", "zh-CN");
     const dictionaryPromise = fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`, { headers: { "Accept": "application/json" } }, 3200)
       .catch(() => null);
@@ -1236,31 +1301,35 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
           });
         });
 
-        const groups = await Promise.all(Array.from(posMap.entries()).slice(0, 4).map(async ([pos, defs]) => {
-          const selected = defs.slice(0, 2);
-          const senses = await Promise.all(selected.map(async (def) => ({
-            en: def.en,
-            zh: (await translateSenseText(def.en, "en")) || "",
-            example: normalizeDictionaryExample(def.example)
-          })));
-          const posLabel = ({noun:"名词",verb:"动词",adjective:"形容词",adverb:"副词",pronoun:"代词",preposition:"介词",conjunction:"连词",interjection:"感叹词",determiner:"限定词",exclamation:"感叹词",phrase:"词组"})[String(pos || "").toLowerCase()] || pos;
-          return { pos: posLabel, senses };
-        }));
-        groups.filter(g => g.senses.length).forEach(g => senseGroups.push(g));
-
+        const selectedGroups = Array.from(posMap.entries()).slice(0, 4).map(([pos, defs]) => [pos, defs.slice(0, 2)]);
         const exampleCandidates = [];
-        for (const group of groups) {
-          for (const def of group.senses) {
+        for (const [, defs] of selectedGroups) {
+          for (const def of defs) {
             const ex = (def.example || "").trim();
             if (!ex || seenEx.has(ex.toLowerCase()) || exampleCandidates.length >= 3) continue;
             seenEx.add(ex.toLowerCase());
             exampleCandidates.push(normalizeDictionaryExample(ex));
           }
         }
-        const translatedExamples = await Promise.all(exampleCandidates.map(async ex => ({
-          source: ex,
-          translation: (await translateSenseText(ex, "en")) || ""
-        })));
+        // Definition and example translations do not depend on one another.
+        // Start both sets together instead of making every lookup wait through
+        // two consecutive rounds of Google requests.
+        const [groups, translatedExamples] = await Promise.all([
+          Promise.all(selectedGroups.map(async ([pos, defs]) => {
+            const senses = await Promise.all(defs.map(async def => ({
+              en: def.en,
+              zh: (await translateSenseText(def.en, "en")) || "",
+              example: normalizeDictionaryExample(def.example)
+            })));
+            const posLabel = ({noun:"名词",verb:"动词",adjective:"形容词",adverb:"副词",pronoun:"代词",preposition:"介词",conjunction:"连词",interjection:"感叹词",determiner:"限定词",exclamation:"感叹词",phrase:"词组"})[String(pos || "").toLowerCase()] || pos;
+            return { pos: posLabel, senses };
+          })),
+          Promise.all(exampleCandidates.map(async ex => ({
+            source: ex,
+            translation: (await translateSenseText(ex, "en")) || ""
+          })))
+        ]);
+        groups.filter(g => g.senses.length).forEach(g => senseGroups.push(g));
         examplePairs.push(...translatedExamples);
       }
     } catch (err) {
@@ -1275,7 +1344,7 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
       examplePairs.push(...translatedFallbackExamples);
     }
 
-    const local = await lookupLocalDictionaries(clean);
+    const local = await localPromise;
     const result = {
       original: clean,
       lookupForm: clean,
@@ -1306,9 +1375,13 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
   // 日语：先分词/尝试原形还原，再以 Jisho(JMdict 系)检索词条；中文解释由英文 sense 对齐翻译。
   if (isJapanese) {
     // Run translation and Jisho in parallel; load Tatoeba examples outside the initial response path.
-    const [quick, jisho] = await Promise.all([
+    const localPromise = lookupLocalDictionaries(clean, [japaneseQuery]);
+    const needsChineseSameForm=/^[\u3400-\u9fff]{1,8}$/.test(clean);
+    const chineseSameFormPromise=needsChineseSameForm?lookupChineseMoedict(clean).catch(()=>null):Promise.resolve(null);
+    const [quick, jisho, chineseSameForm] = await Promise.all([
       googleQuickTranslate(japaneseQuery, "ja", "zh-CN"),
-      lookupJapaneseJisho(japaneseQuery)
+      lookupJapaneseJisho(japaneseQuery),
+      chineseSameFormPromise
     ]);
     const lemma = jisho?.lemma || japaneseQuery;
     const reading = jisho?.reading || quick?.phonetic || "";
@@ -1320,10 +1393,9 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
       if (!group) { group = { pos: key, senses: [] }; senseGroups.push(group); }
       group.senses.push({ en: s.en, zh: s.zh || "" });
     });
-    const local = await lookupLocalDictionaries(clean, [japaneseQuery, lemma]);
-    let chineseSameForm = null;
-    if (/^[\u3400-\u9fff]{1,8}$/.test(clean)) {
-      try { chineseSameForm = await lookupChineseMoedict(clean); } catch (_) {}
+    let local = await localPromise;
+    if (lemma && lemma !== japaneseQuery && !(local.entries || []).length) {
+      local = await lookupLocalDictionaries(clean, [japaneseQuery, lemma]);
     }
     const result = {
       original: clean,
@@ -1356,6 +1428,7 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
 
   // 中文：中文释义是主体，拼音只作为词头元信息；英/日作为对照。
   if (isChinese) {
+    const localPromise = lookupLocalDictionaries(clean);
     const [en, ja, native] = await Promise.all([
       googleQuickTranslate(clean, "zh-CN", "en"),
       googleQuickTranslate(clean, "zh-CN", "ja"),
@@ -1366,7 +1439,7 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
       try { jaEntry = await lookupJapaneseJisho(ja.translated); } catch (_) {}
     }
     const nativeDefinitions = Array.isArray(native?.definitions) ? native.definitions.map(x => typeof x === "string" ? { text:x, type:"" } : x).filter(x => x?.text) : [];
-    const local = await lookupLocalDictionaries(clean);
+    const local = await localPromise;
     const result = {
       original: clean,
       lookupForm: clean,
@@ -1400,8 +1473,9 @@ async function lookupDictionary(text, sl = "auto", tl = "zh-CN") {
     setCache(cacheKey, result); schedulePersistCache(); return result;
   }
 
+  const localPromise = lookupLocalDictionaries(clean);
   const quick = await googleQuickTranslate(clean, sl, tl);
-  const local = await lookupLocalDictionaries(clean);
+  const local = await localPromise;
   const result = {
     original: clean,
     detectedLang: quick?.detectedLang || sl,
@@ -1750,7 +1824,28 @@ function normalizeTranslationPunctuation(value, targetLang = "") {
 /**
  * 翻译调度核心
  */
+const translationRequestInflight = new Map();
 async function translateText(text, sl = "auto", tl = "zh-CN", settings = null) {
+  if (!text || !text.trim()) return { text:"", detectedLang:sl };
+  await persistentCacheReady;
+  const resolvedSettings = settings || await loadStoredSettings();
+  const engine = resolvedSettings.translationEngine || "google";
+  const modelKey = engine === "google" ? "" : JSON.stringify([
+    engine,
+    resolvedSettings[`${engine}Model`] || "",
+    resolvedSettings[`${engine}BaseUrl`] || "",
+    engine === "deepl" ? resolvedSettings.deeplApiType || "" : ""
+  ]);
+  const key = `${translationCacheKey(engine,sl,tl,text)}::${modelKey}`;
+  if (translationRequestInflight.has(key)) return translationRequestInflight.get(key);
+  const pending = translateTextUncached(text, sl, tl, resolvedSettings).finally(() => {
+    if (translationRequestInflight.get(key) === pending) translationRequestInflight.delete(key);
+  });
+  translationRequestInflight.set(key, pending);
+  return pending;
+}
+
+async function translateTextUncached(text, sl = "auto", tl = "zh-CN", settings = null) {
   if (!text || !text.trim()) return { text: "", detectedLang: sl };
   await persistentCacheReady;
 
@@ -2244,7 +2339,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } else {
           const items = request.items;
           if (!Array.isArray(items) || items.length > 1000 || JSON.stringify(items).length > 8000000) throw new Error("笔记过多，请先导出并清理部分截图");
-          if (items.some(item => !item || typeof item.id !== "string" || !Array.isArray(item.anchors) || (item.image && !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(item.image)))) throw new Error("笔记格式无效");
+          if (items.some(item => !item || typeof item.id !== "string" || !Array.isArray(item.anchors) || (item.image && !/^data:image\/(?:png|webp);base64,[A-Za-z0-9+/=]+$/.test(item.image)))) throw new Error("笔记格式无效");
           collectionCountsCache=null;
           await chrome.storage.local.set({[key]:items.map(item=>({...item,articleTitle:String(request.title||sender.tab?.title||pageUrl.hostname).slice(0,500)}))});
           sendResponse({success:true});

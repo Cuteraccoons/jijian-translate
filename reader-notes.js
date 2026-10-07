@@ -3,13 +3,15 @@
   if(globalThis.JijianReaderNotes)return;
   const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const trash='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>';
+  const filePart=value=>String(value||'文章笔记').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'-').trim().slice(0,64)||'文章笔记';
+  const download=(blob,name)=>{const objectUrl=URL.createObjectURL(blob),link=document.createElement('a');link.href=objectUrl;link.download=name;link.hidden=true;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);};
   const request=message=>new Promise((resolve,reject)=>chrome.runtime.sendMessage(message,response=>{const error=chrome.runtime.lastError;if(error||!response?.success)reject(new Error(error?.message||response?.error||'笔记操作失败'));else resolve(response);}));
   function attach(root,{title,url}){
     const panel=root.querySelector('#reader-notes-panel');if(!panel)return;
     const canonical=new URL(url);canonical.hash='';
     const key=`readerNotes:${canonical.href}`,blocks=()=>[...root.querySelectorAll('.reader-orig-p,.reader-trans-p')];
-    let items=[],closed=false,writeQueue=Promise.resolve(),editor;
-    panel.innerHTML='<div class="reader-notes-heading"><b>文章笔记</b><span data-note-count>0</span></div><button type="button" data-note-capture>截图笔记</button><p class="reader-notes-status" role="status">选中文字即可高亮或添加笔记；双击高亮可编辑。</p><div class="reader-notes-list"></div><div class="reader-notes-export"><span>导出 PDF</span><button type="button" data-note-print="notes">仅笔记</button><button type="button" data-note-print="article">文章与旁注</button></div>';
+    let items=[],closed=false,writeQueue=Promise.resolve(),editor,imageViewer;
+    panel.innerHTML='<div class="reader-notes-heading"><b>文章笔记</b><span data-note-count>0</span></div><button type="button" data-note-capture>截图笔记</button><p class="reader-notes-status" role="status">选中文字即可高亮或添加笔记；截图保留原始像素，可保存图片或导出。</p><div class="reader-notes-list"></div><div class="reader-notes-export"><span>下载与打印</span><button type="button" data-note-export="html">离线网页</button><button type="button" data-note-export="json">JSON 备份</button><button type="button" data-note-print="notes">仅笔记 PDF</button><button type="button" data-note-print="article">文章与旁注 PDF</button></div>';
     const status=message=>{panel.querySelector('.reader-notes-status').textContent=message;};
     const persist=()=>{
       const snapshot=structuredClone(items);
@@ -44,20 +46,36 @@
       const list=panel.querySelector('.reader-notes-list');list.replaceChildren();
       if(!items.length){const empty=document.createElement('p');empty.className='reader-notes-empty';empty.textContent='把想留下的句子和想法，放在这里。';list.append(empty);}
       items.forEach((item,index)=>{
-        const card=document.createElement('article');card.className='reader-note-card';card.innerHTML=`<div class="reader-note-card-head"><span>${String(index+1).padStart(2,'0')} · ${item.image?'截图':'高亮'}</span><button type="button" data-delete aria-label="删除笔记">${trash}</button></div><button type="button" class="reader-note-quote">${item.image?`<img src="${esc(item.image)}" alt="截图笔记">`:esc(item.quote)}</button><p>${esc(item.note||'还没有笔记')}</p><button type="button" data-edit>${item.note?'编辑笔记':'添加笔记'}</button>`;
+        const card=document.createElement('article');card.className=`reader-note-card${item.image?' reader-note-card-image':''}`;card.innerHTML=`<div class="reader-note-card-head"><span>${String(index+1).padStart(2,'0')} · ${item.image?'截图摘录':'文字高亮'}</span><button type="button" data-delete aria-label="删除笔记">${trash}</button></div>${item.image?`<div class="reader-note-image-frame"><img src="${esc(item.image)}" alt="截图笔记" loading="lazy" decoding="async">${item.imageWidth&&item.imageHeight?`<small>原图 ${item.imageWidth} × ${item.imageHeight} px</small>`:''}</div>`:`<button type="button" class="reader-note-quote">${esc(item.quote)}</button>`}<p>${esc(item.note||'还没有笔记')}</p><div class="reader-note-actions"><button type="button" data-edit>${item.note?'编辑想法':'添加想法'}</button>${item.image?'<button type="button" data-view-image>查看原图</button><button type="button" data-save-image>保存截图</button>':''}<button type="button" data-locate>回到原文</button></div>`;
         card.querySelector('[data-delete]').addEventListener('click',()=>remove(item.id));
         card.querySelector('[data-edit]').addEventListener('click',()=>edit(item));
-        card.querySelector('.reader-note-quote').addEventListener('click',()=>{const target=root.querySelector(`[data-reader-note-id="${CSS.escape(item.id)}"]`)||blockFor(item.anchors?.[0]||{});if(target){target.closest('details')?.setAttribute('open','');target.scrollIntoView({block:'center',behavior:'smooth'});}else status('原文已变化，未找到对应位置；笔记仍已保留。');});list.append(card);
+        const locate=()=>{const target=root.querySelector(`[data-reader-note-id="${CSS.escape(item.id)}"]`)||blockFor(item.anchors?.[0]||{});if(target){target.closest('details')?.setAttribute('open','');target.scrollIntoView({block:'center',behavior:'smooth'});}else status('原文已变化，未找到对应位置；笔记仍已保留。');};
+        card.querySelector('[data-locate]')?.addEventListener('click',locate);
+        card.querySelector('[data-view-image]')?.addEventListener('click',()=>showImage(item));
+        card.querySelector('[data-save-image]')?.addEventListener('click',()=>saveImage(item,index));
+        card.querySelector('.reader-note-image-frame img')?.addEventListener('click',()=>showImage(item));
+        list.append(card);
       });
     };
     const remove=async id=>{const previous=items;items=items.filter(item=>item.id!==id);try{await persist();clearMarks(id);render();}catch{items=previous;}};
     const closeEditor=()=>{editor?.remove();editor=null;};
     const edit=item=>{
       closeEditor();
-      editor=document.createElement('div');editor.className='reader-note-editor';editor.setAttribute('role','dialog');editor.setAttribute('aria-label','编辑笔记');editor.innerHTML=`<div class="reader-note-editor-source">${item.image?`<img src="${esc(item.image)}" alt="截图笔记">`:`<blockquote>${esc(item.quote)}</blockquote>`}</div><label>笔记<textarea rows="5" maxlength="20000" placeholder="记下你的想法…">${esc(item.note)}</textarea></label><div><button type="button" data-cancel>取消</button><button type="button" data-save>保存笔记</button></div>`;root.append(editor);const anchor=root.querySelector(`[data-reader-note-id="${CSS.escape(item.id)}"]`)||blockFor(item.anchors?.[0]||{});const rect=anchor?.getBoundingClientRect();editor.style.setProperty('--note-left',`${Math.max(16,Math.min(rect?.left||innerWidth/2-180,innerWidth-376))}px`);editor.style.setProperty('--note-top',`${Math.max(16,Math.min(rect?.bottom+8||innerHeight/2-120,innerHeight-290))}px`);editor.querySelector('textarea').focus();
+      editor=document.createElement('div');editor.className='reader-note-editor';editor.setAttribute('role','dialog');editor.setAttribute('aria-label','编辑笔记');editor.innerHTML=`<div class="reader-note-editor-source">${item.image?`<img src="${esc(item.image)}" alt="截图笔记"><span>截图保持原始清晰度</span>`:`<blockquote>${esc(item.quote)}</blockquote>`}</div><label>笔记<textarea rows="5" maxlength="20000" placeholder="记下你的想法…">${esc(item.note)}</textarea></label><div><button type="button" data-cancel>取消</button><button type="button" data-save>保存笔记</button></div>`;root.append(editor);const anchor=root.querySelector(`[data-reader-note-id="${CSS.escape(item.id)}"]`)||blockFor(item.anchors?.[0]||{});const rect=anchor?.getBoundingClientRect();editor.style.setProperty('--note-left',`${Math.max(16,Math.min(rect?.left||innerWidth/2-180,innerWidth-376))}px`);editor.style.setProperty('--note-top',`${Math.max(16,Math.min(rect?.bottom+8||innerHeight/2-120,innerHeight-290))}px`);editor.querySelector('textarea').focus();
       editor.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();closeEditor();}if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();editor.querySelector('[data-save]').click();}});
       editor.querySelector('[data-cancel]').addEventListener('click',closeEditor);
       editor.querySelector('[data-save]').addEventListener('click',async()=>{const previous=item.note;item.note=editor.querySelector('textarea').value;try{await persist();paint(item);render();closeEditor();}catch{item.note=previous;if(editor)editor.querySelector('[data-save]').textContent='保存失败，重试';}});
+    };
+    const showImage=item=>{
+      imageViewer?.remove();imageViewer=document.createElement('div');imageViewer.className='reader-note-image-viewer';imageViewer.setAttribute('role','dialog');imageViewer.setAttribute('aria-modal','true');imageViewer.setAttribute('aria-label','截图笔记原图');
+      imageViewer.innerHTML='<button type="button" data-view-close aria-label="关闭原图" title="关闭原图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><img alt="截图笔记原图"><p>按 Esc 或点击空白处关闭</p>';
+      imageViewer.querySelector('img').src=item.image;root.append(imageViewer);
+      const close=()=>{imageViewer?.remove();imageViewer=null;};const closeButton=imageViewer.querySelector('[data-view-close]');closeButton.addEventListener('click',close);imageViewer.addEventListener('click',event=>{if(event.target===imageViewer)close();});imageViewer.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();}});closeButton.focus();
+    };
+    const saveImage=(item,index)=>{
+      if(!item.image)return;const extension=item.image.startsWith('data:image/webp;')?'webp':'png';
+      const comma=item.image.indexOf(','),binary=atob(item.image.slice(comma+1)),bytes=new Uint8Array(binary.length);for(let offset=0;offset<binary.length;offset++)bytes[offset]=binary.charCodeAt(offset);
+      download(new Blob([bytes],{type:extension==='webp'?'image/webp':'image/png'}),`${filePart(title)}-截图笔记-${String(index+1).padStart(2,'0')}.${extension}`);status('截图已交给浏览器保存');
     };
     const addText=async(range,text,openEditor=false)=>{
       const anchors=[];blocks().forEach((block,index)=>{
@@ -74,15 +92,32 @@
       const item={id:crypto.randomUUID(),quote:text,anchors,note:'',created:new Date().toISOString()};items.push(item);
       try{await persist();paint(item);render();if(openEditor)edit(item);}catch{items=items.filter(other=>other!==item);}
     };
-    panel.querySelector('[data-note-capture]').addEventListener('click',event=>{if(!event.isTrusted)return;root.readerCaptureNote?.(async({image,rect})=>{
+    panel.querySelector('[data-note-capture]').addEventListener('click',event=>{if(!event.isTrusted)return;root.readerCaptureNote?.(async({image,rect,pixels})=>{
       const all=blocks(),block=all.find(node=>{const r=node.getBoundingClientRect();return r.bottom>=rect.y&&r.top<=rect.y+rect.height&&r.right>=rect.x&&r.left<=rect.x+rect.width;});
       const br=block?.getBoundingClientRect();
-      const item={id:crypto.randomUUID(),quote:'截图笔记',note:'',image,region:br?{x:rect.x-br.left,y:rect.y-br.top,width:rect.width,height:rect.height,sourceWidth:br.width}:null,anchors:block?[{block:all.indexOf(block),blockText:block.textContent}]:[],created:new Date().toISOString()};items.push(item);
+      const item={id:crypto.randomUUID(),quote:'截图笔记',note:'',image,imageWidth:pixels?.width||0,imageHeight:pixels?.height||0,region:br?{x:rect.x-br.left,y:rect.y-br.top,width:rect.width,height:rect.height,sourceWidth:br.width}:null,anchors:block?[{block:all.indexOf(block),blockText:block.textContent}]:[],created:new Date().toISOString()};items.push(item);
       try{await persist();paint(item);render();setTimeout(()=>edit(item),0);}catch(error){items=items.filter(other=>other!==item);throw error;}
     });});
+    const exportNotesHtml=()=>{
+      if(!items.length){status('先添加一条高亮或笔记');return;}
+      const noteHtml=(item,index)=>{
+        const when=Number.isFinite(Date.parse(item.created||''))?new Date(item.created).toLocaleString('zh-CN'):'未记录时间';
+        const source=item.image?`<figure><img src="${esc(item.image)}" alt="截图笔记">${item.imageWidth&&item.imageHeight?`<figcaption>原始截图 · ${item.imageWidth} × ${item.imageHeight} px</figcaption>`:''}</figure>`:`<blockquote>${esc(item.quote)}</blockquote>`;
+        return `<article class="note"><header><span>${String(index+1).padStart(2,'0')} · ${item.image?'截图摘录':'文字高亮'}</span><time>${esc(when)}</time></header>${source}${item.note?`<p>${esc(item.note)}</p>`:''}</article>`;
+      };
+      const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · 文章笔记</title><style>*{box-sizing:border-box}body{margin:0;background:#f3f1ec;color:#252a30;font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.page{max-width:860px;margin:0 auto;padding:clamp(24px,6vw,64px) 20px}.masthead{padding:0 4px 24px;border-bottom:1px solid #dedbd4}.masthead h1{margin:0 0 8px;font-size:clamp(24px,4vw,34px);line-height:1.3;letter-spacing:-.025em}.masthead a{color:#69717a;font-size:13px;overflow-wrap:anywhere}.note{margin:22px 0;padding:20px;background:#fffefa;border:1px solid #e6e2d9;border-radius:14px;box-shadow:0 5px 22px #242a3009;break-inside:avoid}.note header{display:flex;justify-content:space-between;gap:14px;margin-bottom:14px;color:#737b83;font-size:13px}.note figure{margin:0;padding:7px;border:1px solid #ece8e0;border-radius:10px;background:#f7f5f0}.note img{display:block;width:100%;height:auto;max-height:1100px;object-fit:contain;border-radius:5px}.note figcaption{padding:7px 3px 1px;color:#878d94;font-size:12px}.note blockquote{margin:0;padding:4px 0 4px 16px;border-left:3px solid #d6bd82;color:#363c42}.note p{margin:15px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}.source{margin:26px 4px 0;color:#858b92;font-size:12px;overflow-wrap:anywhere}@media print{body{background:#fff}.page{max-width:none;padding:0}.note{box-shadow:none}}</style></head><body><main class="page"><header class="masthead"><h1>${esc(title)} · 文章笔记</h1><a href="${esc(canonical.href)}">${esc(canonical.href)}</a></header>${items.map(noteHtml).join('')}<p class="source">由极简翻译导出 · ${esc(new Date().toLocaleString('zh-CN'))}</p></main></body></html>`;
+      download(new Blob([html],{type:'text/html;charset=utf-8'}),`${filePart(title)}-文章笔记.html`);status('离线网页已导出，截图已嵌入文件。');
+    };
+    const exportNotesJson=()=>{
+      if(!items.length){status('先添加一条高亮或笔记');return;}
+      const backup={format:'jijian-reader-notes',version:1,title,sourceUrl:canonical.href,exportedAt:new Date().toISOString(),items};
+      download(new Blob([JSON.stringify(backup,null,2)],{type:'application/json;charset=utf-8'}),`${filePart(title)}-文章笔记备份.json`);status('JSON 备份已导出，包含截图原图与定位信息。');
+    };
+    panel.querySelector('[data-note-export="html"]').addEventListener('click',exportNotesHtml);
+    panel.querySelector('[data-note-export="json"]').addEventListener('click',exportNotesJson);
     const printNotes=async mode=>{
       if(!items.length){status('先添加一条高亮或笔记');return;}
-      const noteHtml=item=>`<aside class="note">${item.image?`<img src="${esc(item.image)}">`:`<blockquote>${esc(item.quote)}</blockquote>`}<p>${esc(item.note)}</p></aside>`;
+      const noteHtml=item=>`<aside class="note">${item.image?`<figure><img src="${esc(item.image)}" alt="截图笔记">${item.imageWidth&&item.imageHeight?`<figcaption>截图原始尺寸 ${item.imageWidth} × ${item.imageHeight} px</figcaption>`:''}</figure>`:`<blockquote>${esc(item.quote)}</blockquote>`}${item.note?`<p>${esc(item.note)}</p>`:''}</aside>`;
       let body='';
       if(mode==='notes')body=items.map(noteHtml).join('');
       else {
@@ -92,7 +127,7 @@
         body+=items.filter(item=>!placed.has(item.id)).map(noteHtml).join('');
       }
       const iframe=document.createElement('iframe');iframe.className='reader-notes-print-frame';iframe.style.cssText='position:fixed;width:1px;height:1px;left:-10000px;border:0';
-      iframe.srcdoc=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${esc(title)} · 笔记</title><style>@page{size:A4;margin:16mm}*{box-sizing:border-box}body{font:14px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#20242a}h1{font-size:24px}a{color:inherit;word-break:break-all}img{max-width:100%;height:auto}p{white-space:pre-wrap}.row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;border-top:1px solid #e4e5e7;padding:16px 0}.note{break-inside:avoid;margin:0 0 16px;padding:12px;border:1px solid #dedfe2;border-radius:8px}.note blockquote{margin:0 0 10px;padding-left:10px;border-left:3px solid #eed273}.article{min-width:0}.article table{max-width:100%;font-size:13px;border-collapse:collapse}.article td,.article th{border:1px solid #ddd;padding:4px}.article .reader-trans-p:not([data-loaded="true"]){display:none}mark{background:#f6df87;color:inherit}.reader-chart{display:none}.reader-table-heading{display:flex;gap:8px;align-items:center}button,svg{display:none}</style></head><body><h1>${esc(title)}</h1><p>${esc(canonical.href)}</p>${body}</body></html>`;
+      iframe.srcdoc=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${esc(title)} · 笔记</title><style>@page{size:A4;margin:16mm}*{box-sizing:border-box}body{font:14px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#20242a}h1{font-size:24px}a{color:inherit;word-break:break-all}img{display:block;max-width:100%;max-height:250mm;height:auto;object-fit:contain}figure{margin:0;padding:5px;border:1px solid #e6e2d9;border-radius:7px;background:#faf9f6}figcaption{margin-top:4px;color:#777;font-size:10px}p{white-space:pre-wrap}.row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;border-top:1px solid #e4e5e7;padding:16px 0}.note{break-inside:avoid;margin:0 0 16px;padding:12px;border:1px solid #dedfe2;border-radius:8px}.note blockquote{margin:0 0 10px;padding-left:10px;border-left:3px solid #eed273}.article{min-width:0}.article table{max-width:100%;font-size:13px;border-collapse:collapse}.article td,.article th{border:1px solid #ddd;padding:4px}.article .reader-trans-p:not([data-loaded="true"]){display:none}mark{background:#f6df87;color:inherit}.reader-chart{display:none}.reader-table-heading{display:flex;gap:8px;align-items:center}button,svg{display:none}</style></head><body><h1>${esc(title)}</h1><p>${esc(canonical.href)}</p>${body}</body></html>`;
       iframe.onload=async()=>{await Promise.all([...iframe.contentDocument.images].map(img=>img.decode().catch(()=>{})));iframe.contentWindow.focus();iframe.contentWindow.print();};document.body.append(iframe);iframe.contentWindow?.addEventListener('afterprint',()=>iframe.remove(),{once:true});
       status('已打开打印窗口，可选择“另存为 PDF”');
     };
@@ -102,7 +137,7 @@
     root.readerNotes={addText,removeRange:range=>{const ids=new Set([...root.querySelectorAll('[data-reader-note-id]')].filter(mark=>range.intersectsNode(mark)).map(mark=>mark.dataset.readerNoteId));ids.forEach(remove);},print:printNotes};
     const translationObserver=new MutationObserver(()=>{items.filter(item=>!root.querySelector(`[data-reader-note-id="${CSS.escape(item.id)}"]`)).forEach(paint);});
     translationObserver.observe(root.querySelector('#reader-content'),{subtree:true,attributes:true,attributeFilter:['data-loaded']});
-    root.cleanupReaderNotes=()=>{translationObserver.disconnect();closed=true;closeEditor();root.removeEventListener('dblclick',doubleClick);};
+    root.cleanupReaderNotes=()=>{translationObserver.disconnect();closed=true;closeEditor();imageViewer?.remove();imageViewer=null;root.removeEventListener('dblclick',doubleClick);};
     (async()=>{try{const data=await request({action:'GET_READER_NOTES'});if(closed)return;items=Array.isArray(data.items)?data.items:[];
       if(data.items===null){const legacy=(data.legacy||[]).filter(item=>{try{const u=new URL(item.sourceUrl);u.hash='';return u.href===canonical.href;}catch{return false;}});legacy.forEach(item=>{const index=blocks().findIndex(node=>node.textContent.includes(item.orig));if(index>=0){const block=blocks()[index],start=block.textContent.indexOf(item.orig);items.push({id:item.id||crypto.randomUUID(),quote:item.orig,note:'',anchors:[{block:index,blockText:block.textContent,quote:item.orig,start,end:start+item.orig.length}]});}});}
       items.forEach(paint);render();

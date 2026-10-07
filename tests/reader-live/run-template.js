@@ -3,8 +3,9 @@ async page => {
  const worker=page.context().serviceWorkers()[0];
  await worker.evaluate(()=>chrome.storage.sync.set({autoTranslateEnabled:false,readerTheme:'white',readerFont:'auto',readerWidth:'1000',readerOutlineCollapsed:false,readerToolsCollapsed:false,readerSurface:'card'}));
  const run=async item=>{
-  const tab=await page.context().newPage(),errors=[];const start=Date.now();
-  tab.on('pageerror',error=>{if(/raccoon|reader|jijian/i.test(error.stack||''))errors.push(error.message.slice(0,140));});
+  const tab=page,errors=[];const start=Date.now();
+  const onPageError=error=>{if(/raccoon|reader|jijian/i.test(error.stack||''))errors.push(error.message.slice(0,140));};
+  tab.on('pageerror',onPageError);
   const result={...item};
   try{
    await tab.setViewportSize({width:1440,height:1000});
@@ -38,8 +39,10 @@ async page => {
    if(await last.count()) {await last.click({timeout:3000});await tab.waitForTimeout(200);result.outlineClick=true;}
    result.status=result.after.chars<200?'failed':result.after.matched<Math.ceil(result.after.samples*.72)||result.after.invalidTargets||result.after.overflow>8?'inspect':'checked';
   }catch(error){result.status='error';result.error=error.message.split('\n')[0];}
-  finally{result.ms=Date.now()-start;result.errors=errors;await tab.close();}
+  finally{result.ms=Date.now()-start;result.errors=errors;tab.off('pageerror',onPageError);}
   return result;
  };
- return await Promise.all(cases.map(run));
+ const results=[];
+ for(const item of cases)results.push(await run(item));
+ return results;
 }

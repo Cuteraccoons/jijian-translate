@@ -14,7 +14,7 @@ async page=>{
  result.narrow=await page.evaluate(geometry);
  if(result.before.pawn.some((v,i)=>Math.abs(v-result.narrow.pawn[i])>.01))throw Error('Narrow chess geometry changed');
  await page.setViewportSize({width:1440,height:1000});
- const tab=await page.context().newPage();
+ const tab=page;
  try{
   await worker.evaluate(async()=>{
    await chrome.storage.local.set({translationEngine:'google'});
@@ -35,6 +35,7 @@ async page=>{
   await tab.locator('[data-reader-tool-tab="style"]').click();
   await tab.locator('#reader-link-style [data-value="blue"]').click();
   result.blue=await tab.locator('#reader-content .reader-orig-p a').last().evaluate(x=>getComputedStyle(x).color);
+  result.blueSwatch=await tab.locator('#reader-link-style [data-value="blue"]').evaluate(x=>getComputedStyle(x).color);
   await tab.locator('[data-reader-tool-tab="format"]').click();
   await tab.locator('.reader-mode-btn[data-mode="bilingual"]:visible').click();
   await tab.waitForSelector('.reader-trans-p[data-loaded="true"] .raccoon-citation',{timeout:15000});
@@ -43,7 +44,8 @@ async page=>{
   await tab.locator('[data-reader-tool-tab="style"]').click();
   await tab.locator('#reader-link-style [data-value="underline"]').click();
   result.underline=await tab.locator('#reader-content .reader-orig-p a').last().evaluate(x=>getComputedStyle(x).textDecorationLine);
-  if(result.underline!=='underline'||result.blue!=='rgb(23, 105, 194)')throw Error(JSON.stringify(result));
- }finally{await worker.evaluate(()=>{if(self.__readerTestFetch){self.fetch=self.__readerTestFetch;delete self.__readerTestFetch;}});await tab.close();}
+  if(result.underline!=='underline'||result.blue!==result.blueSwatch)throw Error(JSON.stringify(result));
+ }finally{await worker.evaluate(()=>{if(self.__readerTestFetch){self.fetch=self.__readerTestFetch;delete self.__readerTestFetch;}});}
+ await page.unrouteAll();
  return result;
 }
