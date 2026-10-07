@@ -151,8 +151,11 @@ if (folderPermissionAt < 0 || folderPersistAt < 0 || folderPermissionAt > folder
 if (!content.includes('action:"OPEN_OPTIONS_PAGE", tab:"tab-local-dict"') || !read('background.js').includes('options.html?tab=${encodeURIComponent(targetTab)}')) fail('local dictionary recovery does not open its settings section directly');
 if (!read('options.html').includes('高亮原文、译文和来源保存在浏览器本地')) fail('highlight local-storage note missing');
 if (!read('options.js').includes('class="domain-row-actions"') || !read('options.js').includes('class="domain-remove-btn"') || read('options.js').includes('class="domain-remove-icon"')) fail('blacklist actions still use the ambiguous close icon');
-if (!read('options.css').includes('.blacklist-domain-list .domain-row{\n  display:block!important') || !read('options.css').includes('position:static!important')) fail('blacklist feature controls do not expand as a second row');
-if (!read('options.css').includes('#local-dict-list .local-dict-row:first-child') || !read('options.css').includes('border-top:1px solid #e7eaee!important')) fail('first local dictionary entry can lose its rounded top edge');
+// 1.0.5 layout: each row is a block (.domain-row-line on top, .domain-scope-panel below in normal flow).
+{ const css = read('options.css'); const panelRule = (css.match(/\.domain-scope-panel\s*\{[^}]*\}/g) || []).join(' ');
+  if (!css.includes('.domain-row-line {') || !panelRule || /position\s*:\s*(absolute|fixed)/.test(panelRule)) fail('blacklist feature controls do not expand as a second row'); }
+// 1.0.5 layout: the list sits under .local-dict-head and every row draws its own top border.
+if (!/\.local-dict-row\s*\{[^}]*border-top:\s*1px solid/.test(read('options.css')) || !read('options.html').includes('class="local-dict-head"')) fail('first local dictionary entry can lose its rounded top edge');
 if (!process.exitCode) pass('settings startup / search-engine / OCR prompt safeguards');
 
 

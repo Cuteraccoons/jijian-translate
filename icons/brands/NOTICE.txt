@@ -1,0 +1,4 @@
+Brand marks in this folder come from LobeHub Icons
+(https://github.com/lobehub/lobe-icons, @lobehub/icons-static-svg, MIT License).
+Each mark is a trademark of its respective owner and is used only to identify
+the corresponding translation service in the settings page.
