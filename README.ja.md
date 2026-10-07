@@ -2,13 +2,13 @@
   <a href="./README.md">简体中文</a> · <a href="./README.en.md">English</a> · <strong>日本語</strong>
 </p>
 
-<h1 align="center">极简翻译 · Minimalist Translate</h1>
+<h1 align="center">极简翻译 · Jijian Translate</h1>
 
 <p align="center">
   <img src="./assets/readme/ja/hero.png" width="100%" alt="極簡翻訳の九つの読書・翻訳機能と、机で本を読むアライグマのイラスト。">
 </p>
 
-> **公開中：** [Chrome ウェブストア](https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd) からインストールできます。手動インストール用のパッケージは [Releases](https://github.com/Cuteraccoons/minimalist-translate/releases/latest) でも配布しています。
+> **公開中：** [Chrome ウェブストア](https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd) からインストールできます。手動インストール用のパッケージは [Releases](https://github.com/Cuteraccoons/jijian-translate/releases/latest) でも配布しています。
 
 極簡翻訳は、外国語の Web ページを元の構造に近い状態で読むためのオープンソース Chrome 拡張機能です。リンク、タブ、ボタン、レイアウトの関係をできるだけ保ちながら、対訳表示、リーダー表示、辞書検索、ローカル画像 OCR を追加します。
 
@@ -52,7 +52,7 @@ Google 翻訳は基本エンジンとして利用できます。次のサービ�
 
 ## ローカルインストール
 
-1. [Releases](https://github.com/Cuteraccoons/minimalist-translate/releases/latest) から最新パッケージをダウンロードして展開します。
+1. [Releases](https://github.com/Cuteraccoons/jijian-translate/releases/latest) から最新パッケージをダウンロードして展開します。
 2. Chrome で `chrome://extensions/` を開きます。
 3. **デベロッパー モード**を有効にします。
 4. **パッケージ化されていない拡張機能を読み込む**を選び、解凍したフォルダーのうち `manifest.json` を含むものを指定します。

@@ -2,7 +2,7 @@
 
 ## 版本状态
 
-- 扩展名称：极简翻译 · Minimalist Translate
+- 扩展名称：极简翻译 · Jijian Translate
 - 当前开发候选：1.0.4
 - 最近确认的商店公开版本：1.0.1；1.0.2 已由维护者提交审核，最新状态以后台为准
 - 文档更新：2026-09-25
@@ -16,9 +16,9 @@
 - 分类：工具
 - 发布者：龙猫君
 - 联系邮箱：待在开发者信息页填写并完成验证
-- 主页地址：`https://github.com/Cuteraccoons/minimalist-translate`
+- 主页地址：`https://github.com/Cuteraccoons/jijian-translate`
 - Chrome Web Store：`https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd`
-- 隐私政策地址：`https://github.com/Cuteraccoons/minimalist-translate/blob/main/PRIVACY.md`
+- 隐私政策地址：`https://github.com/Cuteraccoons/jijian-translate/blob/main/PRIVACY.md`
 - 项目赞赏地址：`https://www.ifdian.net/a/longmaojun`
 
 ## 商店文案
@@ -75,7 +75,7 @@
 
 反馈与开源
 遇到网页适配或功能问题，可通过项目页面反馈，并附上网址及复现步骤：
-https://github.com/Cuteraccoons/minimalist-translate/issues
+https://github.com/Cuteraccoons/jijian-translate/issues
 
 ## 权限说明
 

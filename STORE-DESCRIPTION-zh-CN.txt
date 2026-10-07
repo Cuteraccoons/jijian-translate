@@ -40,4 +40,4 @@
 
 反馈与开源
 遇到网页适配或功能问题，可通过项目页面反馈，并附上网址及复现步骤：
-https://github.com/Cuteraccoons/minimalist-translate/issues
+https://github.com/Cuteraccoons/jijian-translate/issues

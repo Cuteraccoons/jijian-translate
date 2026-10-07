@@ -34,7 +34,7 @@ CARD_ORIGINS = (
 
 COPY = {
     "en": {
-        "title": "Minimalist Translate",
+        "title": "Jijian Translate",
         "tagline": ("Simple lookup", "Elegant reading"),
         "cards": (
             "Configurable AI", "Image translation", "Local dictionaries",

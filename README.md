@@ -2,13 +2,13 @@
   <strong>简体中文</strong> · <a href="./README.en.md">English</a> · <a href="./README.ja.md">日本語</a>
 </p>
 
-<h1 align="center">极简翻译 · Minimalist Translate</h1>
+<h1 align="center">极简翻译 · Jijian Translate</h1>
 
 <p align="center">
   <img src="./assets/readme/zh-CN/hero.png" width="100%" alt="极简翻译的九项阅读与翻译功能，右侧是一只在书桌前阅读的浣熊。">
 </p>
 
-> **现已上架：** 可从 [Chrome Web Store](https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd) 安装极简翻译，也可以通过 [Releases](https://github.com/Cuteraccoons/minimalist-translate/releases/latest) 手动安装。
+> **现已上架：** 可从 [Chrome Web Store](https://chromewebstore.google.com/detail/pbndcgchimohkkdijfafhaljldgfkhbd) 安装极简翻译，也可以通过 [Releases](https://github.com/Cuteraccoons/jijian-translate/releases/latest) 手动安装。
 
 极简翻译是一款面向外文网页阅读的开源 Chrome 扩展。它不会把网页变成另一份割裂的翻译文档，而是在尽量保留链接、Tab、按钮与原有排版关系的前提下，加入双语阅读、沉浸阅读、本地词典与本机图片 OCR。
 
@@ -61,7 +61,7 @@ Google 翻译可直接作为基础引擎使用。下列服务需要用户自行�
 
 ## 本地安装
 
-1. 从 [Releases](https://github.com/Cuteraccoons/minimalist-translate/releases/latest) 下载并解压最新发布包。
+1. 从 [Releases](https://github.com/Cuteraccoons/jijian-translate/releases/latest) 下载并解压最新发布包。
 2. 在 Chrome 地址栏打开 `chrome://extensions/`。
 3. 开启右上角的「开发者模式」。
 4. 点击「加载已解压的扩展程序」，选择解压后包含 `manifest.json` 的文件夹。
