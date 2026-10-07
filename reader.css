@@ -2218,3 +2218,581 @@ html:has(#raccoon-reader-root) #raccoon-selection-bubble-root .selection-tool-bt
 }
 #raccoon-reader-root .reader-floating-exit-btn:hover{background:rgba(209,54,43,.1);color:#c0352b}
 @media (max-width:1320px){#raccoon-reader-root .reader-floating-tools-group{display:none!important}}
+
+/* 1.0.6 generic page-builder blocks: accordions keep their disclosure, rows of
+   cards stay a grid instead of a run of tiny headings. */
+#raccoon-reader-root .reader-accordion{
+  margin:0!important;padding:0!important;border:0!important;border-top:1px solid var(--reader-shell-border)!important;background:transparent!important
+}
+#raccoon-reader-root .reader-accordion:not(.reader-accordion+.reader-accordion){margin-top:8px!important}
+#raccoon-reader-root .reader-accordion:not(:has(+.reader-accordion)){border-bottom:1px solid var(--reader-shell-border)!important;margin-bottom:var(--reader-paragraph-spacing,28px)!important}
+#raccoon-reader-root .reader-accordion-summary{
+  display:flex!important;align-items:center!important;gap:16px!important;padding:15px 4px!important;margin:0!important;list-style:none!important;cursor:pointer!important;
+  border-radius:8px!important;transition:background-color .16s ease!important
+}
+#raccoon-reader-root .reader-accordion-summary::-webkit-details-marker{display:none!important}
+#raccoon-reader-root .reader-accordion-summary::marker{content:""!important}
+#raccoon-reader-root .reader-accordion-summary:hover{background:color-mix(in srgb,var(--reader-text) 4%,transparent)!important}
+#raccoon-reader-root .reader-accordion-summary:focus-visible{outline:2px solid var(--reader-text)!important;outline-offset:2px!important}
+#raccoon-reader-root .reader-accordion-summary>.reader-paragraph-pair{flex:1 1 auto!important;min-width:0!important;margin:0!important;padding:0!important}
+#raccoon-reader-root #reader-content .reader-accordion-summary .reader-paragraph-pair>.reader-orig-p,
+#raccoon-reader-root #reader-content .reader-accordion-summary .reader-paragraph-pair>.reader-trans-p{margin:0!important;font-weight:600!important;font-size:1.02em!important;line-height:1.5!important;text-indent:0!important}
+#raccoon-reader-root #reader-content .reader-accordion-summary .reader-paragraph-pair>.reader-trans-p{font-weight:500!important;margin-top:2px!important}
+#raccoon-reader-root .reader-accordion-chevron{
+  flex:none!important;width:9px!important;height:9px!important;margin-right:6px!important;
+  border-right:1.6px solid var(--reader-shell-muted)!important;border-bottom:1.6px solid var(--reader-shell-muted)!important;
+  transform:translateY(-2px) rotate(45deg)!important;transition:transform .2s ease!important
+}
+#raccoon-reader-root .reader-accordion[open]>.reader-accordion-summary .reader-accordion-chevron{transform:translateY(2px) rotate(-135deg)!important}
+#raccoon-reader-root .reader-accordion-body{padding:2px 4px 18px!important}
+#raccoon-reader-root .reader-accordion-body>:last-child{margin-bottom:0!important}
+#raccoon-reader-root .reader-accordion-body .reader-paragraph-pair{margin-bottom:calc(var(--reader-paragraph-spacing,28px)*.55)!important}
+
+#raccoon-reader-root .reader-card-grid{
+  display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))!important;gap:12px!important;
+  margin:0 0 var(--reader-paragraph-spacing,28px)!important
+}
+#raccoon-reader-root .reader-card{
+  display:flex!important;flex-direction:column!important;gap:6px!important;min-width:0!important;padding:16px 18px!important;
+  border:1px solid var(--reader-shell-border)!important;border-radius:14px!important;
+  background:color-mix(in srgb,var(--reader-card-bg) 70%,var(--reader-workspace-bg))!important
+}
+#raccoon-reader-root .reader-card .reader-paragraph-pair{margin:0!important;padding:0!important}
+#raccoon-reader-root .reader-card .reader-card-title :is(.reader-orig-p,.reader-trans-p){margin:0!important;font-weight:650!important;font-size:1em!important;line-height:1.45!important;text-indent:0!important}
+#raccoon-reader-root .reader-card .reader-card-text :is(.reader-orig-p,.reader-trans-p){margin:0!important;font-size:.9em!important;line-height:1.6!important;color:color-mix(in srgb,var(--reader-text) 78%,transparent)!important;text-indent:0!important}
+#raccoon-reader-root .reader-card-links{display:flex!important;flex-wrap:wrap!important;gap:6px!important;margin-top:6px!important}
+#raccoon-reader-root .reader-card-link{
+  display:inline-flex!important;align-items:center!important;padding:5px 11px!important;border:1px solid var(--reader-shell-border)!important;border-radius:999px!important;
+  font:500 13px/1.3 var(--reader-ui-font)!important;color:var(--reader-text)!important;text-decoration:none!important;background:var(--reader-card-bg)!important
+}
+#raccoon-reader-root .reader-card-link:hover{border-color:var(--reader-text)!important}
+#raccoon-reader-root .reader-accordion-toolbar{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:4px 0 0!important;padding:0 4px!important;font:400 13px/1.4 var(--reader-ui-font)!important;color:var(--reader-shell-muted)!important}
+#raccoon-reader-root .reader-accordion-toolbar button{padding:5px 10px!important;margin:0!important;border:1px solid var(--reader-shell-border)!important;border-radius:999px!important;background:transparent!important;color:var(--reader-text)!important;font:500 13px/1.3 var(--reader-ui-font)!important;cursor:pointer!important}
+#raccoon-reader-root .reader-accordion-toolbar button:hover{border-color:var(--reader-text)!important}
+#raccoon-reader-root .reader-accordion-toolbar+.reader-accordion{margin-top:8px!important}
+
+/* ==========================================================================
+   1.0.6 tool panel. Selectors start at #reader-context-panel so they outrank
+   the layered 1.0.4/1.0.5 rules above without touching them.
+   Hierarchy: underline tabs (navigation) > segmented controls (a choice
+   inside a pane) > option tiles / swatches. One selected treatment for all
+   tiles (ink border) and one for all swatches (ink ring with a gap).
+   ========================================================================== */
+#raccoon-reader-root{
+  --rp-ink:var(--reader-text);
+  --rp-muted:var(--reader-shell-muted);
+  --rp-line:var(--reader-shell-border);
+  --rp-fill:color-mix(in srgb,var(--reader-text) 5%,transparent);
+  --rp-fill-strong:color-mix(in srgb,var(--reader-text) 9%,transparent);
+  --rp-tile:var(--reader-shell-card);
+  --rp-radius:12px;
+}
+
+/* -- Navigation tabs (left 大纲/媒体/搜索 and right 排版/信息/笔记) ------------ */
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs{
+  position:relative!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:0!important;
+  padding:0!important;margin:0 0 6px!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:inset 0 -1px 0 var(--rp-line)!important
+}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs button,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button{
+  position:relative!important;z-index:1!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
+  height:40px!important;min-width:0!important;padding:0 4px!important;margin:0!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;color:var(--rp-muted)!important;
+  font:500 13px/1 var(--reader-ui-font)!important;letter-spacing:0!important;white-space:nowrap!important;cursor:pointer!important;
+  transition:color .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs button svg{flex:none!important;width:16px!important;height:16px!important;opacity:.85!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs button:hover,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button:not(:disabled):hover{color:var(--rp-ink)!important;background:transparent!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs button.active,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button.active{color:var(--rp-ink)!important;font-weight:620!important;background:transparent!important}
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button span{margin-left:2px!important;color:var(--rp-muted)!important;font:500 13px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button:disabled{opacity:.42!important;cursor:default!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tab-indicator,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tab-indicator{
+  display:block!important;position:absolute!important;z-index:2!important;top:auto!important;bottom:0!important;left:0!important;right:auto!important;inset:auto auto 0 0!important;
+  width:calc(100%/3)!important;height:2px!important;padding:0!important;border-radius:2px!important;
+  background:var(--rp-ink)!important;box-shadow:none!important;clip-path:inset(0 24% round 2px)!important;
+  transition:transform .24s cubic-bezier(.22,.8,.24,1)!important;pointer-events:none!important
+}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs[data-active-tool-tab="appearance"] .reader-tool-tab-indicator,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs[data-active-tab="outline"] .reader-navigator-tab-indicator{transform:translateX(0)!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs[data-active-tool-tab="article"] .reader-tool-tab-indicator,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs[data-active-tab="media"] .reader-navigator-tab-indicator{transform:translateX(100%)!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs[data-active-tool-tab="notes"] .reader-tool-tab-indicator,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs[data-active-tab="search"] .reader-navigator-tab-indicator{transform:translateX(200%)!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tab-count{
+  display:inline-grid!important;place-items:center!important;min-width:18px!important;height:18px!important;padding:0 5px!important;margin-left:-1px!important;
+  border-radius:9px!important;background:var(--rp-fill-strong)!important;color:var(--rp-ink)!important;font:600 13px/1 var(--reader-ui-font)!important;box-sizing:border-box!important
+}
+#raccoon-reader-root #reader-context-panel .reader-tool-tab-count[hidden]{display:none!important}
+
+/* -- Panes, groups, fields ------------------------------------------------- */
+#raccoon-reader-root #reader-context-panel .rp-pane{display:none!important}
+#raccoon-reader-root #reader-context-panel[data-merged-tool="appearance"] .rp-pane[data-pane="appearance"],
+#raccoon-reader-root #reader-context-panel[data-merged-tool="article"] .rp-pane[data-pane="article"],
+#raccoon-reader-root #reader-context-panel[data-merged-tool="notes"] .rp-pane[data-pane="notes"]{display:block!important;animation:rp-pane-in .22s ease both!important}
+@keyframes rp-pane-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+#raccoon-reader-root #reader-context-panel .rp-retired-drawer{display:none!important}
+#raccoon-reader-root #reader-context-panel .rp-group{display:block!important;margin:0!important;padding:16px 0 4px!important;border:0!important;border-top:1px solid var(--rp-line)!important;background:transparent!important}
+#raccoon-reader-root #reader-context-panel .rp-pane>.rp-group:first-child{border-top:0!important;padding-top:8px!important}
+#raccoon-reader-root #reader-context-panel .rp-group-title{
+  display:block!important;margin:0 0 2px!important;padding:0!important;color:var(--rp-muted)!important;
+  font:600 13px/1.3 var(--reader-ui-font)!important;letter-spacing:.04em!important;text-transform:none!important
+}
+#raccoon-reader-root #reader-context-panel .rp-field{display:block!important;margin:0!important;padding:10px 0 12px!important;border:0!important}
+#raccoon-reader-root #reader-context-panel .rp-field-flush{padding-top:8px!important}
+#raccoon-reader-root #reader-context-panel .rp-field-head{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:10px!important;min-width:0!important;margin:0 0 9px!important;padding:0!important}
+#raccoon-reader-root #reader-context-panel .rp-field-label{
+  display:block!important;flex:0 1 auto!important;min-width:0!important;margin:0!important;padding:0!important;border:0!important;
+  color:var(--rp-ink)!important;font:500 13px/1.35 var(--reader-ui-font)!important;letter-spacing:0!important;text-transform:none!important;opacity:1!important
+}
+#raccoon-reader-root #reader-context-panel .rp-field-value{
+  display:block!important;flex:none!important;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;
+  color:var(--rp-muted)!important;font:400 13px/1.35 var(--reader-ui-font)!important;font-variant-numeric:tabular-nums!important;text-align:right!important;background:none!important;border:0!important
+}
+#raccoon-reader-root #reader-context-panel .rp-field>*:not(.rp-field-head)+*:not(.rp-field-head){margin-top:10px!important}
+
+/* -- Segmented controls ---------------------------------------------------- */
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"]){
+  display:grid!important;grid-auto-flow:column!important;grid-auto-columns:minmax(0,1fr)!important;gap:2px!important;
+  padding:3px!important;margin:0!important;border:0!important;border-radius:10px!important;background:var(--rp-fill)!important;box-shadow:none!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"]) button{
+  height:30px!important;min-height:0!important;padding:0 6px!important;margin:0!important;border:0!important;border-radius:8px!important;
+  background:transparent!important;box-shadow:none!important;color:var(--rp-muted)!important;font:500 13px/1 var(--reader-ui-font)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"]) button.active{color:var(--rp-ink)!important;font-weight:620!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"]) .reader-tab-indicator{border-radius:8px!important;background:var(--rp-tile)!important;box-shadow:0 1px 3px rgba(20,24,30,.1),0 0 0 .5px rgba(20,24,30,.06)!important}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"]{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:2px!important;padding:3px!important;border-radius:10px!important;background:var(--rp-fill)!important
+}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button{
+  height:30px!important;min-height:0!important;padding:0 6px!important;margin:0!important;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important;
+  color:var(--rp-muted)!important;font:500 13px/1 var(--reader-ui-font)!important;cursor:pointer!important;transition:background-color .16s ease,color .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button span{text-decoration:none!important;color:inherit!important}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button[data-value="underline"] span{text-decoration:underline!important;text-underline-offset:3px!important}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button[data-value="blue"],#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button[data-value="blue"][aria-pressed="true"]{color:#1769c2!important}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button[aria-pressed="true"]{background:var(--rp-tile)!important;color:var(--rp-ink)!important;box-shadow:0 1px 3px rgba(20,24,30,.1),0 0 0 .5px rgba(20,24,30,.06)!important}
+
+/* -- Swatches: paper, outline accent, card tone ---------------------------- */
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes,[id="reader-outline-accent"],.reader-card-tone-grid){
+  display:flex!important;flex-wrap:wrap!important;gap:10px!important;padding:3px!important;margin:0!important;border:0!important;background:none!important;grid-template-columns:none!important
+}
+#raccoon-reader-root #reader-context-panel .reader-card-tone-grid[hidden]{display:none!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes,[id="reader-outline-accent"],.reader-card-tone-grid) button{
+  position:relative!important;flex:none!important;width:26px!important;height:26px!important;min-width:0!important;min-height:0!important;padding:0!important;margin:0!important;
+  border:0!important;border-radius:50%!important;background:transparent!important;box-shadow:none!important;outline:1.5px solid transparent!important;outline-offset:2.5px!important;
+  cursor:pointer!important;transition:outline-color .16s ease,transform .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel .reader-card-tone-grid button{background:var(--tone)!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes,[id="reader-outline-accent"]) button i{
+  position:absolute!important;inset:0!important;display:block!important;width:auto!important;height:auto!important;margin:0!important;border-radius:50%!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)!important
+}
+#raccoon-reader-root #reader-context-panel .reader-context-themes button i{background:var(--reader-theme-chip)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes,[id="reader-outline-accent"]) button span{display:none!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes,[id="reader-outline-accent"],.reader-card-tone-grid) button:hover{transform:scale(1.07)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes button.active,[id="reader-outline-accent"] button[aria-pressed="true"],.reader-card-tone-grid button.active){outline-color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-themes,[id="reader-outline-accent"],.reader-card-tone-grid) button:focus-visible{outline-color:var(--rp-muted)!important}
+
+/* -- Option tiles: one look, one selected state ---------------------------- */
+#raccoon-reader-root #reader-context-panel :is(.reader-render-style-grid,[id="reader-surface-switch"],.reader-table-style-grid,[id="reader-font-grid"]) button{
+  box-sizing:border-box!important;min-width:0!important;margin:0!important;border:1px solid var(--rp-line)!important;border-radius:10px!important;
+  background:var(--rp-tile)!important;box-shadow:none!important;color:var(--rp-ink)!important;cursor:pointer!important;text-align:left!important;
+  transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-render-style-grid,[id="reader-surface-switch"],.reader-table-style-grid,[id="reader-font-grid"]) button:hover{border-color:color-mix(in srgb,var(--rp-ink) 32%,transparent)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-render-style-grid,[id="reader-surface-switch"],.reader-table-style-grid,[id="reader-font-grid"]) button.active{
+  border-color:var(--rp-ink)!important;box-shadow:inset 0 0 0 .6px var(--rp-ink)!important
+}
+#raccoon-reader-root #reader-context-panel .reader-render-style-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel .reader-render-style-grid button{display:flex!important;align-items:center!important;min-height:0!important;height:auto!important;padding:10px 12px!important}
+#raccoon-reader-root #reader-context-panel .reader-render-style-grid button>span{display:flex!important;flex-direction:column!important;gap:2px!important}
+#raccoon-reader-root #reader-context-panel .reader-render-style-grid b{font:600 13px/1.3 var(--reader-ui-font)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .reader-render-style-grid small{font:400 13px/1.3 var(--reader-ui-font)!important;color:var(--rp-muted)!important}
+
+#raccoon-reader-root #reader-context-panel [id="reader-font-grid"]{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;margin:0!important;padding:0!important}
+#raccoon-reader-root #reader-context-panel [id="reader-font-grid"] button{display:flex!important;flex-direction:column-reverse!important;align-items:flex-start!important;justify-content:center!important;gap:3px!important;min-height:0!important;height:auto!important;padding:8px 10px!important}
+#raccoon-reader-root #reader-context-panel [id="reader-font-grid"] button b{display:block!important;font-family:var(--sample-font)!important;font-size:17px!important;font-weight:500!important;line-height:1.2!important;color:var(--rp-ink)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:clip!important;max-width:100%!important}
+#raccoon-reader-root #reader-context-panel [id="reader-font-grid"] button span{display:block!important;font:400 13px/1.25 var(--reader-ui-font)!important;color:var(--rp-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}
+#raccoon-reader-root #reader-context-panel [id="reader-font-grid"] button.active span{color:var(--rp-ink)!important}
+
+/* 页面样式 / 表格样式: miniatures above a short label. */
+#raccoon-reader-root #reader-context-panel [id="reader-surface-switch"]{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel .reader-table-style-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-surface-switch"],.reader-table-style-grid) button{
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:6px!important;min-height:0!important;height:auto!important;padding:5px 5px 7px!important;text-align:center!important
+}
+#raccoon-reader-root #reader-context-panel :is([id="reader-surface-switch"],.reader-table-style-grid) button::before,
+#raccoon-reader-root #reader-context-panel :is([id="reader-surface-switch"],.reader-table-style-grid) button::after{content:none!important;display:none!important}
+#raccoon-reader-root #reader-context-panel [id="reader-surface-switch"] button>:is(.reader-page-preview,span:not(.rp-preview)),
+#raccoon-reader-root #reader-context-panel .reader-table-style-grid button>.table-preview{display:none!important}
+#raccoon-reader-root #reader-context-panel [id="reader-surface-switch"] button b,
+#raccoon-reader-root #reader-context-panel .reader-table-style-grid button>span:not(.rp-table-preview){display:block!important;font:500 13px/1.2 var(--reader-ui-font)!important;color:var(--rp-ink)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#raccoon-reader-root #reader-context-panel .rp-preview{
+  position:relative!important;display:flex!important;justify-content:center!important;height:36px!important;padding:5px 0 0!important;overflow:hidden!important;
+  border-radius:6px!important;background:color-mix(in srgb,var(--reader-text) 9%,var(--reader-workspace-bg))!important;box-sizing:border-box!important
+}
+#raccoon-reader-root #reader-context-panel .rp-preview-page{
+  display:flex!important;flex-direction:column!important;gap:3px!important;width:64%!important;padding:6px 5px 0!important;box-sizing:border-box!important;
+  border-radius:3px 3px 0 0!important;background:var(--reader-card-bg)!important;box-shadow:0 0 0 .5px rgba(0,0,0,.06)!important
+}
+#raccoon-reader-root #reader-context-panel .rp-preview-page>span{display:block!important;height:2px!important;border-radius:2px!important;background:color-mix(in srgb,var(--reader-text) 32%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-page>span:nth-child(2){width:82%!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-page>span:nth-child(3){width:64%!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-flat{background:var(--reader-card-bg)!important;box-shadow:inset 0 0 0 1px var(--rp-line)!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-flat .rp-preview-page{width:84%!important;background:transparent!important;box-shadow:none!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-safari .rp-preview-page{width:44%!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-forum{background:var(--reader-card-bg)!important;box-shadow:inset 0 0 0 1px var(--rp-line)!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-forum .rp-preview-page{width:84%!important;padding:5px 2px 0 13px!important;background:transparent!important;box-shadow:none!important;position:relative!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-forum .rp-preview-page::before{content:""!important;position:absolute!important;left:2px!important;top:5px!important;width:7px!important;height:7px!important;border-radius:50%!important;background:color-mix(in srgb,var(--reader-text) 32%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .rp-preview-forum .rp-preview-page::after{content:""!important;position:absolute!important;left:0!important;right:0!important;top:21px!important;height:1px!important;background:var(--rp-line)!important}
+#raccoon-reader-root #reader-context-panel .rp-table-preview{
+  display:grid!important;grid-template-rows:repeat(4,1fr)!important;height:36px!important;padding:6px 7px!important;box-sizing:border-box!important;border-radius:6px!important;
+  background:color-mix(in srgb,var(--reader-text) 5%,var(--reader-card-bg))!important
+}
+#raccoon-reader-root #reader-context-panel .rp-table-preview>span{display:block!important;background:linear-gradient(90deg,transparent 32%,color-mix(in srgb,var(--reader-text) 14%,transparent) 32% 33%,transparent 33% 66%,color-mix(in srgb,var(--reader-text) 14%,transparent) 66% 67%,transparent 67%)!important}
+#raccoon-reader-root #reader-context-panel .rp-table-clean>span{border-top:1px solid color-mix(in srgb,var(--reader-text) 16%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .rp-table-clean>span:first-child{border-top:0!important;background-color:color-mix(in srgb,var(--reader-text) 8%,transparent)!important;border-radius:2px!important}
+#raccoon-reader-root #reader-context-panel .rp-table-three-line>span{background:none!important}
+#raccoon-reader-root #reader-context-panel .rp-table-three-line>span:first-child{border-top:1.5px solid color-mix(in srgb,var(--reader-text) 60%,transparent)!important;border-bottom:1px solid color-mix(in srgb,var(--reader-text) 40%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .rp-table-three-line>span:last-child{border-bottom:1.5px solid color-mix(in srgb,var(--reader-text) 60%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .rp-table-striped>span:nth-child(odd){background-color:color-mix(in srgb,var(--reader-text) 10%,transparent)!important;border-radius:2px!important}
+
+/* -- Steppers, sliders, chips ---------------------------------------------- */
+#raccoon-reader-root #reader-context-panel .reader-size-row{
+  display:grid!important;grid-template-columns:34px minmax(0,1fr) 34px!important;align-items:center!important;gap:4px!important;width:100%!important;height:auto!important;
+  padding:3px!important;margin:0!important;box-sizing:border-box!important;border:0!important;border-radius:10px!important;background:var(--rp-fill)!important
+}
+#raccoon-reader-root #reader-context-panel .reader-size-row button{
+  width:34px!important;height:30px!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;border-radius:8px!important;
+  background:var(--rp-tile)!important;box-shadow:0 1px 2px rgba(20,24,30,.08)!important;color:var(--rp-ink)!important;font:500 13px/1 var(--reader-ui-font)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel .reader-size-row #drawer-font-size-val{text-align:center!important;color:var(--rp-ink)!important;font:600 13px/1 var(--reader-ui-font)!important;font-variant-numeric:tabular-nums!important;background:none!important;border:0!important}
+#raccoon-reader-root #reader-context-panel .drawer-slider-row{display:flex!important;align-items:center!important;gap:0!important;margin:0!important;padding:2px 0!important;height:auto!important}
+#raccoon-reader-root #reader-context-panel .drawer-slider-row .drawer-slider{flex:1 1 auto!important;width:100%!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel .drawer-preset-chips{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;margin:0!important;padding:0!important}
+#raccoon-reader-root #reader-context-panel .drawer-preset-chips button{
+  height:28px!important;min-height:0!important;padding:0 4px!important;margin:0!important;border:1px solid var(--rp-line)!important;border-radius:999px!important;
+  background:transparent!important;box-shadow:none!important;color:var(--rp-muted)!important;font:500 13px/1 var(--reader-ui-font)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel .drawer-preset-chips button:hover{color:var(--rp-ink)!important;border-color:color-mix(in srgb,var(--rp-ink) 32%,transparent)!important}
+
+/* -- Switch lists (display toggles, indent, progress / meta) --------------- */
+#raccoon-reader-root #reader-context-panel :is(.reader-style-toggle-grid,.reader-visibility-controls){
+  display:flex!important;flex-direction:column!important;gap:0!important;padding:0!important;margin:0!important;grid-template-columns:none!important;
+  border:1px solid var(--rp-line)!important;border-radius:var(--rp-radius)!important;overflow:hidden!important;background:var(--rp-tile)!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-style-toggle-grid .reader-drawer-switch-row,.reader-visibility-controls label){
+  display:flex!important;flex-direction:row!important;align-items:center!important;gap:11px!important;min-height:48px!important;height:auto!important;
+  margin:0!important;padding:9px 12px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-style-toggle-grid .reader-drawer-switch-row,.reader-visibility-controls label)+:is(.reader-drawer-switch-row,label){border-top:1px solid var(--rp-line)!important}
+#raccoon-reader-root #reader-context-panel .reader-style-toggle-grid .reader-drawer-switch-row::before,
+#raccoon-reader-root #reader-context-panel .reader-style-toggle-grid .reader-drawer-switch-row::after{content:none!important;display:none!important}
+#raccoon-reader-root #reader-context-panel .rp-toggle-icon{display:grid!important;place-items:center!important;flex:none!important;width:28px!important;height:28px!important;border-radius:8px!important;background:var(--rp-fill)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .rp-toggle-icon svg{width:16px!important;height:16px!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch-row,.reader-visibility-controls label)>span:first-of-type{
+  display:flex!important;flex:1 1 auto!important;flex-direction:column!important;align-items:flex-start!important;gap:1px!important;min-width:0!important;text-align:left!important;
+  color:var(--rp-ink)!important;font:500 13px/1.35 var(--reader-ui-font)!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch-row,.reader-visibility-controls label) b{display:block!important;font:500 13px/1.35 var(--reader-ui-font)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch-row,.reader-visibility-controls label) small{display:block!important;font:400 13px/1.35 var(--reader-ui-font)!important;color:var(--rp-muted)!important;white-space:normal!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch){flex:none!important;margin:0 0 0 auto!important}
+
+/* -- 信息 pane ------------------------------------------------------------- */
+#raccoon-reader-root #reader-context-panel #reader-copy-link{
+  display:flex!important;align-items:center!important;gap:10px!important;width:100%!important;min-height:0!important;height:auto!important;margin:0!important;padding:10px 10px 10px 10px!important;box-sizing:border-box!important;
+  border:1px solid var(--rp-line)!important;border-radius:var(--rp-radius)!important;background:var(--rp-tile)!important;color:var(--rp-ink)!important;text-align:left!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel #reader-copy-link:hover{border-color:color-mix(in srgb,var(--rp-ink) 30%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .rp-source-icon{display:grid!important;place-items:center!important;flex:none!important;width:32px!important;height:32px!important;border-radius:9px!important;background:var(--rp-fill)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .rp-source-icon svg{width:16px!important;height:16px!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link .reader-source-url{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;gap:1px!important;min-width:0!important;overflow:hidden!important;white-space:nowrap!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link .reader-source-url b{font:600 13px/1.35 var(--reader-ui-font)!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link .reader-source-url small{font:400 13px/1.35 var(--reader-ui-font)!important;color:var(--rp-muted)!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link .reader-source-copy{flex:none!important;padding:5px 9px!important;border-radius:999px!important;background:var(--rp-fill)!important;color:var(--rp-ink)!important;font:500 13px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link.is-copied{background:var(--rp-tile)!important;color:var(--rp-ink)!important;border-color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link.is-copied .reader-source-copy{background:var(--rp-ink)!important;color:var(--reader-shell-card)!important}
+#raccoon-reader-root #reader-context-panel .rp-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel .rp-actions .rp-action{
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:7px!important;
+  width:auto!important;min-width:0!important;height:66px!important;min-height:0!important;margin:0!important;padding:8px 4px!important;box-sizing:border-box!important;
+  border:1px solid var(--rp-line)!important;border-radius:var(--rp-radius)!important;background:var(--rp-tile)!important;box-shadow:none!important;color:var(--rp-ink)!important;cursor:pointer!important;
+  transition:border-color .16s ease,background-color .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel .rp-actions .rp-action:hover{border-color:color-mix(in srgb,var(--rp-ink) 30%,transparent)!important;background:color-mix(in srgb,var(--rp-ink) 3%,var(--rp-tile))!important}
+#raccoon-reader-root #reader-context-panel .rp-actions .rp-action svg{display:block!important;width:20px!important;height:20px!important;margin:0!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .rp-actions .rp-action span{display:block!important;font:500 13px/1.2 var(--reader-ui-font)!important;color:var(--rp-ink)!important;white-space:nowrap!important}
+#raccoon-reader-root #reader-context-panel .reader-info-stats{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:1px!important;margin:0!important;padding:0!important;
+  border:1px solid var(--rp-line)!important;border-radius:var(--rp-radius)!important;overflow:hidden!important;background:var(--rp-line)!important
+}
+#raccoon-reader-root #reader-context-panel .reader-info-stats>span,
+#raccoon-reader-root #reader-context-panel .rp-reading-time{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px!important;min-width:0!important;min-height:0!important;
+  margin:0!important;padding:10px 12px!important;border:0!important;border-radius:0!important;background:var(--rp-tile)!important;box-sizing:border-box!important
+}
+#raccoon-reader-root #reader-context-panel .reader-info-stats b{font:600 15px/1.2 var(--reader-ui-font)!important;color:var(--rp-ink)!important;font-variant-numeric:tabular-nums!important}
+#raccoon-reader-root #reader-context-panel .reader-info-stats small{font:400 13px/1.2 var(--reader-ui-font)!important;color:var(--rp-muted)!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time{grid-column:1/-1!important;flex-direction:row!important;align-items:baseline!important;justify-content:flex-start!important;gap:6px!important;padding:12px!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time b{font:650 22px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time span{font:400 13px/1 var(--reader-ui-font)!important;color:var(--rp-muted)!important}
+#raccoon-reader-root #reader-context-panel [id="reader-export-menu"]{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel .reader-copy-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:8px!important;width:auto!important;min-width:0!important;height:40px!important;min-height:0!important;
+  margin:0!important;padding:0 11px!important;box-sizing:border-box!important;border:1px solid var(--rp-line)!important;border-radius:10px!important;
+  background:var(--rp-tile)!important;box-shadow:none!important;color:var(--rp-ink)!important;font:500 13px/1 var(--reader-ui-font)!important;cursor:pointer!important;
+  transition:border-color .16s ease,background-color .16s ease,color .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel .reader-copy-grid button{justify-content:center!important;padding:0 6px!important;gap:6px!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button:hover{border-color:color-mix(in srgb,var(--rp-ink) 30%,transparent)!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button svg{flex:none!important;width:15px!important;height:15px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.7!important;stroke-linecap:round!important;stroke-linejoin:round!important;color:var(--rp-muted)!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button span{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font:500 13px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-copy-grid button.is-copied{background:var(--rp-ink)!important;border-color:var(--rp-ink)!important;color:var(--reader-shell-card)!important}
+#raccoon-reader-root #reader-context-panel .reader-copy-grid button.is-copied svg{color:inherit!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-player:not([hidden]){margin-top:10px!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch){position:relative!important;inset:auto!important;transform:none!important}
+#raccoon-reader-root #reader-context-panel .reader-style-toggle-grid .reader-drawer-switch-row{position:relative!important}
+
+/* -- 笔记 pane ------------------------------------------------------------- */
+#raccoon-reader-root #reader-context-panel #reader-notes-panel{display:block!important;padding:8px 0 16px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel button{font-family:var(--reader-ui-font)!important;-webkit-text-fill-color:currentColor!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-heading{display:block!important;margin:0 0 12px!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-heading>div{display:flex!important;align-items:center!important;gap:8px!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-heading b{font:650 15px/1.3 var(--reader-ui-font)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-heading [data-note-count]{display:inline-grid!important;place-items:center!important;min-width:20px!important;height:20px!important;padding:0 6px!important;box-sizing:border-box!important;border-radius:10px!important;background:var(--rp-fill-strong)!important;color:var(--rp-ink)!important;font:600 13px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-status{margin:3px 0 0!important;padding:0!important;color:var(--rp-muted)!important;font:400 13px/1.45 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-capture{
+  display:flex!important;align-items:center!important;gap:11px!important;width:100%!important;height:auto!important;margin:0 0 14px!important;padding:11px 13px!important;box-sizing:border-box!important;
+  border:0!important;border-radius:var(--rp-radius)!important;background:var(--rp-ink)!important;color:var(--reader-shell-card)!important;text-align:left!important;cursor:pointer!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.12)!important;transition:transform .16s ease,box-shadow .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-capture:hover{transform:translateY(-1px)!important;box-shadow:0 4px 14px rgba(0,0,0,.16)!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-capture svg{flex:none!important;width:20px!important;height:20px!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-capture span{display:flex!important;flex-direction:column!important;gap:2px!important;min-width:0!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-capture b{font:600 13px/1.3 var(--reader-ui-font)!important;color:inherit!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-capture small{font:400 13px/1.3 var(--reader-ui-font)!important;color:inherit!important;opacity:.72!important}
+
+#raccoon-reader-root #reader-context-panel .reader-notes-empty{margin:0!important;padding:14px!important;border:1px dashed color-mix(in srgb,var(--rp-ink) 18%,transparent)!important;border-radius:var(--rp-radius)!important;background:transparent!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty>p{margin:0 0 12px!important;color:var(--rp-ink)!important;font:500 13px/1.5 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty ul{display:flex!important;flex-direction:column!important;gap:12px!important;margin:0!important;padding:0!important;list-style:none!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty li{display:flex!important;align-items:flex-start!important;gap:10px!important;margin:0!important;padding:0!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty li::before{content:none!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty li>i{display:grid!important;place-items:center!important;flex:none!important;width:28px!important;height:28px!important;border-radius:8px!important;background:var(--rp-fill)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty li>i svg{width:15px!important;height:15px!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty li>span{display:block!important;color:var(--rp-muted)!important;font:400 13px/1.5 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-empty li>span b{display:block!important;color:var(--rp-ink)!important;font:600 13px/1.4 var(--reader-ui-font)!important}
+
+#raccoon-reader-root #reader-context-panel .reader-notes-list{display:flex!important;flex-direction:column!important;gap:10px!important}
+#raccoon-reader-root #reader-context-panel .reader-note-card{
+  display:flex!important;flex-direction:column!important;gap:9px!important;margin:0!important;padding:12px!important;box-sizing:border-box!important;
+  border:1px solid var(--rp-line)!important;border-radius:var(--rp-radius)!important;background:var(--rp-tile)!important;box-shadow:none!important
+}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-quote{
+  display:block!important;width:100%!important;margin:0!important;padding:1px 0 1px 11px!important;box-sizing:border-box!important;border:0!important;border-left:3px solid #e9c95b!important;border-radius:0!important;
+  background:transparent!important;color:var(--rp-ink)!important;font:400 13.5px/1.65 var(--reader-ui-font)!important;text-align:left!important;cursor:pointer!important;
+  display:-webkit-box!important;-webkit-line-clamp:6!important;-webkit-box-orient:vertical!important;overflow:hidden!important;white-space:normal!important
+}
+#raccoon-reader-root #reader-context-panel .reader-note-text{margin:0!important;padding:0!important;color:var(--rp-ink)!important;font:400 13.5px/1.65 var(--reader-ui-font)!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-add{
+  display:inline-flex!important;align-items:center!important;gap:6px!important;align-self:flex-start!important;margin:0!important;padding:0!important;border:0!important;background:none!important;
+  color:var(--rp-muted)!important;font:400 13px/1.4 var(--reader-ui-font)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-add:hover{color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-add svg{width:14px!important;height:14px!important}
+#raccoon-reader-root #reader-context-panel .reader-note-foot{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;margin:0!important;padding-top:8px!important;border-top:1px solid var(--rp-line)!important}
+#raccoon-reader-root #reader-context-panel .reader-note-meta{min-width:0!important;color:var(--rp-muted)!important;font:400 13px/1.3 var(--reader-ui-font)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#raccoon-reader-root #reader-context-panel .reader-note-actions{display:flex!important;flex:none!important;gap:2px!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-actions button{
+  display:grid!important;place-items:center!important;width:28px!important;height:28px!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;border-radius:8px!important;
+  background:transparent!important;color:var(--rp-muted)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-actions button:hover{background:var(--rp-fill)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-actions button[data-delete]:hover{background:rgba(209,54,43,.1)!important;color:#c0352b!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-actions svg{width:15px!important;height:15px!important}
+
+/* Screenshot excerpts keep at least half of their on-screen size, so text in
+   a wide crop stays legible; the rest fades out and opens in the viewer. */
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-note-image-frame{
+  position:relative!important;display:block!important;width:100%!important;max-height:240px!important;margin:0!important;padding:0!important;overflow:hidden!important;box-sizing:border-box!important;
+  border:1px solid var(--rp-line)!important;border-radius:9px!important;background:var(--reader-card-bg)!important;cursor:zoom-in!important;text-align:left!important
+}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame img{
+  display:block!important;max-width:none!important;max-height:none!important;height:auto!important;margin:0!important;border:0!important;border-radius:0!important;object-fit:initial!important;cursor:inherit!important;
+  width:100%!important;image-rendering:auto!important
+}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame[style*="--note-css-w"] img{width:min(calc(var(--note-css-w)*1px),max(100%,calc(var(--note-css-w)*.5px)))!important}
+#raccoon-reader-root #reader-context-panel .reader-note-image-hint{
+  position:absolute!important;left:8px!important;bottom:8px!important;display:inline-flex!important;align-items:center!important;gap:5px!important;padding:5px 9px!important;border-radius:999px!important;
+  background:rgba(22,24,28,.78)!important;color:#fff!important;font:500 13px/1 var(--reader-ui-font)!important;opacity:0!important;transform:translateY(3px)!important;transition:opacity .16s ease,transform .16s ease!important;pointer-events:none!important
+}
+#raccoon-reader-root #reader-context-panel .reader-note-image-hint svg{width:12px!important;height:12px!important}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame:is(:hover,:focus-visible) .reader-note-image-hint{opacity:1!important;transform:none!important}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame:is([data-wide],[data-tall])::after{content:""!important;position:absolute!important;inset:0!important;pointer-events:none!important}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame[data-wide]::after{background:linear-gradient(90deg,transparent 72%,var(--reader-card-bg))!important}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame[data-tall]::after{background:linear-gradient(transparent 70%,var(--reader-card-bg))!important}
+#raccoon-reader-root #reader-context-panel .reader-note-image-frame[data-wide][data-tall]::after{background:linear-gradient(90deg,transparent 72%,var(--reader-card-bg)),linear-gradient(transparent 70%,var(--reader-card-bg))!important}
+
+#raccoon-reader-root #reader-context-panel .reader-notes-export{display:block!important;margin:18px 0 0!important;padding:14px 0 0!important;border-top:1px solid var(--rp-line)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-export>span{display:block!important;width:auto!important;margin:0 0 9px!important;color:var(--rp-ink)!important;font:500 13px/1.35 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-export>div{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-export button{
+  display:flex!important;align-items:center!important;gap:8px!important;width:auto!important;min-width:0!important;height:40px!important;margin:0!important;padding:0 11px!important;box-sizing:border-box!important;
+  border:1px solid var(--rp-line)!important;border-radius:10px!important;background:var(--rp-tile)!important;color:var(--rp-ink)!important;font:500 13px/1 var(--reader-ui-font)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-export button:hover{border-color:color-mix(in srgb,var(--rp-ink) 30%,transparent)!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-export button svg{flex:none!important;width:15px!important;height:15px!important;color:var(--rp-muted)!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel .reader-notes-export button span{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+#raccoon-reader-root #reader-context-panel #reader-notes-panel:not(.has-notes) .reader-notes-export{opacity:.55!important}
+
+/* Note editor popover. */
+#raccoon-reader-root .reader-note-editor{border-radius:14px!important;padding:14px!important;box-shadow:0 18px 50px rgba(15,18,24,.18),0 0 0 1px var(--rp-line)!important;border:0!important;background:var(--reader-shell-card)!important}
+#raccoon-reader-root .reader-note-editor label{display:block!important;color:var(--rp-muted)!important;font:500 13px/1.3 var(--reader-ui-font)!important}
+#raccoon-reader-root .reader-note-editor textarea{border:1px solid var(--rp-line)!important;border-radius:10px!important;padding:10px 11px!important;outline:none!important;background:var(--reader-card-bg)!important}
+#raccoon-reader-root .reader-note-editor textarea:focus{border-color:var(--rp-ink)!important;box-shadow:0 0 0 3px var(--rp-fill)!important}
+#raccoon-reader-root .reader-note-editor-source blockquote{border-left:3px solid #e9c95b!important}
+#raccoon-reader-root .reader-note-editor [data-save]{background:var(--rp-ink)!important;color:var(--reader-shell-card)!important;border-color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .rp-pane #reader-font-grid{display:grid!important}
+
+/* ==========================================================================
+   1.0.6b — feedback round: navigation tabs return to a refined segmented
+   track; choices inside a pane become separate outlined chips; groups are
+   separated by space instead of rules; clearer title > label > value scale.
+   ========================================================================== */
+/* Navigation tabs: soft track, raised white thumb, icon + label. */
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs{
+  gap:0!important;padding:4px!important;margin:0 0 10px!important;border-radius:12px!important;
+  background:color-mix(in srgb,var(--reader-text) 6%,transparent)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--reader-text) 3%,transparent)!important
+}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs button,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button{height:34px!important;border-radius:9px!important;gap:6px!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tab-indicator,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tab-indicator{
+  top:4px!important;bottom:4px!important;left:4px!important;inset:4px auto 4px 4px!important;width:calc((100% - 8px)/3)!important;height:auto!important;
+  border-radius:9px!important;clip-path:none!important;background:var(--reader-shell-card)!important;
+  box-shadow:0 1px 2px rgba(18,22,28,.08),0 2px 8px rgba(18,22,28,.06),0 0 0 .5px rgba(18,22,28,.06)!important
+}
+#raccoon-reader-root[data-theme="dark"] #reader-context-panel .reader-tool-tab-indicator,
+#raccoon-reader-root[data-theme="dark"] #reader-outline-panel .reader-navigator-tab-indicator{background:color-mix(in srgb,var(--reader-text) 14%,var(--reader-shell-card))!important;box-shadow:0 1px 3px rgba(0,0,0,.3)!important}
+
+/* Groups: space, not lines. Title (ink, 14) > label (13, soft ink) > value (13, muted). */
+#raccoon-reader-root #reader-context-panel .rp-group{border-top:0!important;padding:0!important;margin:0 0 26px!important}
+#raccoon-reader-root #reader-context-panel .rp-pane>.rp-group:first-child{padding-top:6px!important}
+#raccoon-reader-root #reader-context-panel .rp-pane>.rp-group:last-child{margin-bottom:12px!important}
+#raccoon-reader-root #reader-context-panel .rp-group-title{margin:0 0 12px!important;color:var(--rp-ink)!important;font:650 14px/1.3 var(--reader-ui-font)!important;letter-spacing:0!important}
+#raccoon-reader-root #reader-context-panel .rp-field{padding:0!important;margin:0!important}
+#raccoon-reader-root #reader-context-panel .rp-field+.rp-field{margin-top:18px!important}
+#raccoon-reader-root #reader-context-panel .rp-field-head{align-items:center!important;min-height:18px!important;margin:0 0 8px!important}
+#raccoon-reader-root #reader-context-panel .rp-field-label{color:color-mix(in srgb,var(--rp-ink) 70%,transparent)!important;font:500 13px/1.35 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .rp-field>*:not(.rp-field-head)+*:not(.rp-field-head){margin-top:8px!important}
+
+/* Choices inside a pane: separate outlined chips (same selected state as tiles). */
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"],[id="reader-link-style"]){
+  display:grid!important;grid-auto-flow:column!important;grid-auto-columns:minmax(0,1fr)!important;gap:6px!important;padding:0!important;border-radius:0!important;background:none!important;box-shadow:none!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"]) .reader-tab-indicator{display:none!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"],[id="reader-link-style"]) button{
+  height:34px!important;border:1px solid var(--rp-line)!important;border-radius:9px!important;background:var(--rp-tile)!important;box-shadow:none!important;
+  color:color-mix(in srgb,var(--rp-ink) 72%,transparent)!important;font:500 13px/1 var(--reader-ui-font)!important;transition:border-color .16s ease,color .16s ease!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs,[id="reader-writing-tabs"],[id="reader-link-style"]) button:hover{border-color:color-mix(in srgb,var(--rp-ink) 32%,transparent)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-context-mode-tabs button.active,[id="reader-writing-tabs"] button.active,[id="reader-link-style"] button[aria-pressed="true"]){
+  border-color:var(--rp-ink)!important;box-shadow:inset 0 0 0 .6px var(--rp-ink)!important;color:var(--rp-ink)!important;font-weight:620!important;background:var(--rp-tile)!important
+}
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button[data-value="blue"],
+#raccoon-reader-root #reader-context-panel [id="reader-link-style"] button[data-value="blue"][aria-pressed="true"]{color:#1769c2!important}
+
+/* Steppers: same outlined language. */
+#raccoon-reader-root #reader-context-panel .reader-size-row{padding:0!important;gap:6px!important;grid-template-columns:40px minmax(0,1fr) 40px!important;background:none!important}
+#raccoon-reader-root #reader-context-panel .reader-size-row button{width:40px!important;height:34px!important;border:1px solid var(--rp-line)!important;border-radius:9px!important;box-shadow:none!important}
+#raccoon-reader-root #reader-context-panel .reader-size-row button:hover{border-color:color-mix(in srgb,var(--rp-ink) 32%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .reader-size-row #drawer-font-size-val{display:grid!important;place-items:center!important;height:34px!important;border-radius:9px!important;background:var(--rp-fill)!important}
+
+/* Switch lists: separate soft rows, no rules. */
+#raccoon-reader-root #reader-context-panel :is(.reader-style-toggle-grid,.reader-visibility-controls){gap:6px!important;border:0!important;border-radius:0!important;overflow:visible!important;background:none!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-style-toggle-grid .reader-drawer-switch-row,.reader-visibility-controls label){
+  min-height:46px!important;padding:9px 12px!important;border-radius:11px!important;background:var(--rp-fill)!important
+}
+#raccoon-reader-root #reader-context-panel :is(.reader-style-toggle-grid .reader-drawer-switch-row,.reader-visibility-controls label)+:is(.reader-drawer-switch-row,label){border-top:0!important}
+#raccoon-reader-root #reader-context-panel .rp-toggle-icon{background:var(--rp-tile)!important;box-shadow:0 0 0 .5px var(--rp-line)!important}
+
+/* 信息: source + actions read as one block. */
+#raccoon-reader-root #reader-context-panel .rp-pane[data-pane="article"]>.rp-group:first-child .rp-field+.rp-field{margin-top:8px!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link,
+#raccoon-reader-root #reader-context-panel .rp-actions .rp-action{border-color:transparent!important;background:var(--rp-fill)!important}
+#raccoon-reader-root #reader-context-panel #reader-copy-link:hover,
+#raccoon-reader-root #reader-context-panel .rp-actions .rp-action:hover{background:var(--rp-fill-strong)!important;border-color:transparent!important}
+#raccoon-reader-root #reader-context-panel .rp-source-icon,
+#raccoon-reader-root #reader-context-panel #reader-copy-link .reader-source-copy{background:var(--rp-tile)!important}
+#raccoon-reader-root #reader-context-panel .rp-pane:has(#reader-speech-player:not([hidden])) .rp-action[data-reader-context-action="speak"]{background:var(--rp-ink)!important;color:var(--reader-shell-card)!important}
+#raccoon-reader-root #reader-context-panel .rp-pane:has(#reader-speech-player:not([hidden])) .rp-action[data-reader-context-action="speak"] :is(svg,span){color:var(--reader-shell-card)!important}
+
+/* 文章信息: a reading-time headline, then quiet figures. */
+#raccoon-reader-root #reader-context-panel .reader-info-stats{gap:6px!important;border:0!important;border-radius:0!important;overflow:visible!important;background:none!important}
+#raccoon-reader-root #reader-context-panel .reader-info-stats>span{padding:10px 11px 9px!important;border-radius:10px!important;background:var(--rp-fill)!important;gap:3px!important}
+#raccoon-reader-root #reader-context-panel .reader-info-stats b{font:620 16px/1.15 var(--reader-ui-font)!important;letter-spacing:-.01em!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:4px!important;padding:14px 14px 13px!important;border-radius:12px!important;
+  background:var(--rp-ink)!important;color:var(--reader-shell-card)!important
+}
+#raccoon-reader-root #reader-context-panel .rp-reading-time b{font:650 26px/1 var(--reader-ui-font)!important;color:inherit!important;letter-spacing:-.02em!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time b::after{content:" 分钟"!important;font:500 14px/1 var(--reader-ui-font)!important;letter-spacing:0!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time span{color:inherit!important;opacity:.7!important;font:400 13px/1.2 var(--reader-ui-font)!important}
+
+/* Export / copy: no frames around groups, a bit more air under labels. */
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button{border-color:transparent!important;background:var(--rp-fill)!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button:hover{background:var(--rp-fill-strong)!important;border-color:transparent!important}
+#raccoon-reader-root #reader-context-panel :is([id="reader-export-menu"],.reader-copy-grid) button svg{color:var(--rp-ink)!important;opacity:.7!important}
+
+/* Speech player: one compact card. */
+#raccoon-reader-root #reader-context-panel #reader-speech-player[hidden]{display:none!important}
+#raccoon-reader-root #reader-context-panel #reader-speech-player{margin:8px 0 0!important;padding:14px!important;border:0!important;border-radius:12px!important;background:var(--rp-fill)!important;box-shadow:none!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-head{font:600 13px/1.2 var(--reader-ui-font)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-head small{font:500 13px/1 var(--reader-ui-font)!important;color:var(--rp-muted)!important;font-variant-numeric:tabular-nums!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-progress{height:3px!important;margin:10px 0!important;background:color-mix(in srgb,var(--rp-ink) 10%,transparent)!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-progress i{background:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-current{min-height:0!important;max-height:4.8em!important;margin:0 0 12px!important;color:var(--rp-ink)!important;font:400 13px/1.6 var(--reader-ui-font)!important;display:-webkit-box!important;-webkit-line-clamp:3!important;-webkit-box-orient:vertical!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-controls{display:grid!important;grid-template-columns:1fr 1.5fr 1fr 1fr!important;gap:6px!important;margin:0 0 12px!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-controls button{
+  display:grid!important;place-items:center!important;flex-direction:row!important;width:auto!important;min-width:0!important;height:36px!important;padding:0!important;margin:0!important;
+  border:0!important;border-radius:9px!important;background:var(--rp-tile)!important;box-shadow:0 0 0 .5px var(--rp-line)!important;color:var(--rp-ink)!important;cursor:pointer!important
+}
+#raccoon-reader-root #reader-context-panel .reader-speech-controls button span{display:none!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-controls button svg{width:15px!important;height:15px!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-controls .reader-speech-primary{background:var(--rp-ink)!important;color:var(--reader-shell-card)!important;box-shadow:none!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-options{grid-template-columns:minmax(0,1fr) 76px!important;gap:6px!important;margin:0 0 10px!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-options label{color:var(--rp-muted)!important;font:500 13px/1.3 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-options select{height:34px!important;margin-top:5px!important;padding:0 8px!important;border:0!important;border-radius:9px!important;background:var(--rp-tile)!important;box-shadow:0 0 0 .5px var(--rp-line)!important;color:var(--rp-ink)!important;font:400 13px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-highlight-tabs{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding:0!important;margin:0!important;background:none!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-highlight-tabs button{height:32px!important;padding:0!important;border:1px solid transparent!important;border-radius:9px!important;background:transparent!important;box-shadow:none!important;color:var(--rp-muted)!important;font:500 13px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .reader-speech-highlight-tabs button.active{background:var(--rp-tile)!important;border-color:var(--rp-ink)!important;color:var(--rp-ink)!important}
+
+/* Notes: keep the look the maintainer liked, minus the footer rule. */
+#raccoon-reader-root #reader-context-panel .reader-note-foot{border-top:0!important;padding-top:2px!important}
+#raccoon-reader-root #reader-context-panel .reader-notes-export{border-top:0!important;padding-top:0!important;margin-top:22px!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tab-indicator,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tab-indicator{z-index:0!important}
+#raccoon-reader-root #reader-context-panel .reader-tool-tabs button,
+#raccoon-reader-root #reader-outline-panel .reader-navigator-tabs button{z-index:1!important}
+#raccoon-reader-root #reader-context-panel #drawer-btn-copy{width:auto!important;margin:0!important;padding:0 6px!important;justify-content:center!important;border:1px solid transparent!important;background:var(--rp-fill)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel #drawer-btn-copy:hover{background:var(--rp-fill-strong)!important}
+#raccoon-reader-root #reader-context-panel #drawer-btn-copy.is-copied{background:var(--rp-ink)!important;color:var(--reader-shell-card)!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time{flex-direction:row!important;align-items:baseline!important;justify-content:space-between!important;padding:13px 14px!important;background:var(--rp-fill)!important;color:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time span{order:0!important;opacity:1!important;color:var(--rp-muted)!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time b{font:650 24px/1 var(--reader-ui-font)!important}
+#raccoon-reader-root #reader-context-panel .rp-reading-time b::after{color:var(--rp-muted)!important;font-weight:500!important}
+/* One switch for every toggle in the panel; the "on" track follows the ink
+   colour so it stays visible on dark paper. */
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch){position:relative!important;display:inline-block!important;width:34px!important;height:20px!important;flex:0 0 34px!important;padding:0!important;overflow:visible!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch)>i{position:absolute!important;inset:0!important;display:block!important;width:auto!important;height:auto!important;border:0!important;border-radius:999px!important;background:color-mix(in srgb,var(--rp-ink) 20%,transparent)!important;transition:background-color .18s ease!important;overflow:visible!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch)>i::after{content:none!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch)>i::before{content:""!important;display:block!important;position:absolute!important;top:2px!important;left:2px!important;width:16px!important;height:16px!important;border-radius:50%!important;background:#fff!important;box-shadow:0 1px 3px rgba(0,0,0,.2)!important;transition:transform .18s ease!important;transform:none!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch)>input:checked+i{background:var(--rp-ink)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch)>input:checked+i::before{transform:translateX(14px)!important;background:var(--reader-shell-card)!important}
+#raccoon-reader-root #reader-context-panel :is(.reader-drawer-switch,.reader-info-switch)>input:focus-visible+i{outline:2px solid var(--rp-muted)!important;outline-offset:2px!important}

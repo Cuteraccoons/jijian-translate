@@ -40,8 +40,8 @@ async page=>{
       const overlaps=boxes.some((a,i)=>boxes.some((b,j)=>j>i&&Math.min(a.right,b.right)>Math.max(a.left,b.left)+.5&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+.5));
       return {display:getComputedStyle(group).display,overlaps,contained:boxes.every(b=>b.left>=rect.left-.5&&b.right<=rect.right+.5),labelsFit:buttons.every(b=>b.scrollWidth<=b.clientWidth+1&&b.scrollHeight<=b.clientHeight+1),width:rect.width,heights:boxes.map(b=>b.height)};
      });
-     // 1.0.5: outline accents are colour-only dots (flex row); keep the no-overlap / containment checks.
-     if(!['grid','flex'].includes(geometry.display)||geometry.overlaps||!geometry.contained||!geometry.labelsFit||geometry.heights.some(h=>h<30))throw Error(JSON.stringify({viewport,width,theme,geometry}));
+     // 1.0.6: outline accents are 26 px colour swatches (flex row), same as the paper swatches; keep the no-overlap / containment checks.
+     if(!['grid','flex'].includes(geometry.display)||geometry.overlaps||!geometry.contained||!geometry.labelsFit||geometry.heights.some(h=>h<24))throw Error(JSON.stringify({viewport,width,theme,geometry}));
      results.push({viewport,width,theme,...geometry});
     }
    }

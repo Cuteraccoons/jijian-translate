@@ -2840,6 +2840,10 @@
   let readerImageInfoCache = new WeakMap();
   let readerBaikeBlocks = new WeakMap();
   let readerCompositeNodes = new WeakSet();
+  // Generic page-builder structures: accordion panels (panel -> {title, open})
+  // and rows of side-by-side cards (row -> {cards}).
+  let readerAccordionPanels = new WeakMap();
+  let readerCardGroups = new WeakMap();
   let readerCompositeHtmlCache = new WeakMap();
   let readerStylesheetPromise = null;
   let readerSpeechController = null;
@@ -3073,20 +3077,32 @@
   // site rules above return before this is used.
   function widenReaderContainer(el) {
     const proseLength = node => Array.from(node.querySelectorAll("p, blockquote, li"))
-      .filter(child => !child.closest("nav, header, footer, aside, [role='navigation']"))
+      .filter(child => !child.closest("nav, header, footer, aside, [role='navigation'], [id*='comment' i], [class*='comment' i], [class*='related' i], [class*='sidebar' i]"))
       .reduce((sum, child) => sum + (child.textContent || "").trim().length, 0);
+    // Component-built pages (Drupal/Cohesion, page builders) wrap every section
+    // in several layers that add no prose, so pure wrappers are skipped rather
+    // than ending the climb. A wider ancestor is adopted only when it adds
+    // clearly more prose without becoming link-heavy chrome.
     let current = el;
-    for (let depth = 0; depth < 4; depth++) {
-      const parent = current?.parentElement;
-      if (!parent || parent === document.body || parent === document.documentElement) break;
-      if (parent.closest("nav, header, footer, aside, [role='navigation']")) break;
-      const own = proseLength(current);
-      const wider = proseLength(parent);
-      if (!(wider > own * 1.35 && wider - own > 400)) break;
-      const text = (parent.textContent || "").trim().length || 1;
-      const linkText = Array.from(parent.querySelectorAll("a")).reduce((sum, a) => sum + (a.textContent || "").trim().length, 0);
+    let own = proseLength(el);
+    let ancestor = el;
+    for (let depth = 0; depth < 9; depth++) {
+      ancestor = ancestor?.parentElement;
+      if (!ancestor || ancestor === document.body || ancestor === document.documentElement) break;
+      if (ancestor.matches("nav, header, footer, aside, [role='navigation']") || ancestor.closest("nav, header, footer, aside, [role='navigation']")) break;
+      const wider = proseLength(ancestor);
+      if (wider <= own + 40) continue;
+      if (!(wider > own * 1.35 && wider - own > 400)) {
+        // Adds a little (a hero line, a caption): keep looking upward, but do
+        // not let several small additions add up to the whole page.
+        if (wider - own > 1200) break;
+        continue;
+      }
+      const text = (ancestor.textContent || "").trim().length || 1;
+      const linkText = Array.from(ancestor.querySelectorAll("a")).reduce((sum, a) => sum + (a.textContent || "").trim().length, 0);
       if (linkText / text > .35) break;
-      current = parent;
+      current = ancestor;
+      own = wider;
     }
     return current;
   }
@@ -3300,6 +3316,344 @@
     return null;
   }
 
+  // 1.0.6 tool panel: the controls built above (many still carrying their old
+  // ids and listeners) are regrouped into three panes — 排版 / 信息 / 笔记 —
+  // with one field pattern (label, optional value, control) per setting.
+  function buildReaderToolPanes(root, { minutes = 1 } = {}) {
+    const panel = root.querySelector("#reader-context-panel");
+    const scroll = panel?.querySelector(".reader-tools-scroll");
+    if (!scroll || scroll.dataset.panes === "ready") return;
+    scroll.dataset.panes = "ready";
+    const make = (tag, className, text) => { const el = document.createElement(tag); if (className) el.className = className; if (text != null) el.textContent = text; return el; };
+    const q = selector => scroll.querySelector(selector);
+    const labelOf = control => {
+      const own = control?.closest("section")?.querySelector(":scope > .reader-context-label");
+      if (own) return own;
+      const previous = control?.previousElementSibling;
+      return previous?.classList.contains("drawer-section-label") ? previous : null;
+    };
+    const field = (label, controls, { value = null, className = "" } = {}) => {
+      const node = make("div", `rp-field${className ? ` ${className}` : ""}`);
+      if (label || value) {
+        const head = make("div", "rp-field-head");
+        if (typeof label === "string") label = make("span", null, label);
+        if (label) { label.classList.add("rp-field-label"); head.append(label); }
+        if (value) { value.classList.add("rp-field-value"); head.append(value); }
+        node.append(head);
+      }
+      controls.filter(Boolean).forEach(control => node.append(control));
+      return node;
+    };
+    const group = (title, fields) => {
+      const node = make("section", "rp-group");
+      if (title) node.append(make("h3", "rp-group-title", title));
+      fields.filter(Boolean).forEach(child => node.append(child));
+      return node;
+    };
+    const sliderField = (sliderId, fallbackLabel) => {
+      const row = q(`#${sliderId}`)?.closest(".drawer-slider-row");
+      if (!row) return null;
+      const value = row.querySelector(".drawer-slider-val");
+      return field(labelOf(row) || fallbackLabel, [row], { value });
+    };
+    // A live caption for swatch groups ("纸张 · 暖纸").
+    const swatchCaption = (container, read) => {
+      const caption = make("span");
+      const sync = () => { caption.textContent = read() || ""; };
+      container?.addEventListener("click", () => setTimeout(sync, 0));
+      container?.addEventListener("keyup", () => setTimeout(sync, 0));
+      sync();
+      return caption;
+    };
+
+    // 排版
+    const modeTabs = q(".reader-context-mode-tabs");
+    const renderGrid = q(".reader-render-style-grid");
+    const cardTones = q(".reader-card-tone-grid");
+    const themes = q(".reader-context-themes");
+    const accent = q("#reader-outline-accent");
+    const linkStyle = q("#reader-link-style");
+    const toggles = q(".reader-style-toggle-grid");
+    const surface = q("#reader-surface-switch");
+    const tableStyle = q(".reader-table-style-grid");
+    const fontGrid = q("#reader-font-grid");
+    const widthRow = q("#drawer-width-slider")?.closest(".drawer-slider-row");
+    const presets = q(".drawer-preset-chips");
+    const sizeRow = q(".reader-size-row");
+    const indent = q(".reader-reading-options");
+    const writing = q("#reader-writing-tabs");
+    const toggleIcons = {
+      "reader-toggle-image-shadow": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 20h12a2 2 0 0 0 2-2V8"/><path d="m3 13 4-3 4 3 3-2 3 2"/></svg>',
+      "reader-toggle-wikipedia-flow": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M3 5h8M3 9h8M3 13h8M3 17h18M3 21h14"/></svg>',
+      "reader-toggle-wikipedia-magazine": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h7M3 9h7M3 13h7M3 17h7M14 5h7M14 9h7M14 13h7M14 17h7"/></svg>'
+    };
+    toggles?.querySelectorAll(".reader-drawer-switch-row").forEach(row => {
+      const icon = make("i", "rp-toggle-icon");
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = toggleIcons[row.getAttribute("for")] || "";
+      row.prepend(icon);
+    });
+    // Fresh miniature previews for page and table styles.
+    surface?.querySelectorAll("button[data-reader-surface]").forEach(button => {
+      const preview = make("span", `rp-preview rp-preview-${button.dataset.readerSurface}`);
+      preview.setAttribute("aria-hidden", "true");
+      preview.innerHTML = "<span class=\"rp-preview-page\"><span></span><span></span><span></span></span>";
+      button.prepend(preview);
+    });
+    tableStyle?.querySelectorAll("button[data-reader-table-style]").forEach(button => {
+      const preview = make("span", `rp-table-preview rp-table-${button.dataset.readerTableStyle}`);
+      preview.setAttribute("aria-hidden", "true");
+      preview.innerHTML = "<span></span><span></span><span></span><span></span>";
+      button.prepend(preview);
+    });
+    const appearance = make("div", "rp-pane");
+    appearance.dataset.pane = "appearance";
+    appearance.append(
+      group("阅读", [
+        field(labelOf(modeTabs) || "阅读内容", [modeTabs]),
+        field(labelOf(renderGrid) || "译文样式", [renderGrid, cardTones])
+      ]),
+      group("文字", [
+        field(labelOf(fontGrid) || "字体", [fontGrid]),
+        field(labelOf(sizeRow) || "字号", [sizeRow]),
+        sliderField("drawer-lineheight-slider", "行距"),
+        sliderField("drawer-paragraph-slider", "段落间距"),
+        indent ? field(null, [indent], { className: "rp-field-flush" }) : null,
+        writing ? field(writing.previousElementSibling?.classList.contains("drawer-section-label") ? writing.previousElementSibling : "排版方向", [writing]) : null
+      ]),
+      group("版面", [
+        field(labelOf(themes) || "纸张", [themes], { value: swatchCaption(themes, () => themes?.querySelector("button.active")?.title) }),
+        field(labelOf(surface) || "页面样式", [surface]),
+        widthRow ? field(labelOf(widthRow) || "正文宽度", [widthRow, presets], { value: widthRow.querySelector(".drawer-slider-val") }) : null,
+        field(labelOf(tableStyle) || "表格样式", [tableStyle])
+      ]),
+      group("细节", [
+        field(labelOf(accent) || "大纲选中色", [accent], { value: swatchCaption(accent, () => accent?.querySelector("[aria-pressed='true']")?.title) }),
+        field(labelOf(linkStyle) || "超链接样式", [linkStyle]),
+        toggles ? field("显示效果", [toggles]) : null
+      ])
+    );
+
+    // 信息
+    const source = q("#reader-copy-link");
+    const share = q("#reader-share-screenshot");
+    const speak = q('[data-reader-context-action="speak"]');
+    const top = q('[data-reader-context-action="top"]');
+    const speech = q("#reader-speech-player");
+    const stats = q(".reader-info-stats");
+    const visibility = [...scroll.querySelectorAll(".reader-visibility-controls")].find(node => !node.classList.contains("reader-reading-options"));
+    const exportMenu = q("#reader-export-menu");
+    const copyGrid = q(".reader-copy-grid");
+    const icons = {
+      speak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+      share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 12h6M12 9v6"/></svg>',
+      top: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14M12 20V9M7 13l5-5 5 5"/></svg>',
+      link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>'
+    };
+    const actionTile = (button, icon, label) => {
+      if (!button) return null;
+      button.classList.add("rp-action");
+      button.innerHTML = `${icon}<span>${label}</span>`;
+      return button;
+    };
+    const actions = make("div", "rp-actions");
+    [actionTile(speak, icons.speak, "朗读"), actionTile(share, icons.share, "截图分享"), actionTile(top, icons.top, "回到顶部")].filter(Boolean).forEach(button => actions.append(button));
+    if (source) {
+      const host = source.querySelector(".reader-source-url");
+      const sourceIcon = make("span", "rp-source-icon");
+      sourceIcon.innerHTML = icons.link;
+      source.prepend(sourceIcon);
+      if (host) {
+        const url = (() => { try { return new URL(source.title || location.href); } catch (_) { return null; } })();
+        host.innerHTML = "";
+        const path = url ? (() => { try { return decodeURI(url.pathname + url.search); } catch (_) { return url.pathname + url.search; } })().replace(/\/$/, "") || "/" : "";
+        host.append(make("b", null, url?.hostname.replace(/^www\./, "") || location.hostname), make("small", null, path));
+      }
+    }
+    const readingTime = make("div", "rp-reading-time");
+    readingTime.innerHTML = `<span>预计阅读</span><b>${minutes}</b>`;
+    stats?.prepend(readingTime);
+    const copyLabels = { orig:"原文", trans:"译文", bilingual:"双语" };
+    copyGrid?.querySelectorAll("[data-reader-copy]").forEach(button => {
+      const label = button.querySelector("span");
+      if (label && copyLabels[button.dataset.readerCopy]) label.textContent = copyLabels[button.dataset.readerCopy];
+    });
+    const exportLabel = exportMenu?.closest(".reader-export-wrap")?.querySelector(".drawer-section-label");
+    exportLabel?.remove();
+    const article = make("div", "rp-pane");
+    article.dataset.pane = "article";
+    article.append(
+      group(null, [source ? field(null, [source], { className: "rp-field-flush" }) : null, field(null, [actions, speech], { className: "rp-field-flush" })]),
+      group("文章信息", [stats ? field(null, [stats], { className: "rp-field-flush" }) : null]),
+      visibility ? group("显示", [field(null, [visibility], { className: "rp-field-flush" })]) : null,
+      group("导出与复制", [
+        exportMenu ? field("下载为文件", [exportMenu]) : null,
+        copyGrid ? field("复制到剪贴板", [copyGrid]) : null
+      ])
+    );
+
+    // 笔记
+    const notesPane = make("div", "rp-pane");
+    notesPane.dataset.pane = "notes";
+    const notes = q("#reader-notes-panel");
+    if (notes) notesPane.append(notes);
+
+    // Old per-section show/hide rules key off data-reader-tool-section; the
+    // panes own visibility now, so the attribute is dropped once regrouped.
+    [appearance, article, notesPane].forEach(pane => {
+      pane.querySelectorAll("[data-reader-tool-section]").forEach(node => node.removeAttribute("data-reader-tool-section"));
+      pane.querySelectorAll(".reader-drawer-redundant, .reader-drawer-quick-label, .reader-drawer-quick-action").forEach(node => node.remove());
+    });
+    const drawer = scroll.querySelector("#reader-settings-drawer");
+    [...scroll.children].forEach(child => { if (child !== drawer) child.remove(); });
+    drawer?.classList.add("rp-retired-drawer");
+    scroll.prepend(appearance, article, notesPane);
+    panel.classList.add("rp-ready");
+  }
+
+  // Three or more consecutive accordion items get one "expand all" switch.
+  function initializeReaderAccordionGroups(root) {
+    const content = root.querySelector("#reader-content");
+    if (!content) return;
+    const runs = [];
+    let run = [];
+    [...content.children].forEach(node => {
+      if (node.classList.contains("reader-accordion")) { run.push(node); return; }
+      if (run.length) runs.push(run);
+      run = [];
+    });
+    if (run.length) runs.push(run);
+    runs.filter(items => items.length >= 3).forEach(items => {
+      const bar = document.createElement("div");
+      bar.className = "reader-accordion-toolbar";
+      const count = document.createElement("span");
+      count.textContent = `${items.length} 项`;
+      const button = document.createElement("button");
+      button.type = "button";
+      const sync = () => {
+        const allOpen = items.every(item => item.open);
+        button.textContent = allOpen ? "全部收起" : "全部展开";
+        button.setAttribute("aria-expanded", String(allOpen));
+      };
+      button.addEventListener("click", () => {
+        const open = !items.every(item => item.open);
+        items.forEach(item => { item.open = open; });
+        sync();
+      });
+      items.forEach(item => item.addEventListener("toggle", sync));
+      bar.append(count, button);
+      items[0].before(bar);
+      sync();
+    });
+  }
+
+  // Accordions (FAQ, syllabus units, "show more" panels): a trigger with
+  // aria-expanded that names its panel through aria-controls, href="#id" or a
+  // Bootstrap data target. Collapsed panels are usually display:none, so the
+  // ordinary walk keeps only the one that happens to be open. Each panel is
+  // kept as a reader disclosure, with its own content collected recursively.
+  function readerInsideAccordionPanel(node) {
+    for (let current = node; current; current = current.parentElement) if (readerAccordionPanels.has(current)) return current;
+    return null;
+  }
+
+  function discoverReaderAccordions(container) {
+    const items = [];
+    const panels = new Set();
+    const byId = value => {
+      const id = String(value || "").trim().replace(/^#/, "").split(/\s+/)[0];
+      if (!id || id.length > 200) return null;
+      try { return document.getElementById(id) || container.querySelector(`#${CSS.escape(id)}`); } catch (_) { return null; }
+    };
+    container.querySelectorAll("[aria-expanded]").forEach(trigger => {
+      if (trigger.closest("nav, header, footer, aside, [role='navigation'], [role='menu'], [role='menubar'], [role='listbox'], [role='combobox'], [role='tablist'], summary")) return;
+      const popup = trigger.getAttribute("aria-haspopup");
+      if (popup && popup !== "false") return;
+      const href = trigger.tagName === "A" ? trigger.getAttribute("href") : "";
+      let panel = byId(trigger.getAttribute("aria-controls")) || byId(trigger.dataset.bsTarget) || byId(trigger.dataset.target) || (/^#[^\s]+$/.test(href || "") ? byId(href) : null);
+      if (!panel) {
+        // Header + panel siblings without ids: <div class="title"><button/></div><div class="body"/>.
+        const wrapper = trigger.closest("h1,h2,h3,h4,h5,h6,[role='heading']") || (String(trigger.parentElement?.textContent || "").trim() === String(trigger.textContent || "").trim() ? trigger.parentElement : trigger);
+        const sibling = wrapper?.nextElementSibling;
+        if (sibling && /accordion|collapse|panel|content|body|answer|drawer|expand/i.test(`${sibling.className || ""} ${sibling.getAttribute("role") || ""}`)) panel = sibling;
+      }
+      if (!panel || panels.has(panel) || !container.contains(panel) || panel.contains(trigger) || panel.matches("nav, [role='menu'], ul[role='listbox']")) return;
+      const title = String(trigger.textContent || "").replace(/\s+/g, " ").trim();
+      const body = String(panel.textContent || "").replace(/\s+/g, " ").trim();
+      if (title.length < 2 || title.length > 220 || body.length < 8) return;
+      panels.add(panel);
+      const titleNode = trigger.closest("h1,h2,h3,h4,h5,h6,[role='heading']") || (String(trigger.parentElement?.textContent || "").trim() === title ? trigger.parentElement : trigger);
+      items.push({ trigger, titleNode, panel, title, open: trigger.getAttribute("aria-expanded") === "true" });
+    });
+    // Nested accordions are discovered again when their parent panel renders.
+    return items.filter(item => !items.some(other => other !== item && other.panel.contains(item.panel)));
+  }
+
+  // Rows of small side-by-side cards ("10–20 hours" / "Online self-paced").
+  // Read as separate headings and paragraphs they flood the outline and lose
+  // their grouping, so a row is kept as one reader card grid.
+  function discoverReaderCardGroups(container, excluded = []) {
+    const groups = [];
+    const textOf = node => String(node.innerText || node.textContent || "").replace(/\s+/g, " ").trim();
+    container.querySelectorAll("div, section, ul, ol").forEach(row => {
+      if (groups.some(group => group.contains(row) || row.contains(group))) return;
+      if (excluded.some(node => node.contains(row) || row.contains(node))) return;
+      if (row.closest("nav, header, footer, aside, [role='navigation'], table, details, figure")) return;
+      const children = [...row.children].filter(child => child.getClientRects().length && textOf(child));
+      if (children.length < 2 || children.length > 8 || children.length !== [...row.children].filter(child => child.getClientRects().length).length) return;
+      const rowRect = row.getBoundingClientRect();
+      if (rowRect.width < 300) return;
+      const rects = children.map(child => child.getBoundingClientRect());
+      // At least two cards share a line and none spans the row.
+      if (rects.some(rect => rect.width > rowRect.width * .72 || rect.height < 40)) return;
+      if (!rects.some((rect, index) => index && Math.abs(rect.top - rects[0].top) < 14 && rect.left > rects[0].right - 4)) return;
+      const cards = children.map(child => {
+        const text = textOf(child);
+        const heading = child.querySelector("h2,h3,h4,h5,h6,[role='heading'],strong,b,[class*='title' i],[class*='heading' i]");
+        return { child, text, heading };
+      });
+      if (cards.some(card => card.text.length < 6 || card.text.length > 520 || !card.heading)) return;
+      if (cards.some(card => card.child.querySelector("table, pre, form, video, iframe, input, select, textarea") || card.child.querySelectorAll("p, li").length > 6)) return;
+      groups.push(row);
+      readerCardGroups.set(row, { cards: cards.map(card => card.child) });
+    });
+    return groups;
+  }
+
+  function readerCardGroupHtml(row, nodeIndex) {
+    const group = readerCardGroups.get(row);
+    if (!group) return "";
+    const cards = group.cards.map((card, cardIndex) => {
+      const titleNode = card.querySelector("h2,h3,h4,h5,h6,[role='heading'],[class*='title' i],[class*='heading' i],strong,b");
+      const title = String(titleNode?.textContent || "").replace(/\s+/g, " ").trim();
+      const bodyClone = card.cloneNode(true);
+      if (titleNode) {
+        const path = [];
+        for (let node = titleNode; node && node !== card; node = node.parentElement) path.unshift([...node.parentElement.children].indexOf(node));
+        let copy = bodyClone;
+        path.forEach(index => { copy = copy?.children?.[index]; });
+        copy?.remove();
+      }
+      bodyClone.querySelectorAll("img, svg, picture, button, script, style, noscript, [aria-hidden='true']").forEach(node => node.remove());
+      // Call-to-action links (not part of a sentence) become chips.
+      const links = [...bodyClone.querySelectorAll("a[href]")].filter(link => {
+        const parentText = String(link.parentElement?.textContent || "").trim();
+        return parentText === String(link.textContent || "").trim() || !link.closest("p, li, dd, td, blockquote");
+      });
+      const linkHtml = links.map(link => {
+        const href = readerSafeMediaUrl(link.href);
+        const label = String(link.textContent || "").replace(/\s+/g, " ").trim();
+        link.remove();
+        return href && label ? `<a class="reader-card-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>` : "";
+      }).join("");
+      const bodyHtml = String(bodyClone.textContent || "").replace(/\s+/g, " ").trim() ? readerInlineHtml(bodyClone) : "";
+      const titleHtml = title ? readerPairHtml({ id:`r_${nodeIndex}_card_${cardIndex}_t`, originalHtml:escapeHtml(title), pairClass:"reader-card-title", canTranslateOne:false }) : "";
+      const textHtml = bodyHtml ? readerPairHtml({ id:`r_${nodeIndex}_card_${cardIndex}`, originalHtml:bodyHtml, pairClass:"reader-card-text", canTranslateOne:false }) : "";
+      return `<div class="reader-card">${titleHtml}${textHtml}${linkHtml ? `<div class="reader-card-links">${linkHtml}</div>` : ""}</div>`;
+    }).join("");
+    return `<div class="reader-card-grid" id="r_${nodeIndex}" style="--reader-card-count:${Math.min(4, group.cards.length)}">${cards}</div>`;
+  }
+
   function discoverReaderComposites(container) {
     const candidates=new Set();
     container.querySelectorAll('.chess-pieces').forEach(board=>candidates.add(board.closest('table')||board));
@@ -3449,6 +3803,11 @@
     }
     const composites=discoverReaderComposites(container);
     const wikipedia=/(^|\.)wikipedia\.org$/.test(location.hostname);
+    const accordions=baike?[]:discoverReaderAccordions(container);
+    accordions.forEach(item=>readerAccordionPanels.set(item.panel,{title:item.title,open:item.open}));
+    const accordionPanels=accordions.map(item=>item.panel);
+    const accordionTitles=accordions.map(item=>item.titleNode);
+    const cardGroups=baike||wikipedia?[]:discoverReaderCardGroups(container,accordionPanels);
     const supplemental=wikipedia?[...container.querySelectorAll('.navbox,.sistersitebox')].filter(node=>!node.parentElement.closest('.navbox,.sistersitebox')):[];
     const layoutTables=new WeakMap();
     const isLayoutTable=table=>{
@@ -3468,7 +3827,7 @@
     const boundary=[...container.children];
     const bookStart=gutenberg&&(container.querySelector('#pg-start-separator')||boundary.find(node=>/^\*{3}\s*START OF/i.test(node.textContent.trim())));
     const bookEnd=gutenberg&&(container.querySelector('#pg-end-separator')||boundary.find(node=>/^\*{3}\s*END OF/i.test(node.textContent.trim())));
-    const raw = Array.from(new Set([...container.querySelectorAll(selector),...(wikipedia?container.querySelectorAll('.mwe-math-element'):[]),...composites,...supplemental,...baikeRoots,...(baike?container.querySelectorAll('[class^="para_"],.para'):[])]));
+    const raw = Array.from(new Set([...container.querySelectorAll(selector),...(wikipedia?container.querySelectorAll('.mwe-math-element'):[]),...composites,...supplemental,...baikeRoots,...accordionPanels,...cardGroups,...(baike?container.querySelectorAll('[class^="para_"],.para'):[])]));
     if(isHackerNews)raw.push(...container.querySelectorAll('.commtext,.toptext'));
     const legacyBlocks=[...container.querySelectorAll('font,td')].filter(node=>node.querySelectorAll('br').length>=4&&!node.querySelector('p,div,section,table,pre,li,h1,h2,h3,h4,h5,h6')&&node.textContent.trim().length>180);
     raw.push(...legacyBlocks.filter(node=>!legacyBlocks.some(other=>other!==node&&other.contains(node))));
@@ -3505,6 +3864,8 @@
         if(!alreadyOwnedByReaderBlock&&getHostOriginalText(node).trim())appendResult(node);
         continue;
       }
+      if(accordionPanels.includes(node)||cardGroups.includes(node)){appendResult(node);continue;}
+      if(accordionPanels.some(panel=>panel.contains(node))||cardGroups.some(group=>group.contains(node))||accordionTitles.some(titleNode=>titleNode===node||titleNode.contains(node)))continue;
       if(supplemental.includes(node)){appendResult(node);continue;}
       if(supplemental.some(parent=>parent.contains(node)))continue;
       if(node.tagName==='LI'){
@@ -3526,7 +3887,9 @@
       if(bookStart&&!(bookStart.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING))continue;
       if(bookEnd&&(node===bookEnd||bookEnd.contains(node)||(bookEnd.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)))continue;
       if (node.closest("nav, header, footer, aside, [role='navigation'], #raccoon-sidebar-root, #raccoon-floating-ball-root, #raccoon-selection-bubble-root, .raccoon-translated-block, .raccoon-translated-inline, #raccoon-hover-trigger-root")) continue;
-      if(node.closest("[aria-hidden='true']")&&!(location.hostname==='science.nasa.gov'&&node.closest('.quick-facts-slide')))continue;
+      // Collapsed accordion panels are often aria-hidden; their content is kept.
+      const ariaHiddenOwner=node.closest("[aria-hidden='true']");
+      if(ariaHiddenOwner&&!readerInsideAccordionPanel(ariaHiddenOwner)&&!(location.hostname==='science.nasa.gov'&&node.closest('.quick-facts-slide')))continue;
       if (isReaderMaintenanceContainer(node)) continue;
       if(location.hostname==='science.nasa.gov'&&node.closest('.usa-article-scroll-wrapper,.slick-cloned,.swiper-slide-duplicate,.hds-topic-cards'))continue;
       if(isHackerNews&&node.parentElement?.closest('.commtext,.toptext'))continue;
@@ -3960,6 +4323,10 @@
     if (a === b) return true;
     const shorter = a.length <= b.length ? a : b;
     const longer = a.length > b.length ? a : b;
+    // A heading that adds words to the title ("What is financial modeling?"
+    // under "Financial Modeling") is a section; only "Title | Site"-style
+    // additions with a separator are the same title.
+    if (a.length > b.length && !/[|｜–—:：·•\/]/.test(String(heading || ""))) return false;
     return shorter.length >= 8 && shorter.length / longer.length >= .64 && longer.includes(shorter);
   }
 
@@ -5350,6 +5717,8 @@
     readerImageInfoCache = new WeakMap();
     readerBaikeBlocks = new WeakMap();
     readerCompositeNodes = new WeakSet();
+    readerAccordionPanels = new WeakMap();
+    readerCardGroups = new WeakMap();
     readerCompositeHtmlCache = new WeakMap();
     const bestContainer = findBestReaderContainer();
     const redditThread = /(?:^|\.)reddit\.com$/i.test(location.hostname) && /\/comments\//.test(location.pathname);
@@ -5450,6 +5819,48 @@
     const effectiveWritingMode = savedWritingMode;
     const isOutlineCollapsed = !!currentSettings.readerOutlineCollapsed;
     const isToolsCollapsed = !!currentSettings.readerToolsCollapsed;
+
+    // One content node -> reader HTML. Accordion panels render their own
+    // content through this same function, nested in a disclosure.
+    const renderReaderNode = (node, idx) => {
+      if(readerAccordionPanels.has(node))return readerAccordionHtml(node, idx);
+      if(readerCardGroups.has(node))return readerCardGroupHtml(node, idx);
+      if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle,mediaEntries,mediaIndexByNode,baikeSourceKeys,lazyBaikeTableSources,baikeTablePaginationSources);
+      if(/(^|\.)wikipedia\.org$/.test(location.hostname)&&node.matches('.navbox,.sistersitebox'))return readerSupplementHtml(node,idx,savedRenderStyle);
+      if(readerCompositeNodes.has(node))return `<div id="r_${idx}">${readerCompositeHtml(node)}</div>`;
+      if(readerIsWikipediaMath(node))return `<div class="reader-math-block" id="r_${idx}">${readerMathHtml(node)}</div>`;
+      if (node.tagName === "IMG") {
+        const mediaIndex = mediaIndexByNode.get(node);
+        const media = mediaEntries[mediaIndex]?.info;
+        const inlineSide = media?.classes.includes("reader-img-inline") ? (idx % 2 === 0 ? "reader-img-inline-right" : "reader-img-inline-left") : "";
+        return readerMediaImageHtml(mediaEntries[mediaIndex], mediaIndex, inlineSide);
+      }
+      if (node.tagName === "FIGURE") return readerFigureHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle);
+      if (node.tagName === "TABLE") return readerTableHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle,lazyBaikeTableSources);
+      if (node.tagName === "DETAILS") return readerDetailsHtml(node, idx, savedRenderStyle);
+      if (["VIDEO", "AUDIO", "IFRAME"].includes(node.tagName) || (node.tagName === "A" && /\.(?:mp4|webm|ogv)(?:$|[?#])/i.test(node.href || ""))) return readerEmbeddedMediaHtml(node, idx);
+      if (node.tagName === "HR") return '<hr class="reader-content-divider" aria-hidden="true">';
+      if(node.tagName==='LI')return readerListItemHtml(node,idx,savedRenderStyle);
+      const headingLevel = readerHeadingLevel(node);
+      const isHeading = headingLevel > 0;
+      const isFigcaption = node.tagName === "FIGCAPTION";
+      const isCode = node.tagName === "PRE" && !(node.textContent.length>600&&!node.querySelector("code")&&/gutenberg\.org|wikisource\.org|marxists\.org/.test(location.hostname));
+      const isQuote = node.tagName === "BLOCKQUOTE" || !!node.closest("blockquote");
+      const wrapperClass = isCode ? "reader-code-block" : isQuote ? "reader-blockquote" : "";
+      const originalHtml = isCode
+        ? escapeHtml(readerOriginalTextPreservingWhitespace(node))
+        : (readerInlineHtml(node) || escapeHtml(getHostOriginalText(node)));
+      return readerPairHtml({ id:`r_${idx}`, originalHtml, headingLevel, pairClass:isFigcaption ? "reader-figcaption" : "", wrapperClass, renderStyle:savedRenderStyle, canTranslateOne:!isFigcaption && !isCode });
+    };
+    const readerAccordionHtml = (panel, idx) => {
+      const info = readerAccordionPanels.get(panel);
+      const children = collectReaderContentNodes(panel).filter(child => child !== panel);
+      const inner = children.length
+        ? children.map((child, childIndex) => renderReaderNode(child, `${idx}_${childIndex}`)).join("")
+        : readerPairHtml({ id:`r_${idx}_body`, originalHtml:escapeHtml(String(panel.textContent || "").replace(/\s+/g, " ").trim()), renderStyle:savedRenderStyle });
+      const title = readerPairHtml({ id:`r_${idx}_summary`, originalHtml:escapeHtml(info.title), pairClass:"reader-accordion-title", renderStyle:savedRenderStyle, canTranslateOne:false });
+      return `<details class="reader-accordion" id="r_${idx}"${info.open ? " open" : ""}><summary class="reader-accordion-summary">${title}<i class="reader-accordion-chevron" aria-hidden="true"></i></summary><div class="reader-accordion-body">${inner}</div></details>`;
+    };
 
     const root = document.createElement("div");
     root.id = "raccoon-reader-root";
@@ -5583,34 +5994,7 @@
               <span class="reader-progress-meta"><span class="reader-meta-sep">·</span><span class="reader-pct-badge" id="reader-progress-pct-badge">已读 0%</span></span>
             </div>
             <div class="reader-content" id="reader-content">
-              ${contentNodes.map((node, idx) => {
-                if(readerBaikeBlocks.has(node))return readerBaikeBlockHtml(node,idx,savedRenderStyle,mediaEntries,mediaIndexByNode,baikeSourceKeys,lazyBaikeTableSources,baikeTablePaginationSources);
-                if(/(^|\.)wikipedia\.org$/.test(location.hostname)&&node.matches('.navbox,.sistersitebox'))return readerSupplementHtml(node,idx,savedRenderStyle);
-                if(readerCompositeNodes.has(node))return `<div id="r_${idx}">${readerCompositeHtml(node)}</div>`;
-                if(readerIsWikipediaMath(node))return `<div class="reader-math-block" id="r_${idx}">${readerMathHtml(node)}</div>`;
-                if (node.tagName === "IMG") {
-                  const mediaIndex = mediaIndexByNode.get(node);
-                  const media = mediaEntries[mediaIndex]?.info;
-                  const inlineSide = media?.classes.includes("reader-img-inline") ? (idx % 2 === 0 ? "reader-img-inline-right" : "reader-img-inline-left") : "";
-                  return readerMediaImageHtml(mediaEntries[mediaIndex], mediaIndex, inlineSide);
-                }
-                if (node.tagName === "FIGURE") return readerFigureHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle);
-                if (node.tagName === "TABLE") return readerTableHtml(node, idx, mediaEntries, mediaIndexByNode, savedRenderStyle,lazyBaikeTableSources);
-                if (node.tagName === "DETAILS") return readerDetailsHtml(node, idx, savedRenderStyle);
-                if (["VIDEO", "AUDIO", "IFRAME"].includes(node.tagName) || (node.tagName === "A" && /\.(?:mp4|webm|ogv)(?:$|[?#])/i.test(node.href || ""))) return readerEmbeddedMediaHtml(node, idx);
-                if (node.tagName === "HR") return '<hr class="reader-content-divider" aria-hidden="true">';
-                if(node.tagName==='LI')return readerListItemHtml(node,idx,savedRenderStyle);
-                const headingLevel = readerHeadingLevel(node);
-                const isHeading = headingLevel > 0;
-                const isFigcaption = node.tagName === "FIGCAPTION";
-                const isCode = node.tagName === "PRE" && !(node.textContent.length>600&&!node.querySelector("code")&&/gutenberg\.org|wikisource\.org|marxists\.org/.test(location.hostname));
-                const isQuote = node.tagName === "BLOCKQUOTE" || !!node.closest("blockquote");
-                const wrapperClass = isCode ? "reader-code-block" : isQuote ? "reader-blockquote" : "";
-                const originalHtml = isCode
-                  ? escapeHtml(readerOriginalTextPreservingWhitespace(node))
-                  : (readerInlineHtml(node) || escapeHtml(getHostOriginalText(node)));
-                return readerPairHtml({ id:`r_${idx}`, originalHtml, headingLevel, pairClass:isFigcaption ? "reader-figcaption" : "", wrapperClass, renderStyle:savedRenderStyle, canTranslateOne:!isFigcaption && !isCode });
-              }).join("")}
+              ${contentNodes.map((node, idx) => renderReaderNode(node, idx)).join("")}
             </div>
           </main>
         </div>
@@ -5625,8 +6009,9 @@
           </div>
           <div class="reader-tool-tabs reader-tool-tabs-merged" role="tablist" aria-label="阅读设置分类" data-active-tool-tab="appearance">
             <span class="reader-tool-tab-indicator" aria-hidden="true"></span>
-            <button type="button" class="active" data-reader-tool-tab="appearance" role="tab" aria-selected="true">排版</button>
-            <button type="button" data-reader-tool-tab="article" role="tab" aria-selected="false">文章</button>
+            <button type="button" class="active" data-reader-tool-tab="appearance" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 4.5-10L12 17"/><path d="M4.6 13.5h5.8"/><path d="M15 9h6M15 13h6M15 17h4"/></svg><span>排版</span></button>
+            <button type="button" data-reader-tool-tab="article" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg><span>信息</span></button>
+            <button type="button" data-reader-tool-tab="notes" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg><span>笔记</span><b class="reader-tool-tab-count" data-reader-notes-count hidden></b></button>
           </div>
           <section class="reader-info-link-section" data-reader-tool-section="info">
             <button type="button" class="reader-info-source" id="reader-copy-link" title="${escapeHtml(location.href)}" aria-label="复制文章链接"><span class="reader-source-url">${escapeHtml(location.host + location.pathname)}</span><span class="reader-source-copy" aria-live="polite">复制</span></button>
@@ -5868,6 +6253,7 @@
     readerRoot = root;
     initializeReaderBaikeTablePagination(root,baikeTablePaginationSources,mediaEntries,mediaIndexByNode,savedRenderStyle);
     initializeReaderBaikeVideoCarousels(root);
+    initializeReaderAccordionGroups(root);
     initializeReaderBaikeCarousels(root);
     if(location.hostname==='baike.baidu.com')initializeReaderBaikeProgressiveMedia(root,document.body,contentNodes,baikeSourceKeys,mediaEntries,mediaIndexByNode);
     const languageForText = text => {
@@ -6091,10 +6477,10 @@
       if (!button.disabled) selectReaderNavTab(button.dataset.readerNavTab || "outline");
     }));
 
-    // Two merged tabs: 排版 (format + style) and 文章 (info + notes + export).
+    // Three tabs: 排版 (format + style), 信息 (article info + export) and 笔记.
     // Legacy names still map, so older callers keep working.
     const selectReaderToolTab = (selected) => {
-      const next = ["info", "notes", "article"].includes(selected) ? "article" : "appearance";
+      const next = selected === "notes" ? "notes" : (["info", "article"].includes(selected) ? "article" : "appearance");
       toolsPanel?.setAttribute("data-active-tool", "merged");
       toolsPanel?.setAttribute("data-merged-tool", next);
       const tabs = root.querySelector(".reader-tool-tabs");
@@ -6105,6 +6491,9 @@
         tab.setAttribute("aria-selected", String(active));
       });
       if (settingsDrawer?.classList.contains("reader-settings-inline")) settingsDrawer.classList.add("open");
+      const toolsScrollArea = toolsPanel?.querySelector(".reader-tools-scroll");
+      if (toolsScrollArea && toolsScrollArea.dataset.readerPane !== next) toolsScrollArea.scrollTop = 0;
+      if (toolsScrollArea) toolsScrollArea.dataset.readerPane = next;
     };
     root.querySelectorAll("[data-reader-tool-tab]").forEach(button => button.addEventListener("click", () => selectReaderToolTab(button.dataset.readerToolTab || "appearance")));
 
@@ -6897,7 +7286,7 @@
 
     root.querySelectorAll("[data-reader-copy]").forEach(button => button.addEventListener("click", async () => {
       const mode = button.dataset.readerCopy;
-      const label = button.querySelector("span"), originalLabel = {orig:"复制全文",trans:"复制译文",bilingual:"复制双语"}[mode];
+      const label = button.querySelector("span"), originalLabel = {orig:"原文",trans:"译文",bilingual:"双语"}[mode];
       const selector = mode === "orig" ? ".reader-orig-p" : mode === "trans" ? '.reader-trans-p[data-loaded="true"]' : '.reader-orig-p,.reader-trans-p[data-loaded="true"]';
       const text = Array.from(root.querySelectorAll(selector)).map(node => node.textContent.trim()).filter(Boolean).join("\n\n");
       try { if (!text) throw new Error("请先生成译文"); await navigator.clipboard.writeText(text); label.textContent="已复制"; button.classList.add("is-copied"); }
@@ -6926,6 +7315,8 @@
     });
     root.querySelector('.reader-context-themes').closest('section').after(accentSection);
     accentSection.after(addStyleChoices('超链接样式','reader-link-style','readerLinkStyle',[['underline','下划线'],['blue','蓝色链接']],value=>{root.dataset.readerLinkStyle=value;}));
+    // A layout failure must not stop the rest of Reader Mode from wiring up.
+    try{buildReaderToolPanes(root,{minutes:Math.max(1,Math.round(latinWordCount/230+cjkCharacterCount/450))});}catch(error){console.warn('[Jijian] reader panel layout',error);}
     const sourceAnchors=new Map();
     contentNodes.forEach((node,index)=>{const target=root.querySelector(`#${readerHeadingLevel(node)?'head':'r'}_${index}`)||root.querySelector(`#reader_table_${index}`);if(!target)return;
       const sourceNodes=[node,...node.querySelectorAll('[id],a[name]'),node.closest('.footnote')];
