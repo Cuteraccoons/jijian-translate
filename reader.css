@@ -2082,3 +2082,47 @@ html:has(#raccoon-reader-root) #raccoon-selection-bubble-root .selection-tool-bt
 #raccoon-reader-root .reader-baike-map-copy p{margin:3px 0 0!important;color:var(--reader-muted)!important;font-size:13px!important;line-height:1.55!important;overflow-wrap:anywhere!important}
 #raccoon-reader-root .reader-baike-map-card>a{flex:none!important;color:#2768a6!important;font-size:13px!important;text-decoration:underline!important;text-underline-offset:2px!important}
 @media(max-width:440px){#raccoon-reader-root .reader-baike-map-card{align-items:flex-start!important;flex-wrap:wrap!important}#raccoon-reader-root .reader-baike-map-card>a{margin-left:56px!important}}
+
+/* 1.0.5 reader chrome: the floating controls share one quiet tile style and
+   follow the reader theme through the --reader-shell-* tokens. */
+#raccoon-reader-root .reader-floating-expand-outline-btn,
+#raccoon-reader-root .reader-floating-expand-tools-btn{
+  align-items:center!important;justify-content:center!important;
+  width:40px!important;height:40px!important;padding:0!important;
+  background:var(--reader-shell-card,#fff)!important;
+  border:1px solid var(--reader-shell-border,rgba(50,54,61,.105))!important;border-radius:12px!important;
+  box-shadow:0 2px 10px rgba(20,22,26,.06)!important;
+  color:var(--reader-shell-muted,#78808a)!important;
+  transition:color .15s ease,box-shadow .15s ease,transform .15s ease!important
+}
+#raccoon-reader-root :is(.reader-floating-expand-outline-btn,.reader-floating-expand-tools-btn):hover{
+  color:var(--reader-text,#20252b)!important;background:var(--reader-shell-card,#fff)!important;
+  box-shadow:0 4px 16px rgba(20,22,26,.1)!important;transform:translateY(-1px)
+}
+#raccoon-reader-root :is(.reader-floating-expand-outline-btn,.reader-floating-expand-tools-btn) svg{width:19px!important;height:19px!important}
+
+/* Narrow windows: settings + exit as one pill. */
+#raccoon-reader-root .reader-vertical-edge-dock{
+  top:16px!important;right:16px!important;flex-direction:row!important;align-items:center!important;gap:2px!important;
+  padding:3px!important;opacity:1!important;transform:none!important;
+  background:var(--reader-shell-card,#fff)!important;
+  border:1px solid var(--reader-shell-border,rgba(50,54,61,.105))!important;border-radius:12px!important;
+  box-shadow:0 2px 10px rgba(20,22,26,.06)!important
+}
+#raccoon-reader-root .reader-vertical-dock-btn{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:34px!important;height:32px!important;padding:0!important;
+  background:transparent!important;border:0!important;border-radius:9px!important;box-shadow:none!important;
+  color:var(--reader-shell-muted,#78808a)!important
+}
+#raccoon-reader-root .reader-vertical-dock-btn:hover{background:rgba(120,128,138,.12)!important;color:var(--reader-text,#20252b)!important}
+#raccoon-reader-root .reader-vertical-dock-btn.exit-btn:hover{background:rgba(209,54,43,.1)!important;color:#c0352b!important}
+#raccoon-reader-root .reader-dock-divider{width:1px;height:16px;background:var(--reader-shell-border,rgba(50,54,61,.105))}
+
+/* Panel collapse buttons use the same sidebar glyphs as the floating ones. */
+#raccoon-reader-root :is(.reader-outline-toggle-btn,.reader-context-close){
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  border-radius:9px!important;color:var(--reader-shell-muted,#78808a)!important
+}
+#raccoon-reader-root :is(.reader-outline-toggle-btn,.reader-context-close):hover{background:rgba(120,128,138,.12)!important;color:var(--reader-text,#20252b)!important}
+#raccoon-reader-root :is(.reader-outline-toggle-btn,.reader-context-close) svg{width:19px!important;height:19px!important}
