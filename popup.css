@@ -1461,7 +1461,7 @@ input:checked + .switch-knob:before {
 
 /* v1.0.5: primary action stays prominent but lighter; every "pick one" control
    uses the same blue selected state as the settings page. */
-.apple-primary-btn.full-width { height: 60px !important; border-radius: 12px !important; }
+.apple-primary-btn.full-width { height: 70px !important; border-radius: 12px !important; }
 .popup-style-choice-grid button.active,
 .popup-highlight-grid button.active,
 .popup-trigger-mode-row button.active,
@@ -1479,3 +1479,8 @@ input:checked + .switch-knob:before {
 .popup-style-chevron { flex: none; width: 15px; height: 15px; fill: none; stroke: var(--label-tertiary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease; }
 .popup-style-toggle.is-open .popup-style-chevron { transform: rotate(90deg); }
 .popup-style-body[hidden] { display: none !important; }
+
+.popup-style-more { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 24px; padding: 0 8px 0 10px; border-radius: 999px; background: rgba(0, 113, 227, .08); color: #0b5cc2; font-size: 12px; font-weight: 600; }
+.popup-style-more svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease; }
+.popup-style-toggle.is-open .popup-style-more svg { transform: rotate(180deg); }
+.popup-style-toggle:hover .popup-style-more { background: rgba(0, 113, 227, .14); }

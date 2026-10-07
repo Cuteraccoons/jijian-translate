@@ -8,10 +8,10 @@ async page=>{
  await tab.waitForSelector('#reader-content');
   for(const viewport of [1440,800]){
    await tab.setViewportSize({width:viewport,height:1000});
-   if(!await tab.locator('[data-reader-tool-tab="style"]').isVisible())await tab.locator('#reader-btn-open-settings').click();
-   await tab.locator('[data-reader-tool-tab="style"]').click();
-   if(await tab.locator('#reader-toggle-first-line-indent').isVisible())throw Error('First-line indent belongs in the format panel, not the style panel');
-   await tab.locator('[data-reader-tool-tab="format"]').click();
+   if(!await tab.locator('[data-reader-tool-tab="appearance"]').isVisible())await tab.locator('#reader-btn-open-settings').click();
+   await tab.locator('[data-reader-tool-tab="article"]').click();
+   if(await tab.locator('#reader-toggle-first-line-indent').isVisible())throw Error('First-line indent belongs in the 排版 panel, not the 文章 panel');
+   await tab.locator('[data-reader-tool-tab="appearance"]').click();
    const indentToggle=tab.locator('#reader-toggle-first-line-indent');
    if(!await indentToggle.isVisible())throw Error('First-line indent toggle is not visible in the format panel');
    if(!await tab.locator('#reader-content .reader-infobox').count())await tab.locator('#reader-content').evaluate(content=>{const card=document.createElement('section');card.className='reader-infobox';card.innerHTML='<div class="reader-paragraph-pair"><p class="reader-orig-p" lang="zh-CN">基本信息中的中文值不应缩进。</p></div>';content.append(card);});
@@ -30,7 +30,7 @@ async page=>{
    const clearedIndent=await paragraph.evaluate(node=>getComputedStyle(node).textIndent);
    if(clearedIndent!=='0px')throw Error(`First-line indent did not turn off, got ${clearedIndent}`);
    indentResults.push({viewport,default:beforeIndent,on:appliedIndent,geometry:appliedGeometry,heading:headingIndent,infobox:infoIndent,off:clearedIndent});
-   await tab.locator('[data-reader-tool-tab="style"]').click();
+   await tab.locator('[data-reader-tool-tab="appearance"]').click();
    for(const width of [260,320,420]){
     await tab.locator('#raccoon-reader-root').evaluate((root,width)=>root.style.setProperty('--reader-tools-width',width+'px'),width);
     for(const theme of ['white','dark']){
@@ -40,7 +40,8 @@ async page=>{
       const overlaps=boxes.some((a,i)=>boxes.some((b,j)=>j>i&&Math.min(a.right,b.right)>Math.max(a.left,b.left)+.5&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+.5));
       return {display:getComputedStyle(group).display,overlaps,contained:boxes.every(b=>b.left>=rect.left-.5&&b.right<=rect.right+.5),labelsFit:buttons.every(b=>b.scrollWidth<=b.clientWidth+1&&b.scrollHeight<=b.clientHeight+1),width:rect.width,heights:boxes.map(b=>b.height)};
      });
-     if(geometry.display!=='grid'||geometry.overlaps||!geometry.contained||!geometry.labelsFit||geometry.heights.some(h=>h<38))throw Error(JSON.stringify({viewport,width,theme,geometry}));
+     // 1.0.5: outline accents are colour-only dots (flex row); keep the no-overlap / containment checks.
+     if(!['grid','flex'].includes(geometry.display)||geometry.overlaps||!geometry.contained||!geometry.labelsFit||geometry.heights.some(h=>h<30))throw Error(JSON.stringify({viewport,width,theme,geometry}));
      results.push({viewport,width,theme,...geometry});
     }
    }

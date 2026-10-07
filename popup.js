@@ -1379,6 +1379,8 @@ document.addEventListener("DOMContentLoaded", () => {
     body.hidden = !open;
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
     toggle.classList.toggle("is-open", open);
+    const moreLabel = toggle.querySelector(".popup-style-more-label");
+    if (moreLabel) moreLabel.textContent = open ? "收起" : "展开";
     try { localStorage.setItem(STORAGE_KEY, open ? "1" : "0"); } catch (_) {}
   };
   let initialOpen = false;

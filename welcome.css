@@ -5,3 +5,80 @@ body[data-guide-step] #raccoon-reader-root,body[data-guide-step] #raccoon-sideba
 body{overflow-x:hidden}.welcome-stage{max-width:1100px;padding:0 92px;transform-origin:50% 45%}#guide-prev,#guide-next{width:62px;height:62px;padding:17px;transition:background .18s,color .18s,box-shadow .18s}#guide-prev svg,#guide-next svg{width:28px;height:28px;transition:transform .2s}#guide-next:hover svg{transform:translateX(3px)}#guide-prev:hover svg{transform:translateX(-3px)}#guide-next:active svg,#guide-prev:active svg{transform:scale(.88)}#skip-guide{right:auto;left:28px}body[data-guide-key="start"] .welcome-stage{min-height:calc(100svh - 235px);display:grid;place-content:center}body[data-guide-key="start"] .step-intro h1{font-size:clamp(34px,5vw,62px);letter-spacing:-1.5px}body[data-guide-key="start"] .step-intro p{font-size:18px;margin-top:20px}#welcome-start{display:none!important}.welcome-stage{will-change:transform}#guide-source{text-align:center;font-size:13px;color:#888;margin:20px 0}#guide-source:empty{display:none}#guide-source a{color:inherit;text-decoration:none}#guide-source a:hover{text-decoration:underline}#welcome-article{display:flow-root;max-width:760px;margin:auto}.guide-small-figure{float:right;width:42%;margin:0 0 20px 28px!important}.guide-tall-figure{float:left;width:34%;margin:0 28px 20px 0!important}#welcome-article h2{clear:both}#guide-reading-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}body[data-guide-key="reader"] #guide-reading-layout{grid-template-columns:150px minmax(0,1fr)}#guide-page-noise{font-size:13px;display:flex;flex-direction:column;gap:24px;color:#888;padding:24px 0}#guide-page-noise strong{font-weight:500;color:#444}#guide-page-noise div{background:#eeeee9;padding:22px 14px;border-radius:8px;line-height:2}body[data-guide-key="reader"] #welcome-article{border-radius:0;padding:26px;box-shadow:0 0 0 1px #e5e5e3;font-size:16px}#guide-lookup{min-height:300px;display:grid;place-items:center;background:#fff;border-radius:18px}#guide-lookup p{font:28px/1.8 Georgia,serif;text-align:center}#guide-lookup-word{text-decoration:underline;text-decoration-color:#d9bb6f;text-underline-offset:8px;cursor:text}#guide-image img{display:block;width:100%;height:auto;border-radius:16px}#guide-image p{text-align:center;font-size:13px;color:#777;margin-top:22px}#guide-complete{position:absolute;right:32px;top:calc(50% + 48px);max-width:140px;text-align:center;font-size:13px;color:#50564c;background:#fafaf9;padding:7px 10px;border-radius:8px}#guide-next.is-ready{border-color:#222;box-shadow:0 0 0 6px #2222220b;animation:guide-nudge 1.4s ease-in-out 3}#guide-confetti{position:absolute;right:68px;top:50%;width:1px;height:1px}#guide-confetti i{position:absolute;width:5px;height:9px;border-radius:1px}#guide-reader-tip{position:absolute;top:18px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:30px;background:#202020;color:#fff;font-size:14px;max-width:calc(100vw - 150px);text-align:center}#guide-pill-hint{position:absolute;width:100px;height:110px;color:#555;font-size:13px}#guide-pill-hint span{display:block}#guide-pill-hint svg{width:80px;height:80px;stroke-width:1.5;animation:guide-point 1.4s ease-in-out infinite}body[data-guide-key="lookup"] #raccoon-floating-ball-root{visibility:visible!important;pointer-events:auto!important}body[data-guide-key="extras"] #raccoon-floating-ball-root,body[data-guide-key="start"] #raccoon-floating-ball-root{visibility:hidden!important;pointer-events:none!important}@keyframes guide-nudge{50%{transform:translate(4px,-50%)}}@keyframes guide-point{50%{transform:translate(3px,4px)}}@media(max-width:800px){#guide-prev,#guide-next{width:52px;height:52px;padding:12px}.welcome-stage{padding:0 70px}body[data-guide-key="reader"] #guide-reading-layout{grid-template-columns:1fr}#guide-page-noise{display:none!important}#guide-complete{right:12px;top:auto;bottom:70px}#guide-lookup p{font-size:23px}#guide-reader-tip{top:8px;font-size:13px}}@media(prefers-reduced-motion:reduce){#guide-next,#guide-pill-hint svg{animation:none!important}.guide-controls svg{transition:none!important}}
 
 #guide-shortcuts{margin:22px auto 0;max-width:540px;color:#454545;font-size:14px}#guide-shortcuts p{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px 0}#guide-shortcuts kbd{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 4px;border:1px solid #d6d6d2;border-radius:6px;background:#fff;color:#222;font:500 14px/1 -apple-system,BlinkMacSystemFont,sans-serif}#guide-shortcuts span{margin-left:8px}#guide-shortcuts small{display:block;margin-top:14px;font-size:13px;line-height:1.7;color:#777}
+
+/* ── 1.0.5 entrance, controls and hints ─────────────── */
+@keyframes welcome-rise{from{opacity:0;transform:translateY(18px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes welcome-pop{0%{opacity:0;transform:scale(.6) rotate(-8deg)}70%{transform:scale(1.06) rotate(1deg)}100%{opacity:1;transform:none}}
+@keyframes welcome-glow{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@keyframes guide-ring{0%{box-shadow:0 0 0 0 rgba(10,108,255,.45)}70%{box-shadow:0 0 0 14px rgba(10,108,255,0)}100%{box-shadow:0 0 0 0 rgba(10,108,255,0)}}
+@keyframes guide-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+body::before{content:"";position:fixed;inset:-20% -10% auto;height:70vh;z-index:-1;pointer-events:none;
+  background:radial-gradient(40% 50% at 30% 30%,rgba(10,108,255,.10),transparent 70%),radial-gradient(35% 45% at 72% 20%,rgba(255,170,60,.10),transparent 70%);
+  animation:welcome-glow 1.2s ease both}
+.welcome-header .brand img{animation:welcome-pop .7s cubic-bezier(.2,.9,.3,1.2) both}
+.welcome-stage.is-entering .step-intro h1{animation:welcome-rise .6s cubic-bezier(.2,.8,.2,1) both}
+.welcome-stage.is-entering .step-intro p{animation:welcome-rise .6s .08s cubic-bezier(.2,.8,.2,1) both}
+.welcome-stage.is-entering #step-actions,
+.welcome-stage.is-entering #guide-shortcuts{animation:welcome-rise .6s .14s cubic-bezier(.2,.8,.2,1) both}
+.welcome-stage.is-entering>:not(.step-intro){animation:welcome-rise .7s .2s cubic-bezier(.2,.8,.2,1) both}
+@media (prefers-reduced-motion:reduce){body::before,.welcome-header .brand img,.welcome-stage.is-entering *{animation:none!important}}
+
+/* Page arrows: frosted round buttons; "next" lights up once the step is done. */
+#guide-prev,#guide-next{width:48px!important;height:48px!important;padding:0!important;border-radius:50%!important;
+  background:rgba(255,255,255,.78)!important;border:1px solid rgba(0,0,0,.08)!important;color:#3a3a3a!important;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 4px 18px rgba(0,0,0,.06)!important;
+  transition:background .18s,color .18s,transform .18s,opacity .18s!important}
+#guide-prev svg,#guide-next svg{width:22px!important;height:22px!important;stroke-width:2!important}
+#guide-prev:hover:not(:disabled),#guide-next:hover{background:#fff!important;color:#111!important;border-color:rgba(0,0,0,.14)!important}
+#guide-next:hover svg{transform:translateX(3px)}
+#guide-prev:hover:not(:disabled) svg{transform:translateX(-3px)}
+#guide-prev:disabled{opacity:.35}
+#guide-next.is-ready{background:#1d1d1f!important;color:#fff!important;border-color:#1d1d1f!important;animation:guide-ring 1.8s ease-out 2}
+
+/* Pill hint: a small dark bubble right above the floating pill. */
+@keyframes guide-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+#guide-pill-hint{width:auto!important;height:auto!important;display:block;animation:guide-float 2.2s ease-in-out infinite}
+#guide-pill-hint[hidden]{display:none!important}
+#guide-pill-hint span{position:relative;display:block;padding:8px 12px;border-radius:10px;background:rgba(29,29,31,.92);color:#fff;
+  font:500 13px/1.2 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+#guide-pill-hint span::after{content:"";position:absolute;left:50%;bottom:-5px;width:10px;height:10px;margin-left:-5px;background:inherit;transform:rotate(45deg);border-radius:2px}
+body.guide-pill-pulse #raccoon-pill-main{animation:guide-ring 1.8s ease-out infinite!important;border-radius:999px}
+
+/* Reader step: the demo page is a cluttered late-90s site, so reader mode reads as a clear before/after. */
+@keyframes retro-blink{50%{opacity:0}}
+@keyframes retro-flash{50%{background:#ffef00;color:#d40000}}
+body[data-guide-key="reader"] #guide-reading-layout{grid-template-columns:150px minmax(0,1fr) 150px!important;gap:10px!important;
+  padding:10px;background:#c0c0c0 repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 2px,transparent 2px 6px);border:2px outset #e0e0e0;
+  font-family:"Times New Roman",Times,"Songti SC",serif}
+body[data-guide-key="reader"] #guide-retro-header{grid-column:1/-1}
+body[data-guide-key="reader"] #welcome-article{border-radius:0!important;padding:18px 22px!important;box-shadow:none!important;border:3px ridge #9a9a9a;
+  font:16px/1.55 "Times New Roman",Times,serif!important;color:#000!important;background:#fffff4!important}
+body[data-guide-key="reader"] #welcome-article h2{font:700 24px/1.3 "Times New Roman",Times,serif!important;color:#800000}
+.retro-chrome[hidden]{display:none!important}
+.retro-banner{padding:10px 12px;background:linear-gradient(#000080,#1010b0);color:#ffff00;border:3px outset #6060ff;text-align:center;
+  font:700 28px/1.2 "Times New Roman",Times,serif;letter-spacing:1px;text-shadow:2px 2px 0 #000}
+.retro-banner small{display:block;margin-top:4px;font:italic 12px/1.4 "Times New Roman",serif;color:#c0c0ff;text-shadow:none;letter-spacing:0}
+.retro-star{color:#ff4040}
+.retro-nav{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;padding:5px 8px;background:#fff;border:2px inset #d0d0d0;font-size:14px;color:#000}
+.retro-nav a,.retro-chrome a{color:#0000ee;text-decoration:underline;cursor:pointer}
+.retro-counter{margin-left:auto;padding:1px 6px;background:#000;color:#00ff00;font:12px/1.4 "Courier New",monospace}
+.retro-counter b{font-weight:400;letter-spacing:2px}
+.retro-construction{margin-top:6px;padding:3px;background:repeating-linear-gradient(-45deg,#ffd800 0 12px,#000 12px 24px);text-align:center}
+.retro-construction{color:#000;font:700 12px/1.6 "Arial Black",Arial,sans-serif;text-shadow:0 0 3px #ffd800,0 0 3px #ffd800}
+#guide-page-noise{display:flex!important;flex-direction:column;gap:8px!important;padding:0!important;font:13px/1.5 "Times New Roman",serif!important;color:#000!important}
+#guide-page-noise[hidden]{display:none!important}
+.retro-box{display:flex;flex-direction:column;gap:2px;padding:7px;background:#fff;border:2px outset #e0e0e0}
+.retro-box b{color:#800000}
+.retro-new{background:#ffffcc}
+.retro-blink{color:#ff0000;font-weight:700;animation:retro-blink 1s steps(1) infinite}
+.retro-webring{font-size:11px;text-align:center;background:#e0e0ff}
+#guide-retro-ads{display:flex;flex-direction:column;gap:8px}
+.retro-ad{padding:10px 6px;background:#00ffff;border:3px outset #80ffff;color:#000080;text-align:center;font:13px/1.3 "Comic Sans MS","Chalkboard SE",cursive}
+.retro-ad b{font-size:15px;color:#d40000}
+.retro-ad-flash{background:#ff00ff;color:#fff;animation:retro-flash .9s steps(1) infinite}
+.retro-ad-flash span{display:inline-block;margin-top:6px;padding:2px 8px;background:#ff0;color:#000;border:2px outset #ff8}
+.retro-ad-plain{background:#fff;border:1px dashed #888;color:#555;font-family:"Times New Roman",serif}
+@media (max-width:860px){body[data-guide-key="reader"] #guide-reading-layout{grid-template-columns:1fr!important}#guide-page-noise,#guide-retro-ads{display:none!important}}
+@media (prefers-reduced-motion:reduce){.retro-blink,.retro-ad-flash,#guide-pill-hint{animation:none!important}}
+.retro-construction span{display:inline-block;padding:0 10px;background:#ffd800;text-shadow:none}

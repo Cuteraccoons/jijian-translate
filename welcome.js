@@ -91,10 +91,13 @@
       return element.getClientRects().length>0&&rect.width>0&&rect.height>0;
     };
     hint.hidden=steps[current].key!=='translate'||completed.has(current)||!isVisible(pill);
+    document.body.classList.toggle('guide-pill-pulse',!hint.hidden);
     if(hint.hidden)return;
     const rect=pill.getBoundingClientRect();
-    hint.style.left=`${Math.max(10,Math.min(innerWidth-110,rect.left+rect.width/2-66))}px`;
-    hint.style.top=`${Math.max(90,rect.top-116)}px`;
+    // Centre the bubble right above the pill; its caret points at the pill.
+    const width=hint.offsetWidth||120,height=hint.offsetHeight||34;
+    hint.style.left=`${Math.max(10,Math.min(innerWidth-width-10,rect.left+rect.width/2-width/2))}px`;
+    hint.style.top=`${Math.max(70,rect.top-height-14)}px`;
   }
   function observePillVisibility() {
     const root=q('#raccoon-floating-ball-root');
@@ -111,12 +114,15 @@
     current=index;const step=steps[index];
     document.body.dataset.guideStep=index;document.body.dataset.guideKey=step.key;
     q('#step-title').textContent=step.title;q('#step-description').textContent=step.description;q('#step-description').hidden=!step.description;
+    // Replay the entrance animation on every step change.
+    const stage=q('.welcome-stage');stage.classList.remove('is-entering');void stage.offsetWidth;stage.classList.add('is-entering');
     q('#guide-shortcuts').hidden=step.key!=='reader'&&step.key!=='translate';
     q('#guide-reader-shortcuts').hidden=step.key!=='reader';
     q('#guide-pill-shortcut').hidden=step.key!=='translate';
     q('#welcome-start').hidden=index!==0;q('#welcome-extras').hidden=index!==7;
     q('#guide-reading-layout').hidden=index<1||index>4;article.hidden=index<1||index>4;
     q('#guide-page-noise').hidden=index!==3;
+    document.querySelectorAll('.retro-chrome').forEach(element=>{element.hidden=index!==3;});
     q('#guide-lookup').hidden=index!==5;q('#guide-image').hidden=index!==6;
     q('#demo-disclosure').hidden=index===0||index===7;
     q('#demo-disclosure').textContent=index===6?'图片经过真实本地 OCR 识别；示例译文内置。':index===5?'示例词义内置；日常查词无需配置本地词典。':'公版原文 · 内置示例译文';
