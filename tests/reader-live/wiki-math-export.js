@@ -24,7 +24,7 @@ async page => {
   const readerState = await page.evaluate(() => ({ math: document.querySelectorAll("#reader-content math").length, textFallback: document.querySelector("#reader-content .reader-math-fallback-text[aria-label='integral from zero to one']")?.textContent, subscript: document.querySelector("#reader-content sub")?.textContent }));
   if (response?.status() !== 200 || readerState.math !== 2 || readerState.textFallback !== "integral from zero to one" || readerState.subscript !== "2") throw Error(`Reader fallback setup failed: ${JSON.stringify({ status: response?.status(), readerState })}`);
 
-  await page.locator('[data-reader-tool-tab="info"]').evaluate(button => button.click());
+  await page.locator('[data-reader-tool-tab="article"]').evaluate(button => button.click());
   const htmlPending = page.waitForEvent("download", { timeout: 10000 });
   await page.locator('#reader-export-menu [data-format="html"]').evaluate(button => button.click());
   const htmlDownload = await htmlPending;

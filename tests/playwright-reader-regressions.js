@@ -97,7 +97,7 @@ async page => {
     if(CSS.highlights.get("reader-search-match").size!==3)throw Error("Search did not refresh after DOM update");
     search("");
     const widths=[];
-    click('[data-reader-tool-tab="style"]');
+    click('[data-reader-tool-tab="appearance"]');
     root.dataset.readerSite="wikipedia";
     for(const surface of ["card","flat","safari","forum"]){
       click(`[data-reader-surface="${surface}"]`);
@@ -133,19 +133,19 @@ async page => {
       }
     }
     if(small.length)throw Error("Sub-13px UI: "+JSON.stringify(small));
-    click('[data-reader-tool-tab="format"]');
+    click('[data-reader-tool-tab="appearance"]');
     const indicators=[...root.querySelectorAll('.reader-tool-tab-indicator,.reader-context-mode-tabs .reader-tab-indicator,.reader-writing-tabs .reader-tab-indicator')].filter(node=>node.checkVisibility()).map(node=>node.getBoundingClientRect().height);
     if(indicators.some(height=>height<25))throw Error("Collapsed selection background");
     return {searchOccurrences:2,crossInlineMarkup:true,literalQuery:true,hiddenTextExcluded:visibleOnly,refreshAfterTranslation:true,widths,wideTable:{width:scroller.clientWidth,content:scroller.scrollWidth},charts:3,uiMinimum:13,indicatorHeights:indicators,fontLoaded:document.fonts.check('14px "Smiley Sans"'),whitePaper:getComputedStyle(root.querySelector('.reader-scroll-card')).backgroundColor};
   });
-  await page.locator('[data-reader-tool-tab="style"]').click();
+  await page.locator('[data-reader-tool-tab="appearance"]').click();
   await page.locator('#reader-scroll-area').evaluate(node=>node.scrollTop=0);
   await page.waitForTimeout(350);
   await page.screenshot({path:'output/playwright/reader-final-style.png'});
-  await page.locator('[data-reader-tool-tab="info"]').click();
+  await page.locator('[data-reader-tool-tab="article"]').click();
   await page.waitForTimeout(350);
   await page.screenshot({path:'output/playwright/reader-final-info.png'});
-  await page.locator('[data-reader-tool-tab="format"]').click();
+  await page.locator('[data-reader-tool-tab="appearance"]').click();
   await page.waitForTimeout(350);
   await page.screenshot({path:'output/playwright/reader-final-format.png'});
   await page.setViewportSize({width:1100,height:900});

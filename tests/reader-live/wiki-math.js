@@ -80,7 +80,7 @@ async page => {
   const wideLayout = await page.evaluate(() => ({ viewport: innerWidth, reader: document.querySelector("#reader-content").scrollWidth, client: document.querySelector("#reader-content").clientWidth }));
   const darkButton = page.locator('[data-reader-theme-quick="dark"]');
   if (!await darkButton.isVisible()) await page.locator("#reader-btn-open-settings").click();
-  await page.locator('[data-reader-tool-tab="style"]').click();
+  await page.locator('[data-reader-tool-tab="appearance"]').click();
   await darkButton.click();
   const darkTheme = await page.locator("#reader-content math").first().evaluate(node => ({ rootTheme: document.querySelector("#raccoon-reader-root").dataset.theme, activeChoice: document.querySelector("[data-reader-theme-quick].active")?.dataset.readerThemeQuick, color: getComputedStyle(node).color, background: getComputedStyle(node.closest(".reader-scroll-card")).backgroundColor }));
   if (darkTheme.rootTheme !== "dark" || darkTheme.color === darkTheme.background) throw Error(`MathML is not legible in dark theme: ${JSON.stringify(darkTheme)}`);

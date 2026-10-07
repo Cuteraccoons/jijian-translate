@@ -201,12 +201,14 @@ async page => {
     const toolStates=[];
     const toolActiveCounts=[];
     const toolVisibleSections=[];
-    for(const tool of ["format","style","info","notes"]){
+    // 1.0.5: two merged tabs; each legacy section belongs to one of them.
+    const mergedOf={format:"appearance",style:"appearance",info:"article",notes:"article"};
+    for(const tool of ["appearance","article"]){
       root.querySelector(`[data-reader-tool-tab="${tool}"]`)?.click();
-      toolStates.push(root.querySelector("#reader-context-panel")?.dataset.activeTool||"");
+      toolStates.push(root.querySelector("#reader-context-panel")?.dataset.mergedTool||"");
       toolTransforms.push(getComputedStyle(toolIndicator).transform);
       toolActiveCounts.push(root.querySelectorAll("[data-reader-tool-tab].active").length);
-      toolVisibleSections.push(Array.from(root.querySelectorAll("[data-reader-tool-section]")).filter(section=>section.getClientRects().length>0).every(section=>section.dataset.readerToolSection===tool));
+      toolVisibleSections.push(Array.from(root.querySelectorAll("[data-reader-tool-section]")).filter(section=>section.getClientRects().length>0).every(section=>mergedOf[section.dataset.readerToolSection]===tool));
     }
     return {
       count:buttons.length,
@@ -254,7 +256,7 @@ async page => {
   const darkCardTooLight=darkChannels.length<3||darkChannels.reduce((sum,value)=>sum+value,0)/3>70;
   const headingScale=new Set(Object.values(reader.headingSizes)).size;
   const modeSelectionBroken=reader.modeStates.join(",")!=="orig,bilingual,trans"||reader.modeActiveCounts.some(count=>count!==1);
-  const toolSelectionBroken=reader.toolTabs!==4||reader.toolStates.join(",")!=="format,style,info,notes"||new Set(reader.toolTransforms).size!==4||reader.toolActiveCounts.some(count=>count!==1)||reader.toolVisibleSections.some(value=>!value);
+  const toolSelectionBroken=reader.toolTabs!==2||reader.toolStates.join(",")!=="appearance,article"||new Set(reader.toolTransforms).size!==2||reader.toolActiveCounts.some(count=>count!==1)||reader.toolVisibleSections.some(value=>!value);
   const verticalBroken=reader.verticalMetrics.mode!=="vertical"||reader.verticalMetrics.cardWritingMode!=="vertical-rl"||reader.verticalMetrics.overflowX!=="auto"||reader.verticalMetrics.overflowY!=="hidden"||reader.verticalMetrics.tableWritingMode!=="horizontal-tb";
   if(reader.count!==4 || reader.unique<2 || reader.outline<3 || reader.codeBlocks<1 || reader.quotes<1 || reader.captions<1 || reader.navigatorTabs!==3 || reader.mediaIndex<4 || reader.contextPanels!==1 || reader.dataTables<2 || reader.semanticTables<1 || reader.factRows<3 || reader.inlineTableAssets<1 || reader.details<1 || reader.semanticColumns<3 || reader.semanticColgroup<3 || !reader.hasColspan || reader.translatedTableCells<4 || mediaCropped || navDidNotCollapse || toolsDidNotCollapse || !reader.settingsInline || !reader.settingsOpen || reader.toolResizeCursor!=="col-resize" || reader.headingAfter!=="none" || reader.topExitButtons!==0 || reader.bottomExitButtons!==1 || reader.maintenanceLeaks || headingScale<2 || modeSelectionBroken || toolSelectionBroken || !/\d+\s*\/\s*\d+/.test(reader.searchStatus) || reader.searchHitCount!==1 || darkCardTooLight || !reader.advancedOpen || reader.embeddedVideos<1 || reader.readerRenderStyle!=="card" || reader.translationCardRadius==="0px" || reader.translationCardPadding==="0px" || !reader.speechPlayerVisible || !/\d+\s*\/\s*\d+/.test(reader.speechCount) || reader.uiFont.includes("Smiley Sans") || reader.outlineTargetOffset<0 || reader.outlineTargetOffset>110 || verticalBroken)throw new Error(`阅读模式结构失败：${JSON.stringify(reader)}`);
 
@@ -321,12 +323,13 @@ async page => {
   if(blacklist.rows<2||blacklist.openPanels!==1||blacklist.activeButtons!==1||blacklist.expandedRows!==1||blacklist.explicitRemove!==blacklist.rows||blacklist.panelFlow!=="static"||!blacklist.sameRow||!blacklist.stayedOpen)throw new Error(`黑名单设置面板协调失败：${JSON.stringify(blacklist)}`);
   const optionsVisuals=await page.evaluate(() => {
     document.querySelector('[data-tab="tab-local-dict"]')?.click();
-    const colors=[".local-dict-card",".local-dict-test-card",".local-dict-import-note"].map(selector=>getComputedStyle(document.querySelector(`#tab-local-dict ${selector}`)).backgroundColor);
+    const colors=[".local-dict-card",".local-dict-test-card"].map(selector=>getComputedStyle(document.querySelector(`#tab-local-dict ${selector}`)).backgroundColor);
     document.querySelector('[data-tab="tab-about"]')?.click();
     const image=document.querySelector("#tab-about .project-promo-image");
-    return {colors,promoReady:!!image&&image.complete&&image.naturalWidth>0&&image.getBoundingClientRect().height>0};
+    // 1.0.5: the promo poster was removed from the about page on request.
+    return {colors,promoRemoved:!image};
   });
-  if(optionsVisuals.colors.some(color=>!["rgb(255, 255, 255)","rgba(0, 0, 0, 0)"].includes(color))||!optionsVisuals.promoReady)throw new Error(`设置页视觉资源失败：${JSON.stringify(optionsVisuals)}`);
+  if(optionsVisuals.colors.some(color=>!["rgb(255, 255, 255)","rgba(0, 0, 0, 0)"].includes(color))||!optionsVisuals.promoRemoved)throw new Error(`设置页视觉资源失败：${JSON.stringify(optionsVisuals)}`);
   await page.goto(`${base}/popup.html`);
   await page.waitForFunction(()=>document.querySelector("#site-image-translation-domain")?.textContent==="127.0.0.1");
   await page.click("#site-image-translation-toggle");

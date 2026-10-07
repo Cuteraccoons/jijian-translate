@@ -5516,9 +5516,13 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="m14 10 2 2-2 2"/></svg>
       </button>
 
-      <button type="button" class="reader-floating-expand-tools-btn" id="reader-btn-expand-tools" style="${isToolsCollapsed ? 'display:flex;' : 'display:none;'}" title="阅读设置" aria-label="阅读设置">
+      <div class="reader-floating-tools-group" id="reader-floating-tools-group" role="toolbar" aria-label="阅读工具" style="${isToolsCollapsed ? 'display:flex;' : 'display:none;'}">
+        <button type="button" class="reader-floating-expand-tools-btn" id="reader-btn-expand-tools" title="阅读设置" aria-label="阅读设置">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4.5-9 4.5 9"/><path d="M4.5 13h6"/><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"/><path d="M21 14h-5"/></svg>
       </button>
+        <span class="reader-dock-divider" aria-hidden="true"></span>
+        <button type="button" class="reader-floating-exit-btn" id="reader-btn-exit-floating" title="退出沉浸阅读 (Esc)" aria-label="退出沉浸阅读"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
 
       <div class="reader-vertical-edge-dock" id="reader-vertical-edge-dock" role="toolbar" aria-label="阅读工具">
         <button type="button" class="reader-vertical-dock-btn" id="reader-btn-open-settings" title="阅读设置" aria-label="阅读设置"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4.5-9 4.5 9"/><path d="M4.5 13h6"/><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"/><path d="M21 14h-5"/></svg></button>
@@ -5611,7 +5615,7 @@
           </main>
         </div>
 
-        <aside class="reader-context-panel" id="reader-context-panel" aria-label="阅读工具" data-active-tool="format">
+        <aside class="reader-context-panel" id="reader-context-panel" aria-label="阅读工具" data-active-tool="merged" data-merged-tool="appearance">
           <div class="reader-context-resizer" id="reader-context-resizer" title="拖动调整工具栏宽度" aria-hidden="true"></div>
           <div class="reader-context-header">
             <div><span>阅读设置</span><small id="reader-context-progress">0%</small></div>
@@ -5619,12 +5623,10 @@
               <button type="button" class="reader-context-close" id="reader-btn-toggle-tools" title="收起阅读设置" aria-label="收起阅读设置"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/><path d="m8 10 2 2-2 2"/></svg></button>
             </div>
           </div>
-          <div class="reader-tool-tabs" role="tablist" aria-label="阅读设置分类" data-active-tool-tab="format">
+          <div class="reader-tool-tabs reader-tool-tabs-merged" role="tablist" aria-label="阅读设置分类" data-active-tool-tab="appearance">
             <span class="reader-tool-tab-indicator" aria-hidden="true"></span>
-            <button type="button" class="active" data-reader-tool-tab="format" role="tab" aria-selected="true">格式</button>
-            <button type="button" data-reader-tool-tab="style" role="tab" aria-selected="false">样式</button>
-            <button type="button" data-reader-tool-tab="info" role="tab" aria-selected="false">信息</button>
-            <button type="button" data-reader-tool-tab="notes" role="tab" aria-selected="false">笔记</button>
+            <button type="button" class="active" data-reader-tool-tab="appearance" role="tab" aria-selected="true">排版</button>
+            <button type="button" data-reader-tool-tab="article" role="tab" aria-selected="false">文章</button>
           </div>
           <section class="reader-info-link-section" data-reader-tool-section="info">
             <button type="button" class="reader-info-source" id="reader-copy-link" title="${escapeHtml(location.href)}" aria-label="复制文章链接"><span class="reader-source-url">${escapeHtml(location.host + location.pathname)}</span><span class="reader-source-copy" aria-live="polite">复制</span></button>
@@ -6050,7 +6052,8 @@
       root.classList.toggle("reader-tools-collapsed", collapsed);
       if (collapsed) root.classList.remove("reader-settings-open");
       toolsPanel?.classList.toggle("collapsed", collapsed);
-      if (expandToolsFloatingBtn) expandToolsFloatingBtn.style.display = collapsed ? "flex" : "none";
+      const floatingToolsGroup = root.querySelector("#reader-floating-tools-group");
+      if (floatingToolsGroup) floatingToolsGroup.style.display = collapsed ? "flex" : "none";
       currentSettings.readerToolsCollapsed = collapsed;
       chrome.runtime.sendMessage({ action:"UPDATE_SETTINGS", settings:{ readerToolsCollapsed:collapsed } }).catch(() => {});
     };
@@ -6088,9 +6091,12 @@
       if (!button.disabled) selectReaderNavTab(button.dataset.readerNavTab || "outline");
     }));
 
+    // Two merged tabs: 排版 (format + style) and 文章 (info + notes + export).
+    // Legacy names still map, so older callers keep working.
     const selectReaderToolTab = (selected) => {
-      const next = ["format", "style", "info", "notes"].includes(selected) ? selected : "format";
-      toolsPanel?.setAttribute("data-active-tool", next);
+      const next = ["info", "notes", "article"].includes(selected) ? "article" : "appearance";
+      toolsPanel?.setAttribute("data-active-tool", "merged");
+      toolsPanel?.setAttribute("data-merged-tool", next);
       const tabs = root.querySelector(".reader-tool-tabs");
       tabs?.setAttribute("data-active-tool-tab", next);
       root.querySelectorAll("[data-reader-tool-tab]").forEach(tab => {
@@ -6100,7 +6106,7 @@
       });
       if (settingsDrawer?.classList.contains("reader-settings-inline")) settingsDrawer.classList.add("open");
     };
-    root.querySelectorAll("[data-reader-tool-tab]").forEach(button => button.addEventListener("click", () => selectReaderToolTab(button.dataset.readerToolTab || "format")));
+    root.querySelectorAll("[data-reader-tool-tab]").forEach(button => button.addEventListener("click", () => selectReaderToolTab(button.dataset.readerToolTab || "appearance")));
 
     const readerSearchInput = root.querySelector("#reader-nav-search-input");
     const readerSearchStatus = root.querySelector("#reader-nav-search-status");
@@ -6645,6 +6651,7 @@
     }));
 
     root.querySelector("#reader-btn-exit").addEventListener("click", closeReaderMode);
+    root.querySelector("#reader-btn-exit-floating")?.addEventListener("click", closeReaderMode);
     if (readerKeydownHandler) window.removeEventListener("keydown", readerKeydownHandler);
     readerKeydownHandler = (e) => {
       if (!isReaderOpen) return;
@@ -6910,7 +6917,7 @@
       const update=value=>{group.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.value===value)));apply(value);};
       choices.forEach(([value,text,color])=>{const button=document.createElement('button');button.type='button';button.dataset.value=value;
         if(color){const chip=document.createElement('i');chip.style.background=color;chip.setAttribute('aria-hidden','true');button.append(chip);}
-        button.append(document.createTextNode(text));button.addEventListener('click',()=>{currentSettings[setting]=value;update(value);chrome.runtime.sendMessage({action:'UPDATE_SETTINGS',settings:{[setting]:value}}).catch(()=>{});});group.append(button);
+        const caption=document.createElement('span');caption.textContent=text;button.append(caption);if(color){button.title=text;button.setAttribute('aria-label',text);}button.addEventListener('click',()=>{currentSettings[setting]=value;update(value);chrome.runtime.sendMessage({action:'UPDATE_SETTINGS',settings:{[setting]:value}}).catch(()=>{});});group.append(button);
       });
       section.append(label,group);update(choices.some(([value])=>value===currentSettings[setting])?currentSettings[setting]:choices[0][0]);return section;
     };

@@ -74,7 +74,7 @@ async page => {
  const tableColors=page.locator('#reader-content [data-reader-source-color]');
  const coloredCount=await tableColors.count();
  if(coloredCount<1)throw Error('London climate source data colors were not preserved');
- await page.locator('#reader-btn-open-settings').click();await page.locator('[data-reader-tool-tab="style"]').click();
+ await page.locator('#reader-btn-open-settings').click();await page.locator('[data-reader-tool-tab="appearance"]').click();
  for(const style of ['three-line','striped','clean']){
   await page.locator(`[data-reader-table-style="${style}"]`).click();
   const colorState=await tableColors.evaluateAll(cells=>cells.map(cell=>({background:getComputedStyle(cell).backgroundColor,ink:getComputedStyle(cell).color,source:cell.dataset.readerSourceColor})));

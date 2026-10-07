@@ -11,8 +11,8 @@ async page=>{
  const row=tab.locator('.reader-outline-item').filter({hasText:'Heat'});const rect=await row.boundingBox();await row.click({position:{x:rect.width-6,y:rect.height/2}});
  const rowGeometry=await row.evaluate(el=>({width:el.getBoundingClientRect().width,parent:el.parentElement.getBoundingClientRect().width,pinned:document.querySelector('#raccoon-reader-root').dataset.readerOutlinePinned,target:el.dataset.target}));
  if(rowGeometry.width<rowGeometry.parent-50||!rowGeometry.pinned)throw Error('Outline hit area too small '+JSON.stringify(rowGeometry));
- if(!await tab.locator('[data-reader-tool-tab="style"]').isVisible())await tab.locator('#reader-btn-open-settings').click();
- await tab.locator('[data-reader-tool-tab="style"]').click();await tab.locator('#reader-link-style [data-value="blue"]').click();await tab.locator('#reader-outline-accent [data-value="green"]').click();
+ if(!await tab.locator('[data-reader-tool-tab="appearance"]').isVisible())await tab.locator('#reader-btn-open-settings').click();
+ await tab.locator('[data-reader-tool-tab="appearance"]').click();await tab.locator('#reader-link-style [data-value="blue"]').click();await tab.locator('#reader-outline-accent [data-value="green"]').click();
  if(await tab.locator('#raccoon-reader-root').getAttribute('data-reader-link-style')!=='blue')throw Error('Link choice failed');
  const swatches=await tab.locator('.reader-context-themes button').evaluateAll(nodes=>nodes.map(x=>({width:x.getBoundingClientRect().width,radius:getComputedStyle(x.querySelector('i')).borderRadius})));
  if(swatches.some(x=>x.width<32||x.radius!=='50%'))throw Error('Swatch hit area or shape failed');

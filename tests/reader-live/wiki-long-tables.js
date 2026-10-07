@@ -60,7 +60,7 @@ async page => {
  const wideScroll=await page.locator('.reader-table-details[open] .reader-table-scroll').evaluateAll(nodes=>nodes.some(node=>node.scrollWidth>node.clientWidth+1));
  if(!wideScroll)throw Error('Long table did not scroll inside its own region');
  if(!await page.locator('#reader-btn-open-settings').isVisible())throw Error('Reader settings control unavailable');
- await page.locator('#reader-btn-open-settings').click();await page.locator('[data-reader-tool-tab="style"]').click();
+ await page.locator('#reader-btn-open-settings').click();await page.locator('[data-reader-tool-tab="appearance"]').click();
  const colorCell=page.locator('#reader-content [data-reader-source-color]').first();
  for(const style of ['three-line','striped','clean']){
   await page.locator(`[data-reader-table-style="${style}"]`).click();
