@@ -5512,21 +5512,18 @@
       <div class="reader-top-progress-bar" id="reader-top-progress-bar"></div>
 
       <!-- 大纲折叠后只保留一个安静的平面图标 -->
-      <button type="button" class="reader-floating-expand-outline-btn" id="reader-btn-expand-outline" style="${isOutlineCollapsed ? 'display:flex;' : 'display:none;'}" title="展开阅读导航" aria-label="展开阅读导航">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+      <button type="button" class="reader-floating-expand-outline-btn" id="reader-btn-expand-outline" style="${isOutlineCollapsed ? 'display:flex;' : 'display:none;'}" title="展开导航栏" aria-label="展开导航栏">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="m14 10 2 2-2 2"/></svg>
       </button>
 
-      <button type="button" class="reader-floating-expand-tools-btn" id="reader-btn-expand-tools" style="${isToolsCollapsed ? 'display:flex;' : 'display:none;'}" title="展开阅读工具" aria-label="展开阅读工具">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.05.05-2.87 2.87-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.05.05-2.87-2.87.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.05-.05 2.87-2.87.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.05-.05 2.87 2.87-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+      <button type="button" class="reader-floating-expand-tools-btn" id="reader-btn-expand-tools" style="${isToolsCollapsed ? 'display:flex;' : 'display:none;'}" title="阅读设置" aria-label="阅读设置">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4.5-9 4.5 9"/><path d="M4.5 13h6"/><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"/><path d="M21 14h-5"/></svg>
       </button>
 
-      <div class="reader-vertical-edge-dock" id="reader-vertical-edge-dock">
-        <button type="button" class="reader-vertical-dock-btn" id="reader-btn-open-settings" title="打开阅读偏好设置">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82-.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-        <button type="button" class="reader-vertical-dock-btn exit-btn" id="reader-btn-exit" title="退出沉浸阅读 (Esc)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
+      <div class="reader-vertical-edge-dock" id="reader-vertical-edge-dock" role="toolbar" aria-label="阅读工具">
+        <button type="button" class="reader-vertical-dock-btn" id="reader-btn-open-settings" title="阅读设置" aria-label="阅读设置"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4.5-9 4.5 9"/><path d="M4.5 13h6"/><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"/><path d="M21 14h-5"/></svg></button>
+        <span class="reader-dock-divider" aria-hidden="true"></span>
+        <button type="button" class="reader-vertical-dock-btn exit-btn" id="reader-btn-exit" title="退出沉浸阅读 (Esc)" aria-label="退出沉浸阅读"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
 
       <div class="reader-body-layout">
@@ -5534,7 +5531,7 @@
           <aside class="reader-outline-panel ${isOutlineCollapsed ? 'collapsed' : ''}" id="reader-outline-panel">
             <div class="reader-outline-header-row">
               <div><span class="reader-outline-title">${escapeHtml(title)}</span></div>
-              <button type="button" class="reader-outline-toggle-btn" id="reader-btn-toggle-outline" title="折叠导航" aria-label="折叠导航"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+              <button type="button" class="reader-outline-toggle-btn" id="reader-btn-toggle-outline" title="收起导航栏" aria-label="收起导航栏"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="m16 10-2 2 2 2"/></svg></button>
             </div>
             <div class="reader-navigator-tabs" role="tablist" aria-label="阅读导航内容" data-active-tab="outline">
               <span class="reader-navigator-tab-indicator" aria-hidden="true"></span>
@@ -5619,7 +5616,7 @@
           <div class="reader-context-header">
             <div><span>阅读设置</span><small id="reader-context-progress">0%</small></div>
             <div class="reader-context-header-actions">
-              <button type="button" class="reader-context-close" id="reader-btn-toggle-tools" title="折叠阅读工具" aria-label="折叠阅读工具"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10 6 6 6-6 6"/></svg></button>
+              <button type="button" class="reader-context-close" id="reader-btn-toggle-tools" title="收起阅读设置" aria-label="收起阅读设置"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/><path d="m8 10 2 2-2 2"/></svg></button>
             </div>
           </div>
           <div class="reader-tool-tabs" role="tablist" aria-label="阅读设置分类" data-active-tool-tab="format">
