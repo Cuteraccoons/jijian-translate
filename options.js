@@ -933,7 +933,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       list = list.filter(item => {
         const standard = Array.isArray(item.definitions) ? item.definitions.flatMap(d => Array.isArray(d.terms) ? d.terms : (Array.isArray(d.senses) ? d.senses.map(x => x.zh || x.en) : [])) : [];
         const local = Array.isArray(item.localDictionarySummary) ? item.localDictionarySummary.flatMap(x => [x?.name, x?.text]) : [];
-        const haystack = [item.word, item.phonetic, item.translation, item.sourceName, item.context, item.pageTitle, ...standard, ...local]
+        const haystack = [item.word, item.phonetic, item.translation, item.sourceName, item.context, (item.articleTitle || item.pageTitle), ...standard, ...local]
           .filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(query);
       });
@@ -1085,7 +1085,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <button type="button" class="vocab-detail-modal-close" aria-label="关闭">×</button>
       </div>
       <div class="vocab-detail-modal-translation">${escapeHtml(item.translation||"暂无简明释义")}</div>
-      ${context?`<div class="vocab-detail-modal-section"><b>原句</b><p class="vocab-detail-context">${markWordInSentence(context, item.word)}</p>${sourceUrl?`<a class="vocab-detail-source" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener">出自 ${escapeHtml(item.pageTitle || sourceHost(sourceUrl))} ↗</a>`:""}</div>`:""}
+      ${context?`<div class="vocab-detail-modal-section"><b>原句</b><p class="vocab-detail-context">${markWordInSentence(context, item.word)}</p>${sourceUrl?`<a class="vocab-detail-source" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener">出自 ${escapeHtml((item.articleTitle || item.pageTitle) || sourceHost(sourceUrl))} ↗</a>`:""}</div>`:""}
       ${standardDetails.length?`<div class="vocab-detail-modal-section"><b>词典释义</b>${standardDetails.slice(0,10).map((x,i)=>`<div class="vocab-detail-sense"><span>${i+1}</span><p>${escapeHtml(x)}</p></div>`).join("")}</div>`:""}
       ${localDetails.length?`<div class="vocab-detail-modal-section"><b>本地词典</b>${localDetails.slice(0,4).map(x=>`<div class="vocab-detail-local"><strong>${escapeHtml(x.name||"本地词典")}</strong><p>${escapeHtml(x.text||"")}</p></div>`).join("")}</div>`:""}
       <div class="vocab-detail-modal-foot">

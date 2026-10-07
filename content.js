@@ -845,6 +845,18 @@
     }
   }
 
+  // Skip text nobody can see: display:none subtrees and 1×1 "visually hidden"
+  // screen-reader labels. Translating them costs API quota and, because their
+  // rect sits at 0,0, used to push them ahead of the article in the queue.
+  function isRenderedTranslationCandidate(block) {
+    const el = block?.element || block?.textNode?.parentElement;
+    if (!el?.getClientRects) return true;
+    if (block.kind === "ui-inplace" && isStructuredTocControl(el)) return true;
+    if (!el.getClientRects().length) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 2 || rect.height > 2;
+  }
+
   function prioritizeTranslationBlocks(blocks) {
     if (!Array.isArray(blocks) || blocks.length < 2) return blocks || [];
     const viewportHeight = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 800);
@@ -863,7 +875,9 @@
         block,
         index,
         band:nearViewport ? 0 : (belowViewport ? 1 : 2),
-        distance:nearViewport ? Math.abs(rect.top) : (belowViewport ? rect.top - viewportHeight : Math.abs(rect.bottom))
+        // Inside the viewport, read strictly top-to-bottom (a paragraph that is
+        // partly scrolled above the fold comes first, not after its neighbours).
+        distance:nearViewport ? rect.top : (belowViewport ? rect.top - viewportHeight : Math.abs(rect.bottom))
       };
     });
     ranked.sort((a, b) => a.band - b.band || a.distance - b.distance || a.index - b.index);
@@ -880,7 +894,11 @@
     updateFloatingPillStatus("loading", "正在翻译");
     setTranslationBadgeSafely("translating");
 
-    const collectedBlocks = collectTranslatableBlocks();
+    const collectedBlocks = collectTranslatableBlocks().filter(block => {
+      if (isRenderedTranslationCandidate(block)) return true;
+      (block.element || block.textNode?.parentElement)?.removeAttribute?.("data-raccoon-id");
+      return false;
+    });
     const blocks = runMode === "sidebar"
       ? collectedBlocks
       : prioritizeTranslationBlocks(collectedBlocks);
@@ -1090,7 +1108,79 @@
     '#raccoon-sidebar-root', '#raccoon-reader-root', '[data-reader-translate-one]'
   ].join(',');
 
-  const TRANSLATABLE_BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, [role='heading'], li, blockquote, dt, dd, figcaption, td, th, [role='article']";
+  const TRANSLATABLE_BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, [role='heading'], li, blockquote, dt, dd, figcaption, td, th, [role='article'], .jijian-text-run";
+
+  // Prose written as bare text separated by <br><br> or interleaved with block
+  // children (old essays in <td><font>, forum and comment bodies whose first
+  // paragraph is a bare text node) has no element per paragraph. Wrap each such
+  // run of inline content in an unstyled <span class="jijian-text-run"> so it
+  // can be read and translated like a <p>. Idempotent per element.
+  const TEXT_RUN_CONTAINER_SELECTOR = "body, main, article, section, div, td, th, font, center, blockquote, li, dd";
+  const TEXT_RUN_INLINE_TAGS = new Set(["A","ABBR","B","BDI","BDO","BIG","CITE","CODE","DATA","DFN","EM","FONT","I","KBD","LABEL","MARK","NOBR","Q","RP","RT","RUBY","S","SAMP","SMALL","SPAN","STRONG","SUB","SUP","TIME","TT","U","VAR","WBR"]);
+  const TEXT_RUN_BLOCK_TAGS = new Set(["ADDRESS","ARTICLE","ASIDE","BLOCKQUOTE","CENTER","DETAILS","DIV","DL","FIELDSET","FIGURE","FOOTER","FORM","H1","H2","H3","H4","H5","H6","HEADER","HR","LI","MAIN","NAV","OL","P","PRE","SECTION","TABLE","UL"]);
+  const textRunProcessed = new WeakSet();
+
+  function wrapOrphanTextRuns(root) {
+    if (!root?.querySelectorAll) return;
+    const containers = [root, ...root.querySelectorAll(TEXT_RUN_CONTAINER_SELECTOR)];
+    for (const el of containers) {
+      if (textRunProcessed.has(el)) continue;
+      textRunProcessed.add(el);
+      if (isExtensionOwnedElement(el) || el.closest("[contenteditable='true'], [translate='no'], .notranslate, script, style, noscript, textarea")) continue;
+      const children = Array.from(el.childNodes);
+      const hasBlockChild = children.some(node => node.nodeType === 1 && TEXT_RUN_BLOCK_TAGS.has(node.tagName));
+      const isBr = node => node?.nodeType === 1 && node.tagName === "BR";
+      const isBlank = node => node?.nodeType === 3 && !node.nodeValue.trim();
+      const nextMeaningful = index => { let i = index + 1; while (i < children.length && isBlank(children[i])) i++; return children[i]; };
+      const hasDoubleBreak = children.some((node, index) => isBr(node) && isBr(nextMeaningful(index)));
+      if (!hasBlockChild && !hasDoubleBreak) continue;
+
+      const runs = [];
+      let run = [];
+      const flush = () => {
+        while (run.length && (isBr(run[run.length - 1]) || isBlank(run[run.length - 1]))) run.pop();
+        while (run.length && (isBr(run[0]) || isBlank(run[0]))) run.shift();
+        const text = run.map(node => node.textContent || "").join("").replace(/\s+/g, " ").trim();
+        if (text.length >= 20) runs.push(run);
+        run = [];
+      };
+      children.forEach((node, index) => {
+        if (node.nodeType === 3) { run.push(node); return; }
+        if (node.nodeType !== 1) return;
+        if (node.classList?.contains("jijian-text-run") || isExtensionOwnedElement(node)) { flush(); return; }
+        if (isBr(node)) {
+          if (isBr(nextMeaningful(index))) flush(); else run.push(node);
+          return;
+        }
+        if (TEXT_RUN_INLINE_TAGS.has(node.tagName) && !node.querySelector?.("p, div, ul, ol, table, blockquote, h1, h2, h3, h4, h5, h6, pre")) run.push(node);
+        else flush();
+      });
+      flush();
+      // A container that is nothing but one inline run is already a normal leaf.
+      if (!hasBlockChild && runs.length < 2) continue;
+      runs.forEach(nodes => {
+        const span = document.createElement("span");
+        span.className = "jijian-text-run";
+        nodes[0].parentNode.insertBefore(span, nodes[0]);
+        nodes.forEach(node => span.appendChild(node));
+        textRunProcessed.add(span);
+      });
+    }
+  }
+
+  // Many sites write prose as <div>text<br>text</div> instead of <p>. Accept a
+  // div/section only when it is a visible leaf of inline content with real text.
+  const LEAF_BLOCK_CHILD_TAGS = new Set(["DIV","SECTION","ARTICLE","MAIN","P","UL","OL","DL","LI","TABLE","BLOCKQUOTE","PRE","FIGURE","H1","H2","H3","H4","H5","H6","HEADER","FOOTER","NAV","ASIDE","FORM","HR"]);
+  function isLeafProseBlock(el) {
+    if (!el || !/^(DIV|SECTION)$/.test(el.tagName)) return false;
+    if (Array.from(el.children || []).some(child => LEAF_BLOCK_CHILD_TAGS.has(child.tagName) || child.classList?.contains("jijian-text-run"))) return false;
+    if (el.closest("[contenteditable='true'], [translate='no'], .notranslate")) return false;
+    const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
+    if (text.length < 25) return false;
+    const linkText = Array.from(el.querySelectorAll("a")).reduce((n, a) => n + String(a.textContent || "").trim().length, 0);
+    if (linkText / text.length > .5) return false;
+    return el.getClientRects().length > 0;
+  }
 
   function queryScopedElements(container, selector) {
     const result = [];
@@ -1476,6 +1566,7 @@
 
   function collectTranslatableBlocks(container = document.body) {
     if (currentSettings.displayMode === 'replace') return collectReplaceTextUnits(container);
+    try { wrapOrphanTextRuns(container); } catch (_) {}
 
     const candidates = [];
     const seen = new Set();
@@ -1488,8 +1579,11 @@
       if (isExtensionOwnedElement(el)) return;
       if (isCompactTranslationComponent(el)) return;
       if (IGNORE_TAGS.has(el.tagName) || el.closest("[translate='no'], .notranslate, [contenteditable='true']")) return;
+      // display:none content (hidden categories, closed menus) would be sent
+      // to the API and, with a 0,0 rect, sorted ahead of the visible article.
+      if (!el.getClientRects().length) return;
       if (el.tagName === 'LI' && el.querySelector(':scope > ul, :scope > ol')) return;
-      const hasDeeperBlock = el.querySelector("p, h1, h2, h3, h4, h5, h6, blockquote, dd");
+      const hasDeeperBlock = el.querySelector("p, h1, h2, h3, h4, h5, h6, blockquote, dd, .jijian-text-run");
       if (hasDeeperBlock) return;
       const rawText = getHostOriginalText(el);
       if (!isValidText(rawText) || isIsolatedMetadata(rawText) || isTranslationNoiseElement(el, rawText)) return;
@@ -1507,6 +1601,22 @@
     }
 
     queryScopedElements(container, TRANSLATABLE_BLOCK_SELECTOR).forEach(el => append(el, false));
+
+    // Div-based prose: only inside the detected article body, never page-wide,
+    // so menus and widgets built from divs stay untouched.
+    if (currentSettings.displayMode === "bilingual") {
+      try {
+        const articleRoot = findBestReaderContainer();
+        if (articleRoot && articleRoot !== document.body && articleRoot !== document.documentElement) {
+          const scope = container === document.body ? articleRoot : (articleRoot.contains(container) ? container : null);
+          if (scope) queryScopedElements(scope, "div, section").forEach(el => {
+            if (!isLeafProseBlock(el)) return;
+            if (el.closest("[data-raccoon-id]") || el.querySelector("[data-raccoon-id]")) return;
+            append(el, false);
+          });
+        }
+      } catch (_) {}
+    }
 
     // Some editorial cards are a single <a> made only from spans. They do not
     // match the normal paragraph selector, but they are still article content.
@@ -2957,6 +3067,30 @@
     return pText * 1.15 + paragraphs.length * 90 + headingCount * 28 + semanticBoost + classBoost - linkDensity * 900 - Math.max(0, text.length - 50000) * 0.03;
   }
 
+  // Articles split into sibling <section>s/<div>s make one section win the
+  // score. Climb while the parent holds clearly more prose without becoming
+  // link-heavy chrome, so the reader gets the whole article. Generic path only;
+  // site rules above return before this is used.
+  function widenReaderContainer(el) {
+    const proseLength = node => Array.from(node.querySelectorAll("p, blockquote, li"))
+      .filter(child => !child.closest("nav, header, footer, aside, [role='navigation']"))
+      .reduce((sum, child) => sum + (child.textContent || "").trim().length, 0);
+    let current = el;
+    for (let depth = 0; depth < 4; depth++) {
+      const parent = current?.parentElement;
+      if (!parent || parent === document.body || parent === document.documentElement) break;
+      if (parent.closest("nav, header, footer, aside, [role='navigation']")) break;
+      const own = proseLength(current);
+      const wider = proseLength(parent);
+      if (!(wider > own * 1.35 && wider - own > 400)) break;
+      const text = (parent.textContent || "").trim().length || 1;
+      const linkText = Array.from(parent.querySelectorAll("a")).reduce((sum, a) => sum + (a.textContent || "").trim().length, 0);
+      if (linkText / text > .35) break;
+      current = parent;
+    }
+    return current;
+  }
+
   function findBestReaderContainer() {
     if(isWelcomePage)return document.querySelector("[data-welcome-article]");
     if (readerContainerCache.url === location.href && readerContainerCache.element?.isConnected) {
@@ -3023,7 +3157,7 @@
       }
     });
     if (bestPreferred && bestPreferredScore >= 1200 && bestPreferred.querySelectorAll("p, blockquote").length >= 3) {
-      return remember(bestPreferred);
+      return remember(widenReaderContainer(bestPreferred));
     }
 
     // 不再对页面上的每一个 div 做深度评分；只保留含正文直系段落或正文语义命名的候选，避免长网页卡顿。
@@ -3044,7 +3178,7 @@
         bestScore = score;
       }
     });
-    return remember(best || document.body);
+    return remember(best ? widenReaderContainer(best) : document.body);
   }
 
   function detectReaderWritingMode(container) {
@@ -8765,6 +8899,17 @@
     openDictionaryCard(top, left, text);
   }
 
+  // The single sentence around a saved word, so the vocabulary book can show
+  // where it was met.
+  function extractVocabularySentence(context, word) {
+    const source = String(context || "").replace(/\s+/g, " ").trim();
+    const needle = String(word || "").trim().toLocaleLowerCase();
+    if (!source || !needle) return "";
+    const sentences = source.match(/[^.!?。！？]+[.!?。！？]*["'”’」』)）]*/g) || [source];
+    const hit = sentences.find(sentence => sentence.toLocaleLowerCase().includes(needle));
+    return String(hit || "").trim().slice(0, 320);
+  }
+
   function getDictionarySelectionContext(text) {
     const clean = (text || "").trim();
     try {
@@ -9153,6 +9298,7 @@
           definitions: currentEntry.definitions || [],
           sourceName: currentEntry.sourceName || "",
           sourceUrl: location.href, articleTitle: document.title,
+          context: extractVocabularySentence(selectionContext, text),
           localDictionarySummary: Array.isArray(currentEntry.localDictionaryEntries) ? currentEntry.localDictionaryEntries.slice(0,2).map(entry => {
             const box = document.createElement("div"); box.innerHTML = entry.html || "";
             return { name: entry.dictionaryName || "本地词典", text: String(box.textContent || "").replace(/\s+/g," ").trim().slice(0,320) };
