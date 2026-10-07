@@ -1,0 +1,9 @@
+/* Content-script copy of smiley.css. CSS injected into web pages resolves
+   relative URLs against the page, so the font needs the extension origin. */
+@font-face {
+  font-family: "Smiley Sans";
+  src: url("chrome-extension://__MSG_@@extension_id__/fonts/SmileySans-Oblique.ttf.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}

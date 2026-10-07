@@ -41,7 +41,7 @@
         "content.js"
       ],
       "css": [
-        "fonts/smiley.css",
+        "fonts/smiley-content.css",
         "floating.css"
       ],
       "run_at": "document_idle"

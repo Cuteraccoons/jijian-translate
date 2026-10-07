@@ -11,11 +11,23 @@
     const canonical=new URL(url);canonical.hash='';
     const key=`readerNotes:${canonical.href}`,blocks=()=>[...root.querySelectorAll('.reader-orig-p,.reader-trans-p')];
     let items=[],closed=false,writeQueue=Promise.resolve(),editor,imageViewer;
-    panel.innerHTML='<div class="reader-notes-heading"><b>文章笔记</b><span data-note-count>0</span></div><button type="button" data-note-capture>截图笔记</button><p class="reader-notes-status" role="status">选中文字即可高亮或添加笔记；截图保留原始像素，可保存图片或导出。</p><div class="reader-notes-list"></div><div class="reader-notes-export"><span>下载与打印</span><button type="button" data-note-export="html">离线网页</button><button type="button" data-note-export="json">JSON 备份</button><button type="button" data-note-print="notes">仅笔记 PDF</button><button type="button" data-note-print="article">文章与旁注 PDF</button></div>';
+    const svg=path=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+    const icon={
+      crop:svg('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>'),
+      mark:svg('<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>'),
+      pen:svg('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+      locate:svg('<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'),
+      expand:svg('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'),
+      save:svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'),
+      page:svg('<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/>'),
+      data:svg('<path d="M8 4H6a2 2 0 0 0-2 2v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2 2 2 0 0 0-2 2v3a2 2 0 0 1-2 2h-2"/>'),
+      print:svg('<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5h20v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/>')
+    };
+    panel.innerHTML=`<div class="reader-notes-heading"><div><b>本文笔记</b><span data-note-count>0</span></div><p class="reader-notes-status" role="status">只保存在这台设备上</p></div><button type="button" class="reader-notes-capture" data-note-capture>${icon.crop}<span><b>截图笔记</b><small>框选图表、公式或任意区域</small></span></button><div class="reader-notes-list"></div><div class="reader-notes-export"><span>导出笔记</span><div><button type="button" data-note-export="html">${icon.page}<span>离线网页</span></button><button type="button" data-note-export="json">${icon.data}<span>JSON 备份</span></button><button type="button" data-note-print="notes">${icon.print}<span>仅笔记 PDF</span></button><button type="button" data-note-print="article">${icon.print}<span>文章与旁注</span></button></div></div>`;
     const status=message=>{panel.querySelector('.reader-notes-status').textContent=message;};
     const persist=()=>{
       const snapshot=structuredClone(items);
-      writeQueue=writeQueue.catch(()=>{}).then(async()=>{try{await request({action:'SAVE_READER_NOTES',items:snapshot,title});if(!closed)status('已保存在本机');}catch(error){if(!closed)status('保存失败：'+error.message);throw error;}});
+      writeQueue=writeQueue.catch(()=>{}).then(async()=>{try{await request({action:'SAVE_READER_NOTES',items:snapshot,title});if(!closed)status('已保存 · 只保存在这台设备上');}catch(error){if(!closed)status('保存失败：'+error.message);throw error;}});
       return writeQueue;
     };
     const blockFor=anchor=>{
@@ -41,19 +53,33 @@
         nodes.reverse().forEach(node=>{let a=node===range.startContainer?range.startOffset:0,b=node===range.endContainer?range.endOffset:node.length;if(b<=a)return;const piece=document.createRange();piece.setStart(node,a);piece.setEnd(node,b);const mark=document.createElement('mark');mark.className='minimal-text-highlight reader-note-highlight';mark.dataset.highlightId=item.id;mark.dataset.readerNoteId=item.id;mark.title=item.note||'双击添加笔记';piece.surroundContents(mark);});
       });
     };
+    const when=value=>{const date=new Date(value||'');return Number.isFinite(date.getTime())?`${date.getMonth()+1}月${date.getDate()}日 ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`:'';};
     const render=()=>{
       panel.querySelector('[data-note-count]').textContent=items.length;
+      const badge=root.querySelector('[data-reader-notes-count]');if(badge){badge.textContent=items.length;badge.hidden=!items.length;}
+      panel.classList.toggle('has-notes',items.length>0);
       const list=panel.querySelector('.reader-notes-list');list.replaceChildren();
-      if(!items.length){const empty=document.createElement('p');empty.className='reader-notes-empty';empty.textContent='把想留下的句子和想法，放在这里。';list.append(empty);}
+      if(!items.length){
+        const empty=document.createElement('div');empty.className='reader-notes-empty';
+        empty.innerHTML=`<p>还没有笔记。读到想留下的地方，可以这样记：</p><ul><li><i>${icon.mark}</i><span><b>划线高亮</b>选中正文文字，在弹出的工具条里点“高亮”或“笔记”</span></li><li><i>${icon.crop}</i><span><b>截图摘录</b>点上方“截图笔记”，框选图表、表格或公式，按屏幕原始像素保存</span></li><li><i>${icon.pen}</i><span><b>补充想法</b>双击已高亮的文字，随时写下或修改想法</span></li></ul>`;
+        list.append(empty);
+      }
       items.forEach((item,index)=>{
-        const card=document.createElement('article');card.className=`reader-note-card${item.image?' reader-note-card-image':''}`;card.innerHTML=`<div class="reader-note-card-head"><span>${String(index+1).padStart(2,'0')} · ${item.image?'截图摘录':'文字高亮'}</span><button type="button" data-delete aria-label="删除笔记">${trash}</button></div>${item.image?`<div class="reader-note-image-frame"><img src="${esc(item.image)}" alt="截图笔记" loading="lazy" decoding="async">${item.imageWidth&&item.imageHeight?`<small>原图 ${item.imageWidth} × ${item.imageHeight} px</small>`:''}</div>`:`<button type="button" class="reader-note-quote">${esc(item.quote)}</button>`}<p>${esc(item.note||'还没有笔记')}</p><div class="reader-note-actions"><button type="button" data-edit>${item.note?'编辑想法':'添加想法'}</button>${item.image?'<button type="button" data-view-image>查看原图</button><button type="button" data-save-image>保存截图</button>':''}<button type="button" data-locate>回到原文</button></div>`;
+        const card=document.createElement('article');card.className=`reader-note-card${item.image?' reader-note-card-image':''}`;
+        const cssWidth=Math.round(item.region?.width||(item.imageWidth?item.imageWidth/(window.devicePixelRatio||1):0));
+        const cssHeight=Math.round(item.region?.height||(item.imageHeight?item.imageHeight/(window.devicePixelRatio||1):0));
+        const media=item.image
+          ?`<button type="button" class="reader-note-image-frame" data-view-image aria-label="查看完整截图"${cssWidth?` style="--note-css-w:${cssWidth};--note-css-h:${cssHeight}"`:''}${cssWidth*.5>270?' data-wide':''}${cssHeight>440?' data-tall':''}><img src="${esc(item.image)}" alt="截图笔记" decoding="async"><span class="reader-note-image-hint">${icon.expand}${item.imageWidth&&item.imageHeight?`${item.imageWidth} × ${item.imageHeight} px`:'查看完整截图'}</span></button>`
+          :`<button type="button" class="reader-note-quote" data-locate-quote title="回到原文">${esc(item.quote)}</button>`;
+        const thought=item.note?`<p class="reader-note-text">${esc(item.note)}</p>`:`<button type="button" class="reader-note-add" data-edit-inline>${icon.pen}<span>写下想法…</span></button>`;
+        const meta=[item.image?'截图':'',when(item.created)].filter(Boolean).join(' · ')||(item.image?'截图摘录':'文字高亮');
+        card.innerHTML=`${media}${thought}<footer class="reader-note-foot"><span class="reader-note-meta">${esc(meta)}</span><div class="reader-note-actions"><button type="button" data-edit title="${item.note?'编辑想法':'添加想法'}" aria-label="${item.note?'编辑想法':'添加想法'}">${icon.pen}</button>${item.image?`<button type="button" data-save-image title="保存截图" aria-label="保存截图">${icon.save}</button>`:''}<button type="button" data-locate title="回到原文" aria-label="回到原文">${icon.locate}</button><button type="button" data-delete title="删除笔记" aria-label="删除笔记">${trash}</button></div></footer>`;
         card.querySelector('[data-delete]').addEventListener('click',()=>remove(item.id));
-        card.querySelector('[data-edit]').addEventListener('click',()=>edit(item));
+        card.querySelectorAll('[data-edit],[data-edit-inline]').forEach(button=>button.addEventListener('click',()=>edit(item)));
         const locate=()=>{const target=root.querySelector(`[data-reader-note-id="${CSS.escape(item.id)}"]`)||blockFor(item.anchors?.[0]||{});if(target){target.closest('details')?.setAttribute('open','');target.scrollIntoView({block:'center',behavior:'smooth'});}else status('原文已变化，未找到对应位置；笔记仍已保留。');};
-        card.querySelector('[data-locate]')?.addEventListener('click',locate);
+        card.querySelectorAll('[data-locate],[data-locate-quote]').forEach(button=>button.addEventListener('click',locate));
         card.querySelector('[data-view-image]')?.addEventListener('click',()=>showImage(item));
         card.querySelector('[data-save-image]')?.addEventListener('click',()=>saveImage(item,index));
-        card.querySelector('.reader-note-image-frame img')?.addEventListener('click',()=>showImage(item));
         list.append(card);
       });
     };
