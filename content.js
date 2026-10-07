@@ -2894,10 +2894,18 @@
 
   function appendTranslatedCitations(target, text, source) {
     const refs=[];
-    source?.querySelectorAll('sup a[href*="#"],a[role="doc-noteref"][href]').forEach(link=>{
+    // Footnote markers come as <sup><a>, doc-noteref, footnote classes or a
+    // bare "[1]" link to an anchor on the same page (Paul Graham, Pandoc,
+    // Substack, kramdown). Same-page targets stay in the page: opening them
+    // in a new tab broke footnotes inside translations.
+    const markerText=/^(?:[\[［(]?\d{1,3}[a-z]?[\]］)]?|[*†‡§])$/i;
+    const sameDocument=href=>{try{const url=new URL(href,location.href);return url.origin===location.origin&&url.pathname===location.pathname&&url.search===location.search&&!!url.hash;}catch{return false;}};
+    source?.querySelectorAll('a[href*="#"]').forEach(link=>{
       const label=link.textContent.trim();
+      const isMarker=link.closest('sup')||link.matches('[role="doc-noteref"],.footnote-ref,.footnote-anchor,[rel="footnote"],[class*="footnote" i],[id^="fnref" i]')||(markerText.test(label)&&sameDocument(link.href));
+      if(!isMarker||!label||label.length>8)return;
       const href=readerSafeMediaUrl(link.href);
-      if(label&&href&&!refs.some(ref=>ref.label===label&&ref.href===href))refs.push({label,href});
+      if(href&&!refs.some(ref=>ref.label===label&&ref.href===href))refs.push({label,href,local:sameDocument(link.href)});
     });
     const value=String(text||'');
     if(!refs.length){target.textContent=value;return;}
@@ -2905,10 +2913,13 @@
     const alternatives=refs.flatMap(ref=>{const bare=ref.label.replace(/^[\[［]|[\]］]$/g,'');return /[\[［]/.test(ref.label)?[ref.label,`[${bare}]`,`［${bare}］`]:[`[${bare}]`,`［${bare}］`];}).filter((label,index,all)=>all.indexOf(label)===index).sort((a,b)=>b.length-a.length);
     // Only replace markers that exist as linked source references. Ordinary
     // numbers, years, exponents and bracketed prose remain text.
-    const pattern=new RegExp(alternatives.map(escaped).join('|'),'g');
+    // Bare markers ("3") are only taken right after sentence punctuation, so
+    // ordinary numbers and years in the translation stay text.
+    const bareMarkers=refs.map(ref=>ref.label).filter(label=>/^\d{1,3}[a-z]?$/i.test(label)).map(label=>`(?<=[。．.!?！？”"）)])${escaped(label)}(?![\\d])`);
+    const pattern=new RegExp([...alternatives.map(escaped),...bareMarkers].join('|'),'g');
     const canonical=label=>label.replace(/［/g,'[').replace(/］/g,']');
     const seen=new Set();let cursor=0;
-    const append=ref=>{const sup=document.createElement('sup');sup.className='raccoon-citation';const a=document.createElement('a');a.href=ref.href;a.textContent=ref.label;a.target='_blank';a.rel='noopener noreferrer';sup.append(a);target.append(sup);seen.add(ref.href);};
+    const append=ref=>{const sup=document.createElement('sup');sup.className='raccoon-citation';const a=document.createElement('a');a.href=ref.href;a.textContent=ref.label;if(!ref.local){a.target='_blank';a.rel='noopener noreferrer';}sup.append(a);target.append(sup);seen.add(ref.href);};
     for(const match of value.matchAll(pattern)){
       const ref=refs.find(ref=>canonical(ref.label)===canonical(match[0])||canonical(`[${ref.label}]`)===canonical(match[0]));
       if(!ref)continue;
@@ -7321,6 +7332,16 @@
     contentNodes.forEach((node,index)=>{const target=root.querySelector(`#${readerHeadingLevel(node)?'head':'r'}_${index}`)||root.querySelector(`#reader_table_${index}`);if(!target)return;
       const sourceNodes=[node,...node.querySelectorAll('[id],a[name]'),node.closest('.footnote')];
       for(let ancestor=node.parentElement;ancestor;ancestor=ancestor.parentElement){sourceNodes.push(ancestor);if(ancestor===bestContainer)break;}
+      // Footnote anchors often sit beside the note text (<a id="footnote-4">4</a><div><p>…),
+      // so short anchors just before the node or one of its wrappers count too.
+      for(let holder=node;holder&&holder!==bestContainer;holder=holder.parentElement){
+        let sibling=holder.previousElementSibling;
+        for(let step=0;sibling&&step<2;step++,sibling=sibling.previousElementSibling){
+          const anchors=sibling.matches('a[id],a[name]')?[sibling]:[...sibling.querySelectorAll(':scope > a[id], :scope > a[name]')];
+          anchors.filter(anchor=>String(anchor.textContent||'').trim().length<=8).forEach(anchor=>sourceNodes.push(anchor));
+          if(String(sibling.textContent||'').trim().length>8)break;
+        }
+      }
       sourceNodes.filter(Boolean).forEach(source=>{const id=source.id||source.getAttribute('name');if(id&&!sourceAnchors.has(id))sourceAnchors.set(id,target);});
       if(readerBaikeBlocks.get(node)?.kind==='references'){
         readerBaikeReferenceItems(node).forEach((item,itemIndex)=>{
@@ -7333,7 +7354,9 @@
         });
       }
     });
-    root.querySelector('#reader-content').addEventListener('click',event=>{const link=event.target.closest('a[href]');if(!link)return;try{const url=new URL(link.href);if(url.origin!==location.origin||url.pathname!==location.pathname||!url.hash)return;const target=sourceAnchors.get(decodeURIComponent(url.hash.slice(1)));if(target){event.preventDefault();scrollReaderTarget(target);}}catch{}});
+    // Same-page anchors (footnotes, back-links) jump inside the reader. Even an
+    // unmapped one must not change the source page's hash underneath it.
+    root.querySelector('#reader-content').addEventListener('click',event=>{const link=event.target.closest('a[href]');if(!link)return;try{const url=new URL(link.href);if(url.origin!==location.origin||url.pathname!==location.pathname||!url.hash)return;const id=decodeURIComponent(url.hash.slice(1));const target=sourceAnchors.get(id)||root.querySelector(`#reader-content [id="${CSS.escape(id)}"]`);event.preventDefault();if(target)scrollReaderTarget(target);}catch{}});
     const copyLink = root.querySelector("#reader-copy-link");
     copyLink.addEventListener("click", async () => {
       const label = copyLink.querySelector(".reader-source-copy");
