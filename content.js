@@ -55,7 +55,6 @@
     readerOutlineWidth: 270,
     readerToolsWidth: 288,
     readerWikipediaFlow: true,
-    readerWikipediaMagazine: false,
     readerImageShadow: true,
     readerProgressVisible: true,
     readerMetaVisible: true,
@@ -1137,11 +1136,14 @@
 
       const runs = [];
       let run = [];
+      // A list item's own label before its sub-list ("Fruits", "Setup") is
+      // short but still the item's text.
+      const minRunLength = /^(?:LI|DD)$/.test(el.tagName) ? 2 : 20;
       const flush = () => {
         while (run.length && (isBr(run[run.length - 1]) || isBlank(run[run.length - 1]))) run.pop();
         while (run.length && (isBr(run[0]) || isBlank(run[0]))) run.shift();
         const text = run.map(node => node.textContent || "").join("").replace(/\s+/g, " ").trim();
-        if (text.length >= 20) runs.push(run);
+        if (text.length >= minRunLength) runs.push(run);
         run = [];
       };
       children.forEach((node, index) => {
@@ -3396,12 +3398,17 @@
     const toggleIcons = {
       "reader-toggle-image-shadow": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 20h12a2 2 0 0 0 2-2V8"/><path d="m3 13 4-3 4 3 3-2 3 2"/></svg>',
       "reader-toggle-wikipedia-flow": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M3 5h8M3 9h8M3 13h8M3 17h18M3 21h14"/></svg>',
-      "reader-toggle-wikipedia-magazine": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h7M3 9h7M3 13h7M3 17h7M14 5h7M14 9h7M14 13h7M14 17h7"/></svg>'
+      "reader-toggle-progress": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 6h9" stroke-width="3"/><path d="M6 11h12M6 15h12M6 19h8"/></svg>',
+      "reader-toggle-first-line-indent": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h10M4 11h16M4 16h16M4 21h11"/><path d="m4 4 3 2-3 2"/></svg>',
+      "reader-toggle-meta": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12"/><path d="M4 11h7M14 11h6"/><path d="M4 16h16M4 20h10"/></svg>'
     };
-    toggles?.querySelectorAll(".reader-drawer-switch-row").forEach(row => {
+    const visibilityRows = [...scroll.querySelectorAll(".reader-visibility-controls label")];
+    [...(toggles?.querySelectorAll(".reader-drawer-switch-row") || []), ...visibilityRows].forEach(row => {
+      const key = row.getAttribute("for") || row.querySelector("input")?.id;
+      if (!toggleIcons[key]) return;
       const icon = make("i", "rp-toggle-icon");
       icon.setAttribute("aria-hidden", "true");
-      icon.innerHTML = toggleIcons[row.getAttribute("for")] || "";
+      icon.innerHTML = toggleIcons[key];
       row.prepend(icon);
     });
     // Fresh miniature previews for page and table styles.
@@ -3718,6 +3725,87 @@
     readerCompositeHtmlCache.set(source,html);return html;
   }
 
+  // In-page tables of contents ("On this page", a list of links to the
+  // article's own headings) duplicate the reader outline.
+  function readerIsTocEntry(node) {
+    if (node?.tagName !== "LI") return false;
+    const links = [...node.querySelectorAll("a[href]")];
+    if (!links.length) return false;
+    const text = String(node.textContent || "").replace(/\s+/g, "");
+    const linkText = links.map(link => link.textContent || "").join("").replace(/\s+/g, "");
+    if (!text || linkText.length < text.length * .9) return false;
+    return links.every(link => {
+      let url;
+      try { url = new URL(link.getAttribute("href"), location.href); } catch (_) { return false; }
+      if (!url.hash || url.origin + url.pathname !== location.origin + location.pathname) return false;
+      let id = url.hash.slice(1);
+      try { id = decodeURIComponent(id); } catch (_) {}
+      const target = document.getElementById(id);
+      return !!target && !node.contains(target);
+    });
+  }
+
+  function dropReaderTableOfContents(nodes) {
+    const tocLabel = /^(?:on this page|in this (?:article|page|section)|table of contents|contents|page contents|目录|本页内容|本页目录|文章目录|本文目录|内容目录|目次|この記事の内容)$/i;
+    const entries = new Set(nodes.filter(readerIsTocEntry));
+    if (entries.size < 2) entries.clear();
+    const linkList = node => /^(?:UL|OL|NAV)$/.test(node?.tagName || "") && [...node.querySelectorAll("li")].filter(item => !item.parentElement.closest("li")).every(readerIsTocEntry);
+    const isTocLabel = node => readerHeadingLevel(node) && tocLabel.test(String(node.textContent || "").replace(/\s+/g, " ").trim());
+    const tocLists = nodes.filter(isTocLabel).map(node => node.nextElementSibling).filter(linkList);
+    return nodes.filter((node, index) => {
+      if (entries.has(node) || tocLists.some(list => list.contains(node))) return false;
+      if (!isTocLabel(node)) return true;
+      if (tocLists.includes(node.nextElementSibling)) return false;
+      const rest = [];
+      for (let next = index + 1; next < nodes.length && !readerHeadingLevel(nodes[next]); next++) rest.push(nodes[next]);
+      return !rest.every(item => entries.has(item));
+    });
+  }
+
+  // Documentation sections are often named after their heading; a chapter
+  // called "Comments" or "Share" is article text, not a comment thread.
+  function readerIsChapterSection(node) {
+    if (node?.tagName !== "SECTION" || !node.id) return false;
+    const heading = node.querySelector(":scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6");
+    const slug = value => String(value || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+    return !!heading && slug(heading.textContent) === slug(node.id);
+  }
+
+  function readerListItemLeadParagraph(item) {
+    const paragraph = document.createElement("p");
+    for (const child of item.childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE && /^(?:P|DIV|PRE|UL|OL|DL|BLOCKQUOTE|TABLE|FIGURE|SECTION|H[1-6])$/.test(child.tagName)) break;
+      if (child.nodeType === Node.TEXT_NODE || child.nodeType === Node.ELEMENT_NODE) paragraph.append(child.cloneNode(true));
+    }
+    return String(paragraph.textContent || "").trim().length >= 6 ? paragraph : null;
+  }
+
+  // A FIGURE that wraps only code or a data table (rehype-pretty-code, Shiki,
+  // WordPress wp-block-table, arXiv LaTeXML tables) is a transparent wrapper:
+  // its PRE / TABLE and caption are collected on their own.
+  function readerIsTransparentFigure(node) {
+    return node?.tagName === "FIGURE" && !!node.querySelector("pre,table") && !node.querySelector("img,picture,video,audio,iframe,canvas");
+  }
+
+  // Heading permalinks ("#", "¶", "§", a zero-width anchor) are decoration.
+  // Remove only symbol-only nodes so a link that wraps the title text stays.
+  const READER_PERMALINK_SELECTOR = "a[href],[aria-hidden='true'],.header-anchor,.heading-anchor,.anchor-link,.hash-link,.anchorjs-link,.headerlink,.anchor";
+  function readerIsSamePageAnchor(link) {
+    const href = link.getAttribute("href") || "";
+    if (href.startsWith("#")) return true;
+    try {
+      const url = new URL(href, location.href);
+      return !!url.hash && url.origin + url.pathname === location.origin + location.pathname;
+    } catch (_) { return false; }
+  }
+  function stripReaderPermalinks(clone) {
+    clone.querySelectorAll?.(READER_PERMALINK_SELECTOR).forEach(node => {
+      if (node.tagName === "A" && !node.matches(".header-anchor,.heading-anchor,.anchor-link,.hash-link,.anchorjs-link,.headerlink,.anchor,[aria-hidden='true']") && !readerIsSamePageAnchor(node)) return;
+      if (/^[\s#¶§🔗\u200b\u00a0]*$/u.test(node.textContent || "") && !node.querySelector("img,svg:not([aria-hidden='true']),math")) node.remove();
+    });
+    return clone;
+  }
+
   function collectReaderContentNodes(container) {
     // Aozora interleaves chapter wrappers and bare text/ruby separated by BR.
     // Querying only P elements drops most of the novel.
@@ -3902,6 +3990,10 @@
       const ariaHiddenOwner=node.closest("[aria-hidden='true']");
       if(ariaHiddenOwner&&!readerInsideAccordionPanel(ariaHiddenOwner)&&!(location.hostname==='science.nasa.gov'&&node.closest('.quick-facts-slide')))continue;
       if (isReaderMaintenanceContainer(node)) continue;
+      // Docs show one tab (language, API style) at a time; the hidden
+      // alternatives would repeat every heading and paragraph.
+      const tabPanel=node.closest("[role='tabpanel'],.tab-pane,.tabpanel,.composition-api,.options-api");
+      if(tabPanel&&!readerInsideAccordionPanel(tabPanel)&&getComputedStyle(tabPanel).display==='none')continue;
       if(location.hostname==='science.nasa.gov'&&node.closest('.usa-article-scroll-wrapper,.slick-cloned,.swiper-slide-duplicate,.hds-topic-cards'))continue;
       if(isHackerNews&&node.parentElement?.closest('.commtext,.toptext'))continue;
       const isEmbeddedMediaCandidate=['VIDEO','AUDIO','IFRAME'].includes(node.tagName)||(node.tagName==='A'&&/\.(?:mp4|webm|ogv|mp3|wav|ogg|oga|m4a|opus|flac)(?:$|[?#])/i.test(node.href||''));
@@ -3918,15 +4010,16 @@
       }
       if(node.tagName==='FIGURE'){const rect=node.getBoundingClientRect();if(rect.width===0&&rect.height===0)continue;}
       let semanticParent=node.parentElement?.closest('figure,table,details');
-      while(semanticParent?.tagName==='TABLE'&&isLayoutTable(semanticParent)&&!readerTableHasSupportedEmbeddedMedia(semanticParent))semanticParent=semanticParent.parentElement?.closest('figure,table,details');
+      while((semanticParent?.tagName==='TABLE'&&isLayoutTable(semanticParent)&&!readerTableHasSupportedEmbeddedMedia(semanticParent))||readerIsTransparentFigure(semanticParent))semanticParent=semanticParent.parentElement?.closest('figure,table,details');
       if(semanticParent&&semanticParent!==node)continue;
       if(readerCompositeNodes.has(node)){appendResult(node);continue;}
       if(node.tagName==='TABLE'&&isLayoutTable(node)&&!readerTableHasSupportedEmbeddedMedia(node))continue;
       const ancestor = node.closest("section, div, ul, ol");
       const noiseHint = `${ancestor?.id || ""} ${typeof ancestor?.className === "string" ? ancestor.className : ""}`.trim();
-      if (noiseContainerRe.test(noiseHint)&&!isHackerNews) continue;
+      if (noiseContainerRe.test(noiseHint)&&!isHackerNews&&!readerIsChapterSection(ancestor)) continue;
 
       if (node.tagName === "FIGURE") {
+        if (readerIsTransparentFigure(node)) continue;
         const media = Array.from(node.querySelectorAll("img")).some(img => !!getReaderImageInfo(img).src);
         const embeddedMedia = [...node.querySelectorAll('audio,video,iframe')].some(mediaNode=>!!readerEmbeddedMediaElementHtml(mediaNode));
         const caption = String(node.querySelector("figcaption")?.innerText || "").trim();
@@ -3989,7 +4082,13 @@
 
       // A list item that already contains semantic paragraphs/headings is only a
       // wrapper. Keep its children, not both parent and child copies.
-      if(node.tagName==='LI'&&node.querySelector(":scope > p, :scope > blockquote, :scope > pre, :scope > div > p")&&![...node.querySelectorAll('ul,ol')].some(list=>list.closest('li')===node))continue;
+      if(node.tagName==='LI'&&node.querySelector(":scope > p, :scope > blockquote, :scope > pre, :scope > div > p")&&![...node.querySelectorAll('ul,ol')].some(list=>list.closest('li')===node)){
+        // Keep the item's own lead-in sentence ("Wildcard imports … :") that
+        // sits as bare text before its nested paragraphs or code.
+        const lead=readerListItemLeadParagraph(node);
+        if(lead&&!seenText.has(lead.textContent.trim())){seenText.add(lead.textContent.trim());appendResult(lead);accumulatedText+=lead.textContent.length;}
+        continue;
+      }
       if(node.tagName==='BLOCKQUOTE'&&node.querySelector(":scope > p, :scope > blockquote, :scope > pre, :scope > div > p"))continue;
       const text = getHostOriginalText(node);
     const isHeading = readerHeadingLevel(node) > 0;
@@ -4227,6 +4326,7 @@
       readerBaikeFindNativePager(clone)?.remove();
     }
     clone.querySelectorAll?.(TRANSLATION_EXTENSION_SELECTOR).forEach(node => node.remove());
+    if (readerHeadingLevel(sourceNode)) stripReaderPermalinks(clone);
     clone.querySelectorAll?.("script,style,noscript,template,.navbar,.mw-collapsible-toggle,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
     // Preserve separators from nested layout wrappers before stripping host
     // markup. Wikipedia facts often place several values in sibling DIV/LI
@@ -4319,7 +4419,8 @@
       }
       clone.querySelectorAll?.(TRANSLATION_EXTENSION_SELECTOR).forEach(node => node.remove());
       clone.querySelectorAll?.("script,style,noscript,template,.navbar,.navbox-editlinks,.headerlink,.mw-editsection,.mw-editsection-like,.mw-editsection-visualeditor,.pageno,.pagenum,.pagenumber,.mw-editsection-bracket").forEach(node => node.remove());
-      return String(clone.textContent || "").replace(/^\n+|\n+$/g, "");
+      if (readerHeadingLevel(sourceNode)) stripReaderPermalinks(clone);
+      return String(clone.textContent || "").replace(/\u200b/g, "").replace(/^\n+|\n+$/g, "");
     } catch (_) { return String(sourceNode.textContent || ""); }
   }
 
@@ -5733,7 +5834,24 @@
     readerCompositeHtmlCache = new WeakMap();
     const bestContainer = findBestReaderContainer();
     const redditThread = /(?:^|\.)reddit\.com$/i.test(location.hostname) && /\/comments\//.test(location.pathname);
-    const articleHeading=document.querySelector('#firstHeading') || bestContainer.querySelector('h1') || bestContainer.closest('article')?.querySelector('h1') || document.querySelector('#cb_post_title_url,.entry-title') || document.querySelector('main h1,article h1');
+    // GitHub issues, pull requests and discussions: the opening post is the
+    // article, every later comment joins the forum-style discussion below it.
+    const githubThread = location.hostname === "github.com" && /^\/[^/]+\/[^/]+\/(?:issues|pull|discussions)\/\d+/.test(location.pathname);
+    const forumThread = redditThread ? {
+      comments:[...document.querySelectorAll('shreddit-comment,.commentarea .thing.comment')],
+      commentSelector:'shreddit-comment,.thing.comment',
+      bodySelector:'[slot="comment"],.usertext-body,.md',
+      author:comment=>comment.getAttribute('author')||comment.querySelector('.author')?.textContent,
+      avatar:image=>/avatar|snoovatar/i.test(`${image.alt} ${image.className} ${image.src}`)
+    } : githubThread ? {
+      comments:[...document.querySelectorAll('[data-testid="issue-body"],.react-issue-comment,.js-comment-container')].filter(comment=>comment.querySelector('.markdown-body')),
+      commentSelector:'[data-testid="issue-body"],.react-issue-comment,.js-comment-container',
+      bodySelector:'.markdown-body',
+      author:comment=>comment.querySelector('[data-testid="issue-body-header-author"],[data-testid="avatar-link"],a.author')?.textContent,
+      avatar:image=>image.matches('[data-testid="github-avatar"],.avatar,.avatar-user')
+    } : null;
+    const githubTitle = githubThread ? document.querySelector('[data-testid="issue-title"],.js-issue-title,.gh-header-title .markdown-title') : null;
+    const articleHeading=githubTitle || document.querySelector('#firstHeading') || bestContainer.querySelector('h1') || bestContainer.closest('article')?.querySelector('h1') || document.querySelector('#cb_post_title_url,.entry-title') || document.querySelector('main h1,article h1');
     const title = (isWelcomePage ? document.querySelector("[data-welcome-article]")?.dataset.title || "A place to read" : (location.hostname === "arxiv.org" ? document.querySelector('meta[name="citation_title"]')?.content : "") || readerOriginalTextPreservingWhitespace(articleHeading).trim())
       || document.querySelector('meta[property="og:title"]')?.content?.trim()
       || document.title
@@ -5755,6 +5873,7 @@
       if (index > 12 || readerHeadingLevel(node) < 1 || readerHeadingLevel(node) > 3) return true;
       return !readerHeadingMatchesTitle(readerOriginalTextPreservingWhitespace(node).trim(), title);
     });
+    contentNodes = dropReaderTableOfContents(contentNodes);
     if(location.hostname==='baike.baidu.com'){
       for(let index=0;index<contentNodes.length;index++){
         const heading=contentNodes[index];
@@ -5778,10 +5897,14 @@
         contentNodes.splice(index,end-index,group);
       }
     }
-    const redditComments = redditThread ? [...document.querySelectorAll('shreddit-comment,.commentarea .thing.comment')] : [];
+    const forumComments = forumThread ? forumThread.comments : [];
     if (redditThread) {
       const post=document.querySelector('shreddit-post,[data-testid="post-container"],.sitetable.linklisting .thing.link');
       if(post)contentNodes=collectReaderContentNodes(post);
+    }
+    if (githubThread && forumComments.length) {
+      const opening=forumComments.shift();
+      contentNodes=collectReaderContentNodes(opening.querySelector('.markdown-body'));
     }
     const baikeSourceKeys=new WeakMap();
     if(location.hostname==='baike.baidu.com'){
@@ -5894,7 +6017,6 @@
     root.setAttribute("data-reader-render-style", savedRenderStyle);
     root.setAttribute("data-reader-site", /(?:^|\.)wikipedia\.org$/i.test(location.hostname) ? "wikipedia" : "article");
     root.classList.toggle("reader-wikipedia-flow", currentSettings.readerWikipediaFlow !== false && /(?:^|\.)wikipedia\.org$/i.test(location.hostname));
-    root.classList.toggle("reader-wikipedia-magazine", currentSettings.readerWikipediaMagazine === true && /(?:^|\.)wikipedia\.org$/i.test(location.hostname));
     root.classList.toggle("reader-progress-hidden", currentSettings.readerProgressVisible === false);
     root.classList.toggle("reader-meta-hidden", currentSettings.readerMetaVisible === false);
     root.classList.remove("reader-no-navigator");
@@ -6134,13 +6256,8 @@
           </label>
 
           <label class="reader-drawer-switch-row reader-wikipedia-flow-setting" for="reader-toggle-wikipedia-flow">
-            <span><b>资料并排</b><small>宽屏时让资料卡与导言自然并排</small></span>
+            <span><b>资料并排</b><small>宽屏时资料卡靠右与正文并排</small></span>
             <span class="reader-drawer-switch"><input type="checkbox" id="reader-toggle-wikipedia-flow" ${currentSettings.readerWikipediaFlow === false ? '' : 'checked'}><i></i></span>
-          </label>
-
-          <label class="reader-drawer-switch-row reader-wikipedia-flow-setting" for="reader-toggle-wikipedia-magazine">
-            <span><b>杂志双栏</b><small>仅在宽屏维基百科中使用，可随时关闭</small></span>
-            <span class="reader-drawer-switch"><input type="checkbox" id="reader-toggle-wikipedia-magazine" ${currentSettings.readerWikipediaMagazine === true ? 'checked' : ''}><i></i></span>
           </label>
           </div>
 
@@ -6229,8 +6346,8 @@
           </div>
 
           <div class="reader-visibility-controls" data-reader-tool-section="info">
-            <label><span>阅读进度条</span><span class="reader-info-switch"><input type="checkbox" id="reader-toggle-progress" ${currentSettings.readerProgressVisible === false ? "" : "checked"}><i aria-hidden="true"></i></span></label>
-            <label><span>标题信息</span><span class="reader-info-switch"><input type="checkbox" id="reader-toggle-meta" ${currentSettings.readerMetaVisible === false ? "" : "checked"}><i aria-hidden="true"></i></span></label>
+            <label><span><b>阅读进度条</b><small>顶部细线显示读到哪里</small></span><span class="reader-info-switch"><input type="checkbox" id="reader-toggle-progress" ${currentSettings.readerProgressVisible === false ? "" : "checked"}><i aria-hidden="true"></i></span></label>
+            <label><span><b>标题信息</b><small>来源、阅读模式与进度</small></span><span class="reader-info-switch"><input type="checkbox" id="reader-toggle-meta" ${currentSettings.readerMetaVisible === false ? "" : "checked"}><i aria-hidden="true"></i></span></label>
           </div>
 
           <span class="drawer-section-label reader-drawer-quick-label" data-reader-tool-section="info">快捷工具</span>
@@ -6279,19 +6396,21 @@
     root.querySelectorAll(".reader-orig-p").forEach(node => { node.lang = languageForText(node.textContent || ""); });
     root.querySelectorAll(".reader-trans-p").forEach(node => { node.lang = currentSettings.targetLang || "zh-CN"; });
     root.querySelector(".reader-title").lang = articleLanguage;
-    if(redditComments.length){
-      const commentSet=new Set(redditComments);let commentIndex=0;
+    if(forumComments.length){
+      const {commentSelector,bodySelector}=forumThread;
+      const commentSet=new Set(forumComments);let commentIndex=0;
+      const ownerOf=node=>node.closest(commentSelector);
+      const parentOf=comment=>{for(let node=comment.parentElement?.closest(commentSelector);node;node=node.parentElement?.closest(commentSelector))if(commentSet.has(node))return node;return null;};
       const renderComment=comment=>{
-        const author=comment.getAttribute('author')||comment.querySelector('.author')?.textContent||'回复';
-        const candidates=[...comment.querySelectorAll('[slot="comment"],.usertext-body,.md')];
-        const body=candidates.find(node=>node.closest('shreddit-comment,.thing.comment')===comment);
-        const children=redditComments.filter(child=>child.parentElement?.closest('shreddit-comment,.thing.comment')===comment);
+        const author=String(forumThread.author(comment)||'').trim()||'回复';
+        const body=[...comment.querySelectorAll(bodySelector)].find(node=>ownerOf(node)===comment);
+        const children=forumComments.filter(child=>parentOf(child)===comment);
         const index=commentIndex++;
-        const avatar=[...comment.querySelectorAll('img')].find(img=>img.closest('shreddit-comment,.thing.comment')===comment&&/avatar|snoovatar/i.test(`${img.alt} ${img.className} ${img.src}`));
+        const avatar=[...comment.querySelectorAll('img')].find(img=>ownerOf(img)===comment&&forumThread.avatar(img));
         const avatarSrc=avatar?readerSafeMediaUrl(avatar.currentSrc||avatar.src):'';
-        return `<details class="reader-forum-reply" open><summary>${avatarSrc?`<img class="reader-forum-avatar" src="${escapeHtml(avatarSrc)}" alt="" loading="lazy">`:""}<span class="reader-forum-author">${escapeHtml(author)}</span><small>${children.length?`${children.length} 条回复`:'回复'}</small></summary>${body?readerPairHtml({id:`reddit_${index}`,originalHtml:readerInlineHtml(body)||escapeHtml(body.textContent),renderStyle:savedRenderStyle}):''}${children.map(renderComment).join('')}</details>`;
+        return `<details class="reader-forum-reply" open><summary>${avatarSrc?`<img class="reader-forum-avatar" src="${escapeHtml(avatarSrc)}" alt="" loading="lazy">`:""}<span class="reader-forum-author">${escapeHtml(author)}</span><small>${children.length?`${children.length} 条回复`:'回复'}</small></summary>${body?readerPairHtml({id:`forum_${index}`,originalHtml:readerInlineHtml(body)||escapeHtml(body.textContent),renderStyle:savedRenderStyle}):''}${children.map(renderComment).join('')}</details>`;
       };
-      const section=document.createElement('section');section.className='reader-forum-discussion';section.innerHTML='<h2>讨论</h2>'+redditComments.filter(comment=>!commentSet.has(comment.parentElement?.closest('shreddit-comment,.thing.comment'))).map(renderComment).join('');
+      const section=document.createElement('section');section.className='reader-forum-discussion';section.innerHTML='<h2>讨论</h2>'+forumComments.filter(comment=>!parentOf(comment)).map(renderComment).join('');
       root.querySelector('#reader-content').append(section);
     }
     const compositeResize=new ResizeObserver(entries=>entries.forEach(({target})=>{
@@ -6800,13 +6919,6 @@
       currentSettings.readerWikipediaFlow = enabled;
       root.classList.toggle("reader-wikipedia-flow", enabled && root.getAttribute("data-reader-site") === "wikipedia");
       chrome.runtime.sendMessage({ action:"UPDATE_SETTINGS", settings:{ readerWikipediaFlow:enabled } });
-    });
-    const readerWikipediaMagazineToggle = root.querySelector("#reader-toggle-wikipedia-magazine");
-    readerWikipediaMagazineToggle?.addEventListener("change", () => {
-      const enabled = !!readerWikipediaMagazineToggle.checked;
-      currentSettings.readerWikipediaMagazine = enabled;
-      root.classList.toggle("reader-wikipedia-magazine", enabled && root.getAttribute("data-reader-site") === "wikipedia");
-      chrome.runtime.sendMessage({ action:"UPDATE_SETTINGS", settings:{ readerWikipediaMagazine:enabled } });
     });
     root.querySelectorAll("[data-reader-surface]").forEach(btn => btn.addEventListener("click", () => {
       const val = readerSurfaceValues.has(btn.dataset.readerSurface) ? btn.dataset.readerSurface : "card";

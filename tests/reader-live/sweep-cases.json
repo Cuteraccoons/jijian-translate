@@ -1,0 +1,254 @@
+[
+ {
+  "id": "quanta",
+  "url": "https://www.quantamagazine.org/what-is-the-geometry-of-the-universe-20200316/"
+ },
+ {
+  "id": "aeon",
+  "url": "https://aeon.co/essays/why-is-pop-culture-obsessed-with-battles-between-good-and-evil"
+ },
+ {
+  "id": "spiegel",
+  "url": "https://www.spiegel.de/wissenschaft/"
+ },
+ {
+  "id": "lemonde",
+  "url": "https://www.lemonde.fr/en/"
+ },
+ {
+  "id": "substack-astral",
+  "url": "https://www.astralcodexten.com/p/the-psychopolitics-of-trauma"
+ },
+ {
+  "id": "simonw",
+  "url": "https://simonwillison.net/2024/Dec/31/llms-in-2024/"
+ },
+ {
+  "id": "overreacted",
+  "url": "https://overreacted.io/a-complete-guide-to-useeffect/"
+ },
+ {
+  "id": "danluu",
+  "url": "https://danluu.com/cocktail-ideas/"
+ },
+ {
+  "id": "jvns",
+  "url": "https://jvns.ca/blog/2024/02/16/popular-git-config-options/"
+ },
+ {
+  "id": "lesswrong",
+  "url": "https://www.lesswrong.com/posts/LHAJuYy453YwiKFt5/the-sun-is-big-but-superintelligences-will-not-spare-earth-a"
+ },
+ {
+  "id": "devto",
+  "url": "https://dev.to/lydiahallie/javascript-visualized-event-loop-3dif"
+ },
+ {
+  "id": "gwern",
+  "url": "https://gwern.net/scaling-hypothesis"
+ },
+ {
+  "id": "github-readme",
+  "url": "https://github.com/sindresorhus/awesome/blob/main/readme.md"
+ },
+ {
+  "id": "arxiv-html",
+  "url": "https://arxiv.org/html/2310.06825"
+ },
+ {
+  "id": "github-issue",
+  "url": "https://github.com/facebook/react/issues/14099"
+ },
+ {
+  "id": "tailwind",
+  "url": "https://tailwindcss.com/docs/flex-basis"
+ },
+ {
+  "id": "nextjs",
+  "url": "https://nextjs.org/docs/app/getting-started/layouts-and-pages"
+ },
+ {
+  "id": "vue",
+  "url": "https://vuejs.org/guide/essentials/reactivity-fundamentals.html"
+ },
+ {
+  "id": "stripe-docs",
+  "url": "https://docs.stripe.com/payments/accept-a-payment"
+ },
+ {
+  "id": "aws-docs",
+  "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html"
+ },
+ {
+  "id": "juejin",
+  "url": "https://juejin.cn/post/7016593221815910408"
+ },
+ {
+  "id": "thepaper",
+  "url": "https://www.thepaper.cn/newsDetail_forward_25000000"
+ },
+ {
+  "id": "zhwiki-cat",
+  "url": "https://zh.wikipedia.org/wiki/猫"
+ },
+ {
+  "id": "moegirl",
+  "url": "https://zh.moegirl.org.cn/初音未来"
+ },
+ {
+  "id": "craigmod",
+  "url": "https://craigmod.com/essays/fast_software/"
+ },
+ {
+  "id": "stratechery",
+  "url": "https://stratechery.com/2020/the-end-of-the-beginning/"
+ },
+ {
+  "id": "apple-dev",
+  "url": "https://developer.apple.com/documentation/swiftui/view"
+ },
+ {
+  "id": "python-pep",
+  "url": "https://peps.python.org/pep-0008/"
+ },
+ {
+  "id": "mdn-blog",
+  "url": "https://hacks.mozilla.org/2019/03/standardizing-wasi-a-webassembly-system-interface/"
+ },
+ {
+  "id": "notion-site",
+  "url": "https://www.notion.com/help/guides/getting-started-with-projects-and-tasks"
+ },
+ {
+  "id": "wordpress",
+  "url": "https://wordpress.org/news/2024/07/wordpress-6-6-dorsey/"
+ },
+ {
+  "id": "vox",
+  "url": "https://www.vox.com/future-perfect/2018/12/21/18126576/ai-artificial-intelligence-machine-learning-safety-alignment"
+ },
+ {
+  "id": "conversation",
+  "url": "https://theconversation.com/how-do-octopuses-sleep-and-do-they-dream-197993"
+ },
+ {
+  "id": "mkdocs-material",
+  "url": "https://squidfunk.github.io/mkdocs-material/reference/admonitions/"
+ },
+ {
+  "id": "docusaurus",
+  "url": "https://docusaurus.io/docs/markdown-features/code-blocks"
+ },
+ {
+  "id": "rust-blog",
+  "url": "https://blog.rust-lang.org/2024/02/08/Rust-1.76.0.html"
+ },
+ {
+  "id": "gitbook",
+  "url": "https://docs.gitbook.com/creating-content/blocks"
+ },
+ {
+  "id": "go-blog",
+  "url": "https://go.dev/blog/loopvar-preview"
+ },
+ {
+  "id": "cloudflare-blog",
+  "url": "https://blog.cloudflare.com/how-we-built-pingora-the-proxy-that-connects-cloudflare-to-the-internet/"
+ },
+ {
+  "id": "typescript",
+  "url": "https://www.typescriptlang.org/docs/handbook/2/narrowing.html"
+ },
+ {
+  "id": "fastapi",
+  "url": "https://fastapi.tiangolo.com/tutorial/first-steps/"
+ },
+ {
+  "id": "svelte",
+  "url": "https://svelte.dev/docs/svelte/overview"
+ },
+ {
+  "id": "rust-book2",
+  "url": "https://doc.rust-lang.org/book/ch08-02-strings.html"
+ },
+ {
+  "id": "astro-docs",
+  "url": "https://docs.astro.build/en/basics/astro-components/"
+ },
+ {
+  "id": "huxiu",
+  "url": "https://www.huxiu.com/article/2000000.html"
+ },
+ {
+  "id": "v2ex",
+  "url": "https://www.v2ex.com/t/1000000"
+ },
+ {
+  "id": "zenn",
+  "url": "https://zenn.dev/estra/articles/js-async-programming-roadmap"
+ },
+ {
+  "id": "runoob",
+  "url": "https://www.runoob.com/python3/python3-tutorial.html"
+ },
+ {
+  "id": "liaoxuefeng",
+  "url": "https://liaoxuefeng.com/books/python/introduction/index.html"
+ },
+ {
+  "id": "appinn",
+  "url": "https://www.appinn.com/obsidian/"
+ },
+ {
+  "id": "geekpark",
+  "url": "https://www.geekpark.net/news/330000"
+ },
+ {
+  "id": "oschina",
+  "url": "https://www.oschina.net/news/270000"
+ },
+ {
+  "id": "ja-wiki-tokyo",
+  "url": "https://ja.wikipedia.org/wiki/東京都"
+ },
+ {
+  "id": "wikivoyage-zh",
+  "url": "https://zh.wikivoyage.org/wiki/北京"
+ },
+ {
+  "id": "segmentfault",
+  "url": "https://segmentfault.com/a/1190000016278115"
+ },
+ {
+  "id": "hn-item",
+  "url": "https://news.ycombinator.com/item?id=39000000"
+ },
+ {
+  "id": "lobsters",
+  "url": "https://lobste.rs/s/ylb7xx"
+ },
+ {
+  "id": "plato-ai",
+  "url": "https://plato.stanford.edu/entries/artificial-intelligence/"
+ },
+ {
+  "id": "kottke",
+  "url": "https://kottke.org/24/01/0044000-the-best-of-kottke"
+ },
+ {
+  "id": "waitbutwhy",
+  "url": "https://waitbutwhy.com/2015/01/artificial-intelligence-revolution-1.html"
+ },
+ {
+  "id": "atomic-blog",
+  "url": "https://www.joelonsoftware.com/2000/04/06/things-you-should-never-do-part-i/"
+ },
+ {
+  "id": "paulgraham2",
+  "url": "https://paulgraham.com/hwh.html"
+ },
+ {
+  "id": "martinfowler2",
+  "url": "https://martinfowler.com/articles/microservices.html"
+ }
+]

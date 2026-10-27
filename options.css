@@ -553,7 +553,7 @@ svg { flex: none; }
 .style-choice-demo em { font-style: normal; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .style-choice-name { padding: 0 3px 2px; font-size: 12.5px; font-weight: 600; }
 .demo-native em { color: var(--text-2); }
-.demo-highlight { align-self: flex-start; padding: 0 3px; background: #fef08a; border-radius: 3px; }
+.demo-highlight { align-self: flex-start; max-width: 100%; padding: 0 3px; background: #fef08a; border-radius: 3px; }
 .demo-underline { text-decoration: underline 1.4px #3b82f6; text-underline-offset: 3px; }
 .style-choice-demo .demo-italic { font-style: italic; }
 .demo-faded { opacity: .25; transition: opacity .15s ease; }
@@ -1127,3 +1127,57 @@ svg { flex: none; }
 .nav-section-label { padding: 14px 12px 4px; font-size: 11.5px; font-weight: 600; color: var(--text-3); }
 .nav-section-label:first-child { padding-top: 0; }
 @media (max-width: 760px) { .nav-section-label { display: none; } }
+
+/* ── Dark appearance ────────────────────────────────── */
+/* Follows the system setting. The translation preview stays a light mock web
+   page, because it previews how translations look on ordinary sites. */
+:root { color-scheme: light dark; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #3d8bff;
+    --accent-hover: #5c9dff;
+    --accent-soft: rgba(61, 139, 255, .16);
+    --accent-ring: rgba(61, 139, 255, .34);
+    --ok: #4cc77a;
+    --ok-soft: rgba(76, 199, 122, .14);
+    --warn: #f0a640;
+    --warn-soft: rgba(240, 166, 64, .14);
+    --danger: #ff6b5e;
+    --danger-soft: rgba(255, 107, 94, .14);
+
+    --bg: #161618;
+    --sidebar: #1c1c1f;
+    --surface: #222225;
+    --surface-sunken: #1b1b1e;
+    --surface-hover: #2a2a2e;
+    --border: rgba(255, 255, 255, .09);
+    --border-strong: rgba(255, 255, 255, .17);
+    --hairline: rgba(255, 255, 255, .07);
+
+    --text: #ececef;
+    --text-2: #a0a0a8;
+    --text-3: #6f6f78;
+    --shadow-pop: 0 14px 40px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .08);
+  }
+  .sidebar { background: var(--sidebar); }
+  .row-icon, .support-card-icon { color: #c9c9d0; background: #2c2c30; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+  .nav-btn:hover { background: rgba(255, 255, 255, .06); }
+  .nav-btn.active { background: var(--accent); }
+  .nav-svg { stroke: #b4b4bc; }
+  .switch-knob, .local-dict-switch span { background: #3a3a3f; }
+  .segmented-control, .vocab-view-switch, .collection-period { background: rgba(255, 255, 255, .08); }
+  .settings-segment-indicator { background: #3a3a3f; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+  .model-picker-menu, .jijian-select-menu { background: rgba(40, 40, 44, .97); }
+  .brand-mark { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+  .option-tile:hover, .chip-group label:hover, .domain-scope-chip:hover { border-color: rgba(255, 255, 255, .28); }
+  .filter-chips button:hover { background: rgba(255, 255, 255, .07); }
+  .filter-chips button.active { color: #161618; }
+  .filter-chips button.active span { color: rgba(22, 22, 24, .6); }
+  .dictionary-ai-preferences, .highlight-group-head { background: var(--surface-sunken); }
+  .vocab-detail-modal-close:hover { background: #2f2f33; }
+  .support-donate .support-card-icon { background: rgba(240, 150, 60, .16); color: #f0a640; }
+  .highlight-note { background: rgba(255, 214, 10, .1); color: #e8d9a0; }
+  .domain-favicon { background: linear-gradient(160deg, #2c2c31, #26262a); color: #b4b4bc; }
+  .mini-highlight-demo.full, .demo-highlight { color: #1c1c1e; }
+  .mini-swatch.none { background: linear-gradient(135deg, transparent 46%, var(--danger) 46%, var(--danger) 54%, transparent 54%), var(--surface); }
+}

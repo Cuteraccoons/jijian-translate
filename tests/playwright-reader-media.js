@@ -82,16 +82,11 @@ async page => {
   if(widths.some(x=>Math.abs(x.groupRatio-2)>.1||x.groupTotal<x.body-20||x.hiddenGeo||x.icons.some(w=>w>30)||Math.abs(x.wide-x.body)>2))throw Error('Media proportions failed: '+JSON.stringify(widths));
   if(widths[3].infoImage<200)throw Error("Infobox photo remains thumbnail-sized");
   if(!(widths[3].side<widths[3].body*.6&&widths[3].side>widths[2].side))throw Error('Sidebar does not scale with body: '+JSON.stringify(widths));
-  await page.locator('label[for=reader-toggle-wikipedia-magazine]').click();
-  const magazine=await page.evaluate(()=>{const root=document.querySelector('#raccoon-reader-root');return {columns:getComputedStyle(root.querySelector('#reader-content')).columnCount,infoSpan:getComputedStyle(root.querySelector('.reader-infobox')).columnSpan,sideSpan:getComputedStyle(root.querySelector('.reader-media-side')).columnSpan,wideSpan:getComputedStyle(root.querySelector('.reader-media-full:has(.reader-img-wide)')).columnSpan};});
-  if(magazine.columns!=='2'||magazine.infoSpan!=='none'||magazine.sideSpan!=='none'||magazine.wideSpan!=='all')throw Error('Magazine layout failed: '+JSON.stringify(magazine));
-  await page.locator('#reader-scroll-area').evaluate(n=>n.scrollTop=0);await page.screenshot({path:'output/playwright/polish-media-magazine.png'});
-  await page.locator('label[for=reader-toggle-wikipedia-magazine]').click();
   const outline=page.locator('.reader-outline-item.level-3');const count=await outline.count();
   for(const index of [count-1,0,Math.floor(count/2)]){
     await outline.nth(index).click();await page.waitForTimeout(500);
     const position=await outline.nth(index).evaluate(n=>{const root=document.querySelector('#raccoon-reader-root'),target=root.querySelector('#'+n.dataset.targetId),area=root.querySelector('#reader-scroll-area');return {bottom:area.scrollHeight-area.scrollTop-area.clientHeight,active:n.classList.contains('active-heading'),offset:target.getBoundingClientRect().top-area.getBoundingClientRect().top,bg:getComputedStyle(n).backgroundColor};});
     if(!position.active||position.offset<0||(position.offset>80&&position.bottom>2)||position.bg!=='rgba(0, 0, 0, 0)')throw Error('Deep outline mismatch: '+JSON.stringify(position));
   }
-  return {cases:36,widths,magazine,deepOutlineTargets:3};
+  return {cases:36,widths,deepOutlineTargets:3};
 }

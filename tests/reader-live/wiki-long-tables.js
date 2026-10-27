@@ -1,7 +1,7 @@
 async page => {
  const worker=page.context().serviceWorkers()[0];
  if(!worker)throw Error('Native extension service worker required');
- await worker.evaluate(()=>chrome.storage.sync.set({readerView:'orig',autoTranslateEnabled:false,readerWikipediaFlow:false,readerWikipediaMagazine:false}));
+ await worker.evaluate(()=>chrome.storage.sync.set({readerView:'orig',autoTranslateEnabled:false,readerWikipediaFlow:false}));
  const firstLastRows=(name,total)=>Array.from({length:total-1},(_,index)=>{
   const number=index+1, middle=Math.floor((total-1)/2);
   const marker=number===1?'first':number===total-1?'last':number===middle?'middle':String(number).padStart(3,'0');

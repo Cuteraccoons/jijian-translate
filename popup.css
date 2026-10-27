@@ -1484,3 +1484,68 @@ input:checked + .switch-knob:before {
 .popup-style-more svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease; }
 .popup-style-toggle.is-open .popup-style-more svg { transform: rotate(180deg); }
 .popup-style-toggle:hover .popup-style-more { background: rgba(0, 113, 227, .14); }
+
+/* Dark appearance: follows the system setting. Earlier passes above use
+   !important widely, so these overrides do too. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --apple-blue: #2f86ff;
+    --apple-blue-hover: #4a96ff;
+    --bg-page: #161618;
+    --bg-grouped: #222225;
+    --label-primary: #ececef;
+    --label-secondary: #a5a5ad;
+    --label-tertiary: #75757d;
+    --separator: rgba(255, 255, 255, .08);
+    --segmented-bg: rgba(255, 255, 255, .08);
+  }
+  body, .popup-view { background: var(--bg-page) !important; color: var(--label-primary) !important; }
+  .inset-group, .settings-btn, .search-bar-clean, .popup-dict-result-box, .apple-secondary-action-btn, .apple-input.sm,
+  .popup-live-card-preview, .stepper-btn, .vocab-card-mini, .segment-item.active, .segment-indicator, .site-image-translation-card,
+  .collection-home-card, .collection-home-card:first-child, .collection-home-card:nth-child(2), .popup-select-trigger, .popup-select-menu,
+  .popup-model-preset-btn, .popup-model-menu, .popup-style-choice-grid button, .popup-color-trigger, .popup-color-menu,
+  .popup-trigger-mode-row button, .popup-highlight-grid button, .popup-underline-picker button, .popup-underline-picker button.active,
+  .popup-vocab-card, .popup-tail-choice, .popup-tail-open, .api-quick-drawer, .api-quick-drawer.is-connected, .local-dict-link,
+  .popup-tail-project-icon, .popup-vocab-search-field:focus-within, .popup-color-palette .inherit-color, .text-color-palette .inherit-color {
+    background: #222225 !important; border-color: rgba(255, 255, 255, .09) !important; color: var(--label-primary) !important;
+  }
+  .font-stepper, .secondary-btn, .preview-mini-content, .popup-style-option, .popup-vocab-search-field, .popup-vocab-filter,
+  .popup-vocab-empty, .popup-vocab-detail, .popup-vocab-detail-lang, .popup-vocab-detail-translation, .popup-vocab-local-block,
+  .popup-dict-redirect, .api-connected-summary, .api-quick-drawer.is-connected .api-connected-summary, .color-dot.none,
+  .popup-style-choice-grid button.active, .popup-trigger-mode-row button.active, .popup-highlight-grid button.active {
+    background: #1b1b1e !important; color: var(--label-primary) !important;
+  }
+  .apple-select { background-color: #2a2a2e !important; color: var(--label-primary) !important; }
+  .settings-btn:hover, .apple-secondary-action-btn:hover, .list-row.clickable-row:hover, .stepper-btn:hover, .secondary-btn:hover,
+  .vocab-delete-compact:hover, .popup-highlight-delete:hover, .site-image-translation-card:hover, .collection-home-card:hover,
+  .popup-select-menu button:hover, .popup-model-menu button:hover, .popup-style-choice-grid button:hover, .back-nav-btn:hover,
+  .text-action-btn:hover, .popup-color-menu button:hover, .popup-color-menu button.active, .popup-trigger-mode-row button:hover,
+  .local-dict-link:hover, .vocab-row-compact:hover, .vocab-row-compact.has-detail .vocab-row-compact-main:hover,
+  .popup-vocab-delete:hover, .popup-vocab-detail-back:hover, .popup-tail-choice:hover {
+    background: #2c2c30 !important;
+  }
+  .popup-style-choice-grid button.active, .popup-trigger-mode-row button.active, .popup-highlight-grid button.active { border-color: #ececef !important; box-shadow: inset 0 0 0 .5px #ececef !important; }
+  .dict-res-trans, .vocab-word-bold, .preview-trans-text, .popup-highlight-group-title, .popup-highlight-translation, .api-connected-summary,
+  .collection-home-card, .popup-dict-wordline strong, .popup-dict-cross b, .popup-dict-senses b, .popup-dict-translation, .popup-select-trigger,
+  .popup-select-menu button, .popup-select-menu button.active, .popup-model-menu button, .popup-model-menu button.active, .popup-local-dict b,
+  .text-action-btn:hover, .popup-color-trigger, .popup-color-menu button.active, .mini-highlight, .popup-dict-zh-defs b,
+  .popup-vocab-detail-back:hover, .popup-vocab-detail-word, .popup-vocab-detail-translation, .popup-vocab-search-field input,
+  .popup-vocab-card .vocab-word-bold, .popup-tail-choice-copy strong, .popup-tail-choice, .popup-tail-project-icon, .stepper-val, .site-dock-copy > span {
+    color: var(--label-primary) !important;
+  }
+  .preview-orig-text, .vocab-trans-sub, .collection-open-btn:hover, .popup-style-option>span:first-child, .popup-vocab-detail-group p,
+  .popup-vocab-detail-sense p, .popup-vocab-card .vocab-trans-sub, .vocab-row-compact .vocab-trans-sub, .site-dock-copy small.show-note,
+  .preview-mini-title, .popup-tail-open, .local-dict-link {
+    color: var(--label-secondary) !important;
+  }
+  .mini-highlight.full { color: #1c1c1e !important; }
+  .apple-switch input:not(:checked) + .switch-knob { background: #3a3a3f !important; }
+  .site-image-translation-card:is(.is-disabled,[aria-pressed="false"]) .site-image-translation-switch { background: #3a3a3f !important; }
+  .site-blacklist-dock { background: rgba(28, 28, 31, .96) !important; border-color: rgba(255, 255, 255, .08) !important; }
+  .site-dock-action { background: #ececef !important; color: #161618 !important; }
+  .site-dock-action.is-blocked { background: #2c2c30 !important; color: #ff6b5e !important; }
+  #view-vocab .nav-bar { border-bottom-color: rgba(255, 255, 255, .08) !important; }
+  .list-row, .inset-group > * + * { border-color: rgba(255, 255, 255, .07) !important; }
+  .ps-native { background: linear-gradient(90deg, #6b7380 0 52%, #444a52 52%) !important; }
+}

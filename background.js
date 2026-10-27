@@ -44,7 +44,6 @@ const DEFAULT_SETTINGS = {
   readerOutlineWidth: 270,
   readerToolsWidth: 288,
   readerWikipediaFlow: true,
-  readerWikipediaMagazine: false,
   readerImageShadow: true,
   readerProgressVisible: true,
   readerMetaVisible: true,

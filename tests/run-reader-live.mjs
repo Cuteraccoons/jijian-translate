@@ -4,6 +4,8 @@
 //
 //   node tests/run-reader-live.mjs tests/reader-live/regression.js
 //   PLAYWRIGHT_PATH=/path/to/node_modules/playwright node tests/run-reader-live.mjs <test>
+//   CHROMIUM_PATH=/path/to/chrome node tests/run-reader-live.mjs <test>   (when the cached
+//   Playwright expects a Chromium revision that is not installed)
 //
 // Requires a local Playwright install (npx cache or PLAYWRIGHT_PATH). Fixture
 // scripts route their own pages; *-live.js scripts open real websites.
@@ -35,7 +37,7 @@ for (const candidate of playwrightCandidates()) {
   try {
     const { chromium } = require(candidate);
     context = await chromium.launchPersistentContext(userDir, {
-      headless: true, channel: 'chromium',
+      headless: true, ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
       args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`],
       viewport: { width: 1440, height: 1000 }
     });

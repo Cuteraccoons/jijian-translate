@@ -102,6 +102,39 @@
 - CFA 实页（只读访问）：127 个块、10 个大纲标题、15 个折叠项（Unit 8 按链接锚点默认展开）、1 组卡片。另抽 20 个 `cases.json` 实页对比改动前后：18 页块数／字数／大纲完全一致；Nature 的“相关文章”与 BBC Travel 的文章预告变为卡片网格（大纲相应减少），属预期。
 - 无界面浏览器里 `captureVisibleTab` 不能出图，截图笔记只验证了框选样式与笔记卡片（用预置数据），实际截图保存请维护者手动试一次。未调用真实翻译服务。
 
+## 1.0.6 例行优化（2026-10-25，manifest 升至 1.0.6）
+
+维护者要求：半个月未更新，做一轮整体优化（UI 协调、配置、潜在 bug、更多页面的解析）；**删除维基百科“杂志双栏”**（实际用不上且排得不好看）。没有指定具体任务。
+
+### 改动
+
+- **删除杂志双栏**：`readerWikipediaMagazine` 设置、开关、CSS 与测试断言全部移除；`translation-core-audit` 改为断言它不再出现。用户存储里残留的旧值无人读取，无害。“资料并排”保留，资料卡改为正文栏 ≥ 680 px（原 580 px）才靠右浮动。
+- **设置页／Popup 深色模式**：`options.css`、`popup.css` 末尾各一段 `prefers-color-scheme: dark`。设置页主要靠改 token；Popup 旧规则大量 `!important`，深色段也用 `!important` 覆盖。译文样式预览刻意保持浅色网页。
+- **阅读模式解析**（`content.js`，函数均在 `collectReaderContentNodes` 之前）：
+  - `readerIsTransparentFigure`：只含 `pre`／`table`、不含图片视频的 `<figure>` 当作透明包装，内部代码与表格单独收集（之前整块丢失）。
+  - `stripReaderPermalinks`：标题内只由 `#`／`¶`／`§`／零宽字符组成的同页锚点、`aria-hidden` 装饰被移除（大纲不再出现 “#TLDR”）。
+  - `dropReaderTableOfContents`：删除“On this page／目录”等标题及其后同页锚点列表，以及成组的同页锚点列表项。
+  - `readerIsChapterSection`：`<section id="comments"><h2>Comments</h2>` 这类以标题命名的文档章节不再被噪声正则删掉。
+  - `readerListItemLeadParagraph`：作为包装层跳过的 `<li>`，其开头的裸文字单独成段保留。
+  - 隐藏（`display:none`）的 `[role=tabpanel]`／`.tab-pane`／Vue `.options-api|.composition-api` 不再输出。
+  - GitHub issue／PR／Discussions：与 Reddit 共用 `forumThread` 渲染，首帖为正文，其余评论进“讨论”。
+- **网页双语**：`wrapOrphanTextRuns` 对 `LI`／`DD` 的最短文字段阈值从 20 降到 2，带子列表的短列表项文字也能翻译（交接里“已知缺口”）。
+- **阅读面板**：“信息”页显示开关与首行缩进开关加图标与说明；标题信息栏“已读”前补间距。设置页“高亮底色”样式卡示例文字不再溢出预览框。
+
+### 验证
+
+- `release-audit`（12 项）、`translation-core-audit`、`reader-notes-audit`、`reader-capture-audit` 通过。
+- `tests/reader-live/` 全部 23 个 fixture 通过（新增 `doc-structures.js`，覆盖上面各项与 GitHub issue 结构）。`baike-body-media.js` 在整套连跑时仍偶发超时一次，单独连跑 4 次均通过，与之前记录一致。
+- `tests/run-reader-live.mjs` 新增 `CHROMIUM_PATH`：本机缓存的 Playwright 期望的 Chromium 版本未安装时，可指定 `~/Library/Caches/ms-playwright/chromium-*/…/Google Chrome for Testing`。
+- 新增 `tests/reader-site-sweep.mjs` 与 `tests/reader-live/sweep-cases.json`（63 个可访问实站：新闻、博客、Substack、文档站、GitHub、arXiv HTML、中日文社区与百科）。只做结构检查，不调用翻译服务。本轮扫了约 100 个网址，约三分之一因 404／403／验证页记为 unavailable，已从用例中剔除。
+- 实站前后对比：overreacted 代码块 0 → 61；GitHub issue 由只有最后一条评论变为正文＋27 条回复；PEP 8 缺失的 5 段全部找回；arXiv 论文表格 0 → 5；Vue 文档重复标题消失；Tailwind／jvns 页内目录不再重复。
+- 未调用真实翻译服务；百度百科实页仍由维护者本人验证。截图只用于本轮自查，未做截图验收。
+
+### 留给下一轮
+
+- Tailwind 文档这类没有 `article`／`main` 的页面，正文容器落到 `body`，右侧栏的推广卡片（“From the creators of Tailwind CSS”）会混入正文末尾。
+- AWS 文档的 “Note”／“Topics” 小标题进入大纲；Stripe 文档的选项卡内容只取到约一半；Apple 开发者文档的 Topics 符号列表未收录。
+
 ## 当前进度
 
 已完成：维基百科延伸阅读与补充表格、组合棋盘、译文上标引用、表格原有彩色单元格、整行大纲点击、圆形纸张色块；百度百科摘要、基本信息、作品与图集的首轮提取。以上不等于全部网页适配完成。

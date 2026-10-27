@@ -71,7 +71,7 @@ if (!content.includes('readerToolsWidth') || !background.includes('readerToolsWi
 if (!content.includes('reader-nav-search-input') || !css.includes('.reader-search-hit')) fail('reader in-document search missing');
 if (!content.includes('reader-settings-inline') || !css.includes('.reader-settings-drawer.reader-settings-inline.open')) fail('reader detailed settings do not unfold inline');
 if (!content.includes('readerWikipediaFlow') || !background.includes('readerWikipediaFlow') || !css.includes('.reader-wikipedia-flow .reader-infobox')) fail('optional Wikipedia fact-card flow missing');
-if (!content.includes('readerWikipediaMagazine') || !background.includes('readerWikipediaMagazine') || !css.includes('.reader-wikipedia-magazine .reader-content')) fail('optional Wikipedia magazine layout missing');
+if (content.includes('readerWikipediaMagazine') || background.includes('readerWikipediaMagazine') || css.includes('reader-wikipedia-magazine')) fail('removed Wikipedia magazine layout came back');
 if (!css.includes('column-count:2!important') || !css.includes('object-fit:contain!important') || !css.includes('height:auto!important')) fail('proportional reader media wall missing');
 if (/\.reader-infobox[^\{]*\{[^}]*grid-template-columns\s*:\s*repeat\(2,minmax\(0,1fr\)\)/.test(css)) fail('reader infobox still forces unrelated cards into two columns');
 if (!content.includes('readerOriginalTextPreservingWhitespace') || !content.includes('reader-code-block') || !css.includes('#raccoon-reader-root .reader-blockquote')) fail('semantic reader blocks missing');
