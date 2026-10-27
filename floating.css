@@ -4350,3 +4350,14 @@ html.raccoon-paragraph-actions-disabled .raccoon-translated-inline .raccoon-bloc
 
 .raccoon-translation-text .raccoon-citation{font-size:13px!important;line-height:0!important;vertical-align:super!important;white-space:nowrap!important}
 .raccoon-translation-text .raccoon-citation a{font-size:inherit!important;color:inherit!important;text-decoration:none!important}
+
+/* 1.0.6 light word card: brief meanings first, the rest behind one toggle. */
+.raccoon-dict-card.dict-compact:not(.dict-expanded){width:min(420px,calc(100vw - 20px))!important;min-height:0!important}
+.raccoon-dict-card.dict-compact.dict-has-more:not(.dict-expanded) .dict-content>:is(.dict-detail-section,.dict-example-section,.dict-related-section,.dict-wiki-section,.dict-classical-section){display:none!important}
+.raccoon-dict-card .dict-more-toggle{display:flex!important;align-items:center!important;gap:6px!important;width:auto!important;margin:12px 0 0!important;padding:5px 10px 5px 0!important;border:0!important;background:transparent!important;color:#5b6470!important;font:500 13px/1.4 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif!important;cursor:pointer!important;box-shadow:none!important}
+.raccoon-dict-card .dict-more-toggle:hover{color:#1f2329!important}
+.raccoon-dict-card .dict-more-toggle i{width:7px!important;height:7px!important;border-right:1.5px solid currentColor!important;border-bottom:1.5px solid currentColor!important;transform:translateY(-2px) rotate(45deg)!important;transition:transform .16s ease!important}
+.raccoon-dict-card .dict-more-toggle[aria-expanded="true"] i{transform:translateY(1px) rotate(-135deg)!important}
+.raccoon-dict-card .dict-body>.dict-source-footer:has(.dict-ai-setup-link){display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}
+.raccoon-dict-card .dict-ai-setup-link{margin-left:auto!important;padding:0!important;border:0!important;background:none!important;color:#8a919b!important;font:400 13px/1.4 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif!important;cursor:pointer!important;text-decoration:underline!important;text-decoration-color:rgba(138,145,155,.4)!important;text-underline-offset:3px!important}
+.raccoon-dict-card .dict-ai-setup-link:hover{color:#3d444d!important}

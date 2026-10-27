@@ -49,7 +49,7 @@ const DEFAULT_SETTINGS = {
   readerMetaVisible: true,
   readerSpeechHighlightMode: "sentence", // sentence | word
 
-  fontFamily: "smiley-sans",
+  fontFamily: "system",
   fontStyle: "normal",
   renderStyle: "classic", // "native" 参考原网页 | 其他为自定义译文样式
   replaceRenderStyle: "clean", // clean 纯净排版 | native 参考原文（始终正体）
@@ -69,6 +69,8 @@ const DEFAULT_SETTINGS = {
   enableParagraphHoverTranslate: true,
   enableParagraphActions: false,
   dictTriggerMode: "both", // "both" | "double_click" | "selection" | "none"
+  dictAltClickLookup: true,
+  dictCardExpanded: false,
   dictTriggerLastMode: "both",
   dictionaryLookupMode: "standard", // standard | ai
   enableDictionaryAi: true,
@@ -308,7 +310,7 @@ function schedulePersistCache() {
 // Initialize defaults and migrate stored settings.
 chrome.runtime.onInstalled.addListener(async details => {
   const fontDefaultMigration = await chrome.storage.sync.get([
-    "readerFont", "readerFontDefaultV2", "fontFamily", "translationFontDefaultV2"
+    "readerFont", "readerFontDefaultV2", "fontFamily", "translationFontDefaultV2", "translationFontDefaultV3"
   ]).catch(() => ({}));
   const current = await loadStoredSettings();
   const updated = Object.assign({}, DEFAULT_SETTINGS, current, { version: EXTENSION_VERSION });
@@ -331,9 +333,13 @@ chrome.runtime.onInstalled.addListener(async details => {
   }
   // Ordinary bilingual-page translations use the same calm default as Reader.
   // Migrate only the old untouched system default; explicit font choices stay intact.
-  if (!fontDefaultMigration.translationFontDefaultV2) {
-    if (!fontDefaultMigration.fontFamily || fontDefaultMigration.fontFamily === "system") updated.fontFamily = "smiley-sans";
+  // 1.0.6: 得意黑 only ships as an oblique face, so translations looked
+  // italic by default. Move everyone on it back to the upright system font
+  // once; choosing 得意黑 again afterwards is kept.
+  if (!fontDefaultMigration.translationFontDefaultV3) {
+    if (!fontDefaultMigration.fontFamily || fontDefaultMigration.fontFamily === "smiley-sans") updated.fontFamily = "system";
     updated.translationFontDefaultV2 = true;
+    updated.translationFontDefaultV3 = true;
   }
   // Remove only untouched legacy rules so customized domain rules survive.
   const legacyDefaultRule = { floating:true, hover:true, image:true, auto:true, selection:false };
@@ -919,6 +925,8 @@ async function getDictionaryFile(handle, dict, kind = "mdx") {
     const key=kind === "mdd" ? dict.mddHandleKey : dict.mdxHandleKey;
     const fh=await getLocalDictionaryHandle(key);
     if(!fh) throw new Error("本地词典文件需要重新选择");
+    // Safari has no file handles: the imported File itself is stored instead.
+    if(fh instanceof Blob) return fh;
     // Some Chromium builds report persisted handles as `prompt` in a service worker
     // even though getFile() is still allowed. Try the actual read first.
     try { return await fh.getFile(); } catch (_) { throw new Error("本地词典文件需要重新授权"); }
@@ -1114,7 +1122,7 @@ function buildLocalResourceCandidates(resourcePath) {
 }
 async function readFileHandleAsDataUrl(fileHandle, resourceName) {
   if (!fileHandle) return "";
-  const file = await fileHandle.getFile();
+  const file = fileHandle instanceof Blob ? fileHandle : await fileHandle.getFile();
   const bytes = new Uint8Array(await file.arrayBuffer());
   return `data:${guessResourceMime(resourceName || file.name)};base64,${bytesToBase64(bytes)}`;
 }
@@ -1820,11 +1828,65 @@ function normalizeTranslationPunctuation(value, targetLang = "") {
     .replace(/[ \t]+([，。；：！？])/g, "$1");
 }
 
+const TRANSLATION_LANGUAGE_NAMES = {
+  "zh-cn":"Simplified Chinese (简体中文)", "zh":"Simplified Chinese (简体中文)", "zh-tw":"Traditional Chinese (繁體中文)", "zh-hk":"Traditional Chinese (繁體中文)",
+  en:"English", ja:"Japanese", ko:"Korean", fr:"French", de:"German", es:"Spanish", it:"Italian", pt:"Portuguese", ru:"Russian",
+  ar:"Arabic", th:"Thai", vi:"Vietnamese", id:"Indonesian", tr:"Turkish", nl:"Dutch", pl:"Polish", uk:"Ukrainian", hi:"Hindi"
+};
+function translationLanguageName(code) {
+  const key = String(code || "").trim().toLowerCase().replace(/_/g, "-");
+  return TRANSLATION_LANGUAGE_NAMES[key] || TRANSLATION_LANGUAGE_NAMES[key.split("-")[0]] || code;
+}
+
+// One instruction set for every chat-style engine, so DeepSeek, OpenAI,
+// Claude, Gemini, Ollama and custom endpoints follow the same rules.
+function buildTranslationSystemPrompt(tl, { batch = false, context = null } = {}) {
+  const lines = [
+    `You are a professional translator. Translate the user's text into ${translationLanguageName(tl)}.`,
+    "Keep the meaning, tone and register of the original; render idioms naturally instead of word by word.",
+    "Keep code, URLs, file paths, numbers, units, formulas and citation marks such as [1] exactly as they are. Keep names of people, products and organisations in their original form unless an established translation exists.",
+    "If a segment is already in the target language, return it unchanged.",
+    "Output only the translation, with no notes, quotation marks, headings or explanations."
+  ];
+  if (/^zh/i.test(String(tl || ""))) lines.push("Use Chinese full-width punctuation in Chinese sentences.");
+  if (batch) lines.push("The input contains numbered segments, each starting with a marker like ⟦0⟧. Translate each segment on its own and start each translated segment with the same marker, exactly once, in the same order. Never merge, split, drop or renumber segments.");
+  const title = String(context?.title || "").replace(/\s+/g, " ").trim().slice(0, 160);
+  if (title) lines.push(`Context: the text comes from the web page “${title}”${context?.host ? ` (${String(context.host).slice(0, 80)})` : ""}. Use it only to choose consistent terminology.`);
+  return lines.join("\n");
+}
+
+// Chat models occasionally wrap their answer ("Translation:", code fences,
+// quotes). Strip only wrappers the source text did not have.
+function cleanModelTranslation(output, source = "") {
+  let text = String(output ?? "").trim();
+  const fenced = text.match(/^```[\w-]*\n([\s\S]*?)\n```$/);
+  if (fenced && !/^```/.test(String(source).trim())) text = fenced[1].trim();
+  text = text.replace(/^(?:translation|translated text|译文|翻译|以下是(?:译文|翻译)(?:结果)?)\s*[:：]\s*/i, "");
+  const src = String(source).trim();
+  const quotePairs = [["\"", "\""], ["“", "”"], ["「", "」"]];
+  for (const [open, close] of quotePairs) {
+    if (text.length > 2 && text.startsWith(open) && text.endsWith(close) && !(src.startsWith(open) || src.startsWith("\"") || src.startsWith("“"))) {
+      text = text.slice(open.length, -close.length).trim();
+      break;
+    }
+  }
+  return text;
+}
+
+function resolvedOpenAiPrompt(settings, tl, options) {
+  const custom = String(settings.openaiCustomPrompt || "").trim();
+  if (!custom || custom === DEFAULT_SETTINGS.openaiCustomPrompt) return buildTranslationSystemPrompt(tl, options);
+  // A user-written prompt keeps priority; the batch marker rule is still
+  // required for paragraphs to land in the right place.
+  const extra = options?.batch ? "\n" + buildTranslationSystemPrompt(tl, { batch:true }).split("\n").pop() : "";
+  return `${custom}\nTarget language: ${translationLanguageName(tl)}${extra}`;
+}
+
 /**
  * 翻译调度核心
  */
 const translationRequestInflight = new Map();
-async function translateText(text, sl = "auto", tl = "zh-CN", settings = null) {
+async function translateText(text, sl = "auto", tl = "zh-CN", settings = null, options = {}) {
   if (!text || !text.trim()) return { text:"", detectedLang:sl };
   await persistentCacheReady;
   const resolvedSettings = settings || await loadStoredSettings();
@@ -1837,14 +1899,14 @@ async function translateText(text, sl = "auto", tl = "zh-CN", settings = null) {
   ]);
   const key = `${translationCacheKey(engine,sl,tl,text)}::${modelKey}`;
   if (translationRequestInflight.has(key)) return translationRequestInflight.get(key);
-  const pending = translateTextUncached(text, sl, tl, resolvedSettings).finally(() => {
+  const pending = translateTextUncached(text, sl, tl, resolvedSettings, options).finally(() => {
     if (translationRequestInflight.get(key) === pending) translationRequestInflight.delete(key);
   });
   translationRequestInflight.set(key, pending);
   return pending;
 }
 
-async function translateTextUncached(text, sl = "auto", tl = "zh-CN", settings = null) {
+async function translateTextUncached(text, sl = "auto", tl = "zh-CN", settings = null, options = {}) {
   if (!text || !text.trim()) return { text: "", detectedLang: sl };
   await persistentCacheReady;
 
@@ -1870,25 +1932,25 @@ async function translateTextUncached(text, sl = "auto", tl = "zh-CN", settings =
 
   switch (engine) {
     case "deepseek":
-      res = await translateWithDeepSeek(text, sl, tl, settings);
+      res = await translateWithDeepSeek(text, sl, tl, settings, options);
       break;
     case "deepl":
       res = await translateWithDeepL(text, sl, tl, settings);
       break;
     case "openai":
-      res = await translateWithOpenAI(text, sl, tl, settings);
+      res = await translateWithOpenAI(text, sl, tl, settings, options);
       break;
     case "claude":
-      res = await translateWithClaude(text, sl, tl, settings);
+      res = await translateWithClaude(text, sl, tl, settings, options);
       break;
     case "gemini":
-      res = await translateWithGemini(text, sl, tl, settings);
+      res = await translateWithGemini(text, sl, tl, settings, options);
       break;
     case "ollama":
-      res = await translateWithOllama(text, sl, tl, settings);
+      res = await translateWithOllama(text, sl, tl, settings, options);
       break;
     case "custom":
-      res = await translateWithCustomOpenAI(text, sl, tl, settings);
+      res = await translateWithCustomOpenAI(text, sl, tl, settings, options);
       break;
     case "google":
     default:
@@ -1897,14 +1959,15 @@ async function translateTextUncached(text, sl = "auto", tl = "zh-CN", settings =
   }
 
   if (res && res.text) {
-    res = Object.assign({}, res, { text: normalizeTranslationPunctuation(res.text, tl) });
+    const modelText = engine === "google" || engine === "deepl" ? res.text : cleanModelTranslation(res.text, text);
+    res = Object.assign({}, res, { text: normalizeTranslationPunctuation(modelText, tl) });
     setCache(cacheKey, res);
     schedulePersistCache();
   }
   return res;
 }
 
-async function translateWithDeepSeek(text, sl, tl, settings) {
+async function translateWithDeepSeek(text, sl, tl, settings, options = {}) {
   if (!settings.deepseekApiKey) throw new Error("请在弹窗或设置中配置 DeepSeek API Key");
   let baseUrl = (settings.deepseekBaseUrl || "https://api.deepseek.com/v1").replace(/\/+$/, "");
   const url = baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
@@ -1920,7 +1983,7 @@ async function translateWithDeepSeek(text, sl, tl, settings) {
       model: model,
       temperature: 0.2,
       messages: [
-        { role: "system", content: `You are an expert bilingual translator. Translate the text into '${tl}'. Preserve sentence structure, terminology, and natural phrasing. Output ONLY the direct translated text.` },
+        { role: "system", content: buildTranslationSystemPrompt(tl, options) },
         { role: "user", content: text }
       ]
     })
@@ -1936,7 +1999,42 @@ async function translateWithDeepSeek(text, sl, tl, settings) {
   return { original: text, text: trans || text, detectedLang: sl };
 }
 
+// The public endpoint is a GET request; very long paragraphs exceed the URL
+// limit and fail. Split them at sentence ends and translate in order.
+function splitForGoogle(text, limit = 1600) {
+  if (encodeURIComponent(text).length <= 5000) return [text];
+  const sentences = String(text).match(/[^.!?。！？；;\n]+(?:[.!?。！？；;]+[”’"')\]]*|\n|$)\s*/g) || [text];
+  const chunks = [];
+  let current = "";
+  for (const sentence of sentences) {
+    if (current && (current + sentence).length > limit) { chunks.push(current); current = ""; }
+    if (sentence.length > limit) {
+      for (let i = 0; i < sentence.length; i += limit) chunks.push(sentence.slice(i, i + limit));
+      continue;
+    }
+    current += sentence;
+  }
+  if (current) chunks.push(current);
+  return chunks.filter(chunk => chunk.trim());
+}
+
 async function translateWithGoogle(text, sl = "auto", tl = "zh-CN") {
+  const chunks = splitForGoogle(text);
+  if (chunks.length > 1) {
+    const parts = [];
+    let detectedLang = sl;
+    for (const chunk of chunks) {
+      const part = await translateWithGoogleOnce(chunk, sl, tl);
+      parts.push(part.text);
+      detectedLang = part.detectedLang || detectedLang;
+    }
+    const joiner = /^(?:zh|ja|ko)/i.test(tl) ? "" : " ";
+    return { original: text, text: parts.map(part => part.trim()).join(joiner), detectedLang };
+  }
+  return translateWithGoogleOnce(text, sl, tl);
+}
+
+async function translateWithGoogleOnce(text, sl = "auto", tl = "zh-CN") {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6500);
 
@@ -1961,29 +2059,42 @@ async function translateWithGoogle(text, sl = "auto", tl = "zh-CN") {
   }
 }
 
-async function translateWithDeepL(text, sl, tl, settings) {
+// DeepL wants its own codes: ZH-HANS / ZH-HANT, EN-US, PT-BR as targets and
+// bare language codes (ZH, EN) as sources.
+function deeplTargetLang(tl) {
+  const code = String(tl || "").toLowerCase().replace(/_/g, "-");
+  if (/^zh-(?:tw|hk|hant)/.test(code)) return "ZH-HANT";
+  if (code.startsWith("zh")) return "ZH-HANS";
+  if (code === "en-gb") return "EN-GB";
+  if (code.startsWith("en")) return "EN-US";
+  if (code === "pt-pt") return "PT-PT";
+  if (code.startsWith("pt")) return "PT-BR";
+  return code.split("-")[0].toUpperCase();
+}
+
+async function translateManyWithDeepL(texts, sl, tl, settings) {
   if (!settings.deeplAuthKey) throw new Error("请在设置中配置 DeepL Auth Key");
   const endpoint = settings.deeplApiType === "pro" ? "https://api.deepl.com/v2/translate" : "https://api-free.deepl.com/v2/translate";
-  let targetUpper = tl.replace("-CN", "").replace("-TW", "").toUpperCase();
-  if (targetUpper === "ZH") targetUpper = "ZH-HANS";
-
   const params = new URLSearchParams();
-  params.append("auth_key", settings.deeplAuthKey);
-  params.append("text", text);
-  params.append("target_lang", targetUpper);
-  if (sl && sl !== "auto") params.append("source_lang", sl.toUpperCase());
-
+  texts.forEach(text => params.append("text", text));
+  params.append("target_lang", deeplTargetLang(tl));
+  if (sl && sl !== "auto") params.append("source_lang", String(sl).split(/[-_]/)[0].toUpperCase());
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "Authorization": `DeepL-Auth-Key ${settings.deeplAuthKey}` },
     body: params.toString()
   });
   if (!response.ok) throw new Error(`DeepL API 错误 (${response.status})`);
   const data = await response.json();
-  return { original: text, text: data.translations[0]?.text || text, detectedLang: sl };
+  return texts.map((text, index) => ({ original: text, text: data.translations?.[index]?.text || text, detectedLang: String(data.translations?.[index]?.detected_source_language || sl).toLowerCase() }));
 }
 
-async function translateWithOpenAI(text, sl, tl, settings) {
+async function translateWithDeepL(text, sl, tl, settings) {
+  const [result] = await translateManyWithDeepL([text], sl, tl, settings);
+  return result;
+}
+
+async function translateWithOpenAI(text, sl, tl, settings, options = {}) {
   if (!settings.openaiApiKey) throw new Error("请在设置中配置 OpenAI API Key");
   let baseUrl = (settings.openaiBaseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
   const url = baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
@@ -1995,7 +2106,7 @@ async function translateWithOpenAI(text, sl, tl, settings) {
       model: settings.openaiModel || "gpt-5.6-luna",
       temperature: 0.2,
       messages: [
-        { role: "system", content: `${settings.openaiCustomPrompt || "Translate accurately with natural phrasing."}\nTarget language: ${tl}` },
+        { role: "system", content: resolvedOpenAiPrompt(settings, tl, options) },
         { role: "user", content: text }
       ]
     })
@@ -2005,7 +2116,7 @@ async function translateWithOpenAI(text, sl, tl, settings) {
   return { original: text, text: data.choices?.[0]?.message?.content?.trim() || text, detectedLang: sl };
 }
 
-async function translateWithClaude(text, sl, tl, settings) {
+async function translateWithClaude(text, sl, tl, settings, options = {}) {
   if (!settings.claudeApiKey) throw new Error("请在设置中配置 Claude API Key");
   let baseUrl = (settings.claudeBaseUrl || "https://api.anthropic.com").replace(/\/+$/, "");
   const url = baseUrl.endsWith("/v1/messages") ? baseUrl : `${baseUrl}/v1/messages`;
@@ -2015,8 +2126,11 @@ async function translateWithClaude(text, sl, tl, settings) {
     headers: { "Content-Type": "application/json", "x-api-key": settings.claudeApiKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: settings.claudeModel || "claude-sonnet-5",
-      max_tokens: 1024,
-      system: `Translate accurately into target language '${tl}'. Output ONLY direct translation.`,
+      // A batch of eight long paragraphs easily exceeds 1024 output tokens,
+      // which cut off the last segments.
+      max_tokens: Math.min(8192, Math.max(1024, Math.ceil(text.length * 1.5) + 256)),
+      temperature: 0.2,
+      system: buildTranslationSystemPrompt(tl, options),
       messages: [{ role: "user", content: text }]
     })
   });
@@ -2025,34 +2139,40 @@ async function translateWithClaude(text, sl, tl, settings) {
   return { original: text, text: data.content?.[0]?.text?.trim() || text, detectedLang: sl };
 }
 
-async function translateWithGemini(text, sl, tl, settings) {
+async function translateWithGemini(text, sl, tl, settings, options = {}) {
   if (!settings.geminiApiKey) throw new Error("请在设置中配置 Gemini API Key");
   const model = settings.geminiModel || "gemini-3.6-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.geminiApiKey}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: `Translate directly into '${tl}':\n\n${text}` }] }] })
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: buildTranslationSystemPrompt(tl, options) }] },
+      contents: [{ role: "user", parts: [{ text }] }],
+      generationConfig: { temperature: 0.2 }
+    })
   });
   if (!response.ok) throw new Error(`Gemini 响应异常 (${response.status})`);
   const data = await response.json();
-  return { original: text, text: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || text, detectedLang: sl };
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const output = parts.filter(part => !part.thought).map(part => part.text || "").join("").trim();
+  return { original: text, text: output || text, detectedLang: sl };
 }
 
-async function translateWithOllama(text, sl, tl, settings) {
+async function translateWithOllama(text, sl, tl, settings, options = {}) {
   const baseUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
   const url = baseUrl.endsWith("/api/generate") ? baseUrl : `${baseUrl}/api/generate`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: settings.ollamaModel || "qwen2.5:7b", prompt: `Translate into ${tl}:\n${text}`, stream: false })
+    body: JSON.stringify({ model: settings.ollamaModel || "qwen2.5:7b", system: buildTranslationSystemPrompt(tl, options), prompt: text, stream: false, options: { temperature: 0.2 } })
   });
   if (!response.ok) throw new Error(`Ollama 连接失败 (${response.status})`);
   const data = await response.json();
   return { original: text, text: data.response?.trim() || text, detectedLang: sl };
 }
 
-async function translateWithCustomOpenAI(text, sl, tl, settings) {
+async function translateWithCustomOpenAI(text, sl, tl, settings, options = {}) {
   if (!settings.customBaseUrl) throw new Error("请填写自定义 Base URL");
   let baseUrl = settings.customBaseUrl.replace(/\/+$/, "");
   const url = baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
@@ -2063,7 +2183,7 @@ async function translateWithCustomOpenAI(text, sl, tl, settings) {
     body: JSON.stringify({
       model: settings.customModel || "gpt-3.5-turbo",
       temperature: 0.2,
-      messages: [{ role: "system", content: `Translate into ${tl}. Output only translation.` }, { role: "user", content: text }]
+      messages: [{ role: "system", content: buildTranslationSystemPrompt(tl, options) }, { role: "user", content: text }]
     })
   });
   if (!response.ok) throw new Error(`自定义 API 响应异常 (${response.status})`);
@@ -2074,7 +2194,7 @@ async function translateWithCustomOpenAI(text, sl, tl, settings) {
 /**
  * 结构化合批批量并发
  */
-async function translateBatchWithIds(items, sl = "auto", tl = "zh-CN", engineOverride = null) {
+async function translateBatchWithIds(items, sl = "auto", tl = "zh-CN", engineOverride = null, context = null) {
   if (!items || !items.length) return [];
   await persistentCacheReady;
 
@@ -2142,18 +2262,42 @@ async function translateBatchWithIds(items, sl = "auto", tl = "zh-CN", engineOve
         continue;
       }
 
+      if (engine === "deepl") {
+        // DeepL accepts several texts per request and returns them in order,
+        // so no inline markers are needed.
+        try {
+          const many = await translateManyWithDeepL(bundle.map(item => item.text), sl, tl, settings);
+          bundle.forEach((target, k) => {
+            const text = normalizeTranslationPunctuation(many[k]?.text || target.text, tl);
+            results[target.index] = { id: target.id, text, detectedLang: many[k]?.detectedLang || sl };
+            setCache(translationCacheKey(engine, sl, tl, target.text), { text, detectedLang: many[k]?.detectedLang || sl });
+          });
+        } catch (error) {
+          bundle.forEach(target => { results[target.index] = { id: target.id, text: target.text, error: error?.message || String(error) }; });
+        }
+        continue;
+      }
+
       const taggedTexts = bundle.map((item, idx) => `⟦${idx}⟧ ${item.text}`).join("\n\n");
 
       try {
-        const transRes = await translateText(taggedTexts, sl, tl, settings);
+        const transRes = await translateText(taggedTexts, sl, tl, settings, { batch:true, context });
         const rawText = transRes.text;
-        const pattern = /(?:⟦|\[|【)(\d+)(?:⟧|\]|】)\s*([\s\S]*?)(?=(?:⟦|\[|【)\d+(?:⟧|\]|】)|$)/g;
+        // Only ⟦n⟧ separates segments: page text often contains citations
+        // such as [1] or 【2】, which must stay inside their paragraph. A model
+        // that rewrote every marker as [n] is accepted only at line starts.
+        const strictPattern = /⟦(\d+)⟧\s*([\s\S]*?)(?=⟦\d+⟧|$)/g;
+        const loosePattern = /(?:^|\n)\s*[\[【](\d+)[\]】]\s*([\s\S]*?)(?=\n\s*[\[【]\d+[\]】]|$)/g;
+        const pattern = rawText.includes("⟦") ? strictPattern : loosePattern;
+        const seenIndexes = new Set();
         let match;
         let matchCount = 0;
 
         while ((match = pattern.exec(rawText)) !== null) {
           const idx = parseInt(match[1], 10);
           const content = normalizeTranslationPunctuation(match[2].trim(), tl);
+          if (seenIndexes.has(idx)) continue;
+          seenIndexes.add(idx);
           if (idx >= 0 && idx < bundle.length && content) {
             const target = bundle[idx];
             const rObj = { id: target.id, text: content, detectedLang: transRes.detectedLang };
@@ -2265,6 +2409,18 @@ async function listProviderModels(engine, suppliedSettings = null) {
 
 // 同一浏览器标签页中的翻译会话。使用 storage.session 而不是仅存内存，
 // 避免 MV3 service worker 休眠后丢失状态；离开当前站点时自动失效。
+// Older Safari releases have no storage.session; keep the per-tab state in
+// memory there (it only has to survive while the worker is alive).
+const memorySessionStore = new Map();
+function tabSessionStorage() {
+  if (chrome.storage?.session) return chrome.storage.session;
+  return {
+    async get(key) { return memorySessionStore.has(key) ? { [key]: memorySessionStore.get(key) } : {}; },
+    async set(items) { Object.entries(items || {}).forEach(([key, value]) => memorySessionStore.set(key, value)); },
+    async remove(key) { memorySessionStore.delete(key); }
+  };
+}
+
 function tabTranslationSessionKey(tabId) {
   return `jijianTabTranslationSession:${tabId}`;
 }
@@ -2273,12 +2429,12 @@ async function setTabTranslationSession(tabId, payload = {}) {
   if (!Number.isInteger(tabId)) return;
   const key = tabTranslationSessionKey(tabId);
   if (payload.active === false) {
-    await chrome.storage.session.remove(key).catch(() => {});
+    await tabSessionStorage().remove(key).catch(() => {});
     return;
   }
   const siteKey = String(payload.siteKey || "").trim();
   if (!siteKey) return;
-  await chrome.storage.session.set({
+  await tabSessionStorage().set({
     [key]: { active:true, siteKey, displayMode:String(payload.displayMode || "bilingual"), updatedAt:Date.now() }
   }).catch(() => {});
 }
@@ -2286,19 +2442,19 @@ async function setTabTranslationSession(tabId, payload = {}) {
 async function getTabTranslationSession(tabId, siteKey = "") {
   if (!Number.isInteger(tabId)) return null;
   const key = tabTranslationSessionKey(tabId);
-  const data = await chrome.storage.session.get(key).catch(() => ({}));
+  const data = await tabSessionStorage().get(key).catch(() => ({}));
   const session = data?.[key];
   if (!session?.active) return null;
   const requestedSite = String(siteKey || "").trim();
   if (requestedSite && session.siteKey !== requestedSite) {
-    await chrome.storage.session.remove(key).catch(() => {});
+    await tabSessionStorage().remove(key).catch(() => {});
     return null;
   }
   return session;
 }
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove(tabTranslationSessionKey(tabId)).catch(() => {});
+  tabSessionStorage().remove(tabTranslationSessionKey(tabId)).catch(() => {});
 });
 
 // 统一消息监听
@@ -2625,7 +2781,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (action === "TRANSLATE_BATCH_IDS") {
-    translateBatchWithIds(request.items, request.sl || "auto", request.tl || "zh-CN", request.engineOverride || null)
+    translateBatchWithIds(request.items, request.sl || "auto", request.tl || "zh-CN", request.engineOverride || null, request.context || null)
       .then(res => sendResponse({ success: true, data: res }))
       .catch(err => sendResponse({ success: false, error: err.message }));
     return true;

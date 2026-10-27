@@ -91,6 +91,7 @@ if (!content.includes('reader-speech-player') || !content.includes('readerSpeech
 if (content.includes('speechSynthesis.cancel(')) fail('reader speech must not cancel speech owned by another extension');
 if (!content.includes('window.addEventListener("pointermove", move, true)') || !css.includes('.reader-tools-resizing')) fail('reader tool rail drag tracking is still fragile');
 if (!css.includes('--reader-ui-font:"Source Han Sans SC"') || !content.includes('case "smiley-sans"') || !background.includes('readerFontDefaultV2') || !background.includes('translationFontDefaultV2')) fail('reader UI/default font migration is missing');
+if (!background.includes('fontFamily: "system"') || !background.includes('translationFontDefaultV3')) fail('translation font must default to the upright system font');
 if (/\[data-raccoon-translated=[^\]]+\]\s*\{[^}]*margin-bottom/i.test(css)) fail('host translated nodes still receive forced margin-bottom');
 if (!css.includes('white-space:nowrap!important')) fail('translated tab height safeguard missing');
 if (!css.includes('clear:none!important')) fail('float-safe bilingual layout missing');

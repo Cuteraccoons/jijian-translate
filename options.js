@@ -571,6 +571,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (optEnableParagraphActions) optEnableParagraphActions.addEventListener("change", (e) => saveSetting({ enableParagraphActions: e.target.checked }));
   optModifierKey.addEventListener("change", (e) => saveSetting({ selectionModifierKey: e.target.value }));
   optEnableInputBox.addEventListener("change", (e) => saveSetting({ enableInputBoxTranslate: e.target.checked }));
+  document.getElementById("opt-alt-click-lookup")?.addEventListener("change", (e) => saveSetting({ dictAltClickLookup: e.target.checked }));
   optEnableFloatingBall.addEventListener("change", (e) => saveSetting({ enableFloatingBall: e.target.checked }));
   if (optAutoDetectLanguage) optAutoDetectLanguage.addEventListener("change", (e) => saveSetting({ autoDetectPageLanguage: e.target.checked }));
   // Function declaration is intentionally hoisted. initUIFromSettings() runs
@@ -1421,8 +1422,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const activeRenderStyle = activeTypographyRenderStyle(s);
     optRenderStyle.value = activeRenderStyle;
     renderStyleCardGrid?.querySelectorAll(".style-choice-card").forEach(card => card.classList.toggle("active", card.dataset.value === activeRenderStyle));
-    if (optFontFamily) optFontFamily.value = s.fontFamily || "smiley-sans";
-    translationFontCardGrid?.querySelectorAll(".font-choice-card").forEach(card => card.classList.toggle("active", card.dataset.value === (s.fontFamily || "smiley-sans")));
+    if (optFontFamily) optFontFamily.value = s.fontFamily || "system";
+    translationFontCardGrid?.querySelectorAll(".font-choice-card").forEach(card => card.classList.toggle("active", card.dataset.value === (s.fontFamily || "system")));
 
     const highlight = s.bgHighlight || "soft-yellow";
     optBgHighlightGrid?.querySelectorAll(".mini-swatch").forEach((btn) => {
@@ -1477,6 +1478,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (optEnableParagraphActions) optEnableParagraphActions.checked = s.enableParagraphActions !== false;
     if (s.selectionModifierKey) optModifierKey.value = s.selectionModifierKey;
     optEnableInputBox.checked = s.enableInputBoxTranslate !== false;
+    const optAltClickLookup = document.getElementById("opt-alt-click-lookup");
+    if (optAltClickLookup) optAltClickLookup.checked = s.dictAltClickLookup !== false;
     optEnableFloatingBall.checked = s.enableFloatingBall !== false;
     if (optAutoDetectLanguage) optAutoDetectLanguage.checked = s.autoDetectPageLanguage !== false;
     if (optEnableImageTranslation) optEnableImageTranslation.checked = s.enableImageTranslation === true;
@@ -1563,7 +1566,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "smiley-sans": '"Smiley Sans", "PingFang SC", sans-serif',
       kaiti: '"Kaiti SC", "STKaiti", serif'
     };
-    const previewFont = previewFontMap[s.fontFamily || "smiley-sans"] || previewFontMap["smiley-sans"];
+    const previewFont = previewFontMap[s.fontFamily || "system"] || previewFontMap.system;
     translatedEls.forEach(el => { if (el) setPreviewStyle(el, "font-family", previewFont); });
 
     translatedEls.forEach((el) => {
@@ -1987,12 +1990,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     return message ? `${fallback}：${message.slice(0,120)}` : fallback;
   }
 
-  btnAddLocalDictFiles?.addEventListener("click", async () => {
-    if (!window.showOpenFilePicker) { setLocalDictTestStatus("当前浏览器不支持直接读取本地词典文件。请使用最新版 Chrome。", "error"); return; }
-    btnAddLocalDictFiles.disabled=true;
-    try {
-      const handles=await window.showOpenFilePicker({id:"jijian-local-dictionary-files",multiple:true,types:[{description:"MDict 词典与样式",accept:{"application/octet-stream":[".mdx",".mdd"],"text/css":[".css"]}}]});
-      if(!handles?.length) return;
+  // Safari has neither showOpenFilePicker nor showDirectoryPicker. There the
+  // chosen files are copied into the extension's IndexedDB (a File can be
+  // stored, a handle cannot), so they keep working without re-authorisation.
+  function pickLocalDictionaryFiles({ directory = false } = {}) {
+    return new Promise(resolve => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.multiple = true;
+      if (directory) input.webkitdirectory = true;
+      else input.accept = ".mdx,.mdd,.css";
+      input.style.display = "none";
+      input.addEventListener("change", () => { resolve([...(input.files || [])]); input.remove(); }, { once:true });
+      input.addEventListener("cancel", () => { resolve([]); input.remove(); }, { once:true });
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
+  const storedFileHandle = file => ({ name:file.name, kind:"file", getFile:async () => file, storable:file });
+
+  async function importLocalDictionaryFiles(handles) {
       setLocalDictTestStatus(`正在接入 ${handles.length} 个词典文件…`);
       const stored=await chrome.storage.local.get("jijianLocalDictionaryMeta").catch(()=>({}));
       const meta=stored.jijianLocalDictionaryMeta||{};
@@ -2004,7 +2021,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const name=h.name||""; if(!/\.(mdx|mdd|css)$/i.test(name)) continue;
         const ext=/\.mdd$/i.test(name)?"mdd":(/\.css$/i.test(name)?"css":"mdx"); const base=name.replace(/\.(mdx|mdd|css)$/i,"");
         const previous=byBase.get(base); const row=previous||{name:base,mdxName:"",mddName:"",cssName:"",source:"file",enabled:true};
-        const key=`file:${base}:${ext}`; await putLocalHandle(key,h); row[`${ext}Name`]=name; row[`${ext}HandleKey`]=key; row.source="file";
+        const key=`file:${base}:${ext}`; await putLocalHandle(key,h.storable||h); row[`${ext}Name`]=name; row[`${ext}HandleKey`]=key; row.source="file";
         if(ext === "mdx") {
           const info=await inspectMdxHandle(h, {deepCheck:false});
           if(info.displayName) row.displayName=info.displayName;
@@ -2026,6 +2043,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderLocalDictionaries(next);
       if(localDictStatus) localDictStatus.textContent=`已接入 ${imported.length} 本本地词典`;
       setLocalDictTestStatus(imported.length ? `文件接入完成。可在上方输入单词测试。` : "没有找到可用的 MDX 文件；MDD 与 CSS 需要和对应 MDX 一起使用。", imported.length ? "success" : "warn");
+  }
+
+  btnAddLocalDictFiles?.addEventListener("click", async () => {
+    btnAddLocalDictFiles.disabled=true;
+    try {
+      const handles=window.showOpenFilePicker
+        ? await window.showOpenFilePicker({id:"jijian-local-dictionary-files",multiple:true,types:[{description:"MDict 词典与样式",accept:{"application/octet-stream":[".mdx",".mdd"],"text/css":[".css"]}}]})
+        : (await pickLocalDictionaryFiles()).map(storedFileHandle);
+      if(!handles?.length) return;
+      await importLocalDictionaryFiles(handles);
     } catch(err){
       const message=localDictionaryImportError(err,"无法读取所选 MDX / MDD / CSS 文件");
       if(message) setLocalDictTestStatus(message,"error");
@@ -2097,7 +2124,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   localDictTestInput?.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); testLocalDictionaryLookup(); } });
 
   btnAddLocalDictFolder?.addEventListener("click", async () => {
-    if (!window.showDirectoryPicker) { setLocalDictTestStatus("当前浏览器不支持文件夹授权。请使用最新版 Chrome。", "error"); return; }
+    if (!window.showDirectoryPicker) {
+      // Safari: import the folder's MDX / MDD / CSS as stored files.
+      btnAddLocalDictFolder.disabled=true;
+      try {
+        const files=(await pickLocalDictionaryFiles({ directory:true })).filter(file=>/\.(mdx|mdd|css)$/i.test(file.name));
+        if(files.length) await importLocalDictionaryFiles(files.map(storedFileHandle));
+        else setLocalDictTestStatus("所选文件夹里没有 MDX / MDD / CSS 文件。","warn");
+      } catch(err){
+        const message=localDictionaryImportError(err,"无法读取该词典文件夹");
+        if(message) setLocalDictTestStatus(message,"error");
+      } finally { btnAddLocalDictFolder.disabled=false; }
+      return;
+    }
     btnAddLocalDictFolder.disabled=true;
     try {
       const handle=await window.showDirectoryPicker({id:"jijian-local-dictionaries",mode:"read"});

@@ -19,6 +19,15 @@
     }
   })();
 
+  // 得意黑 for translations and Reader Mode. Registered from script because a
+  // CSS file can only name the extension origin as chrome-extension://, which
+  // does not exist in Safari (safari-web-extension://). Loads only when used.
+  try {
+    if (typeof FontFace === "function" && ![...document.fonts].some(face => face.family.replace(/["']/g, "") === "Smiley Sans")) {
+      document.fonts.add(new FontFace("Smiley Sans", `url("${chrome.runtime.getURL("fonts/SmileySans-Oblique.ttf.woff2")}") format("woff2")`, { style:"normal", weight:"400", display:"swap" }));
+    }
+  } catch (_) {}
+
   // Preload the available speech voices before the first playback.
   if (typeof window !== "undefined" && window.speechSynthesis) {
     try {
@@ -60,7 +69,7 @@
     readerMetaVisible: true,
     readerSpeechHighlightMode: "sentence",
 
-    fontFamily: "smiley-sans",
+    fontFamily: "system",
     fontStyle: "normal",
     renderStyle: "classic",
     replaceRenderStyle: "clean",
@@ -76,6 +85,8 @@
     enableParagraphHoverTranslate: true,
     enableParagraphActions: false,
     dictTriggerMode: "both", // "both" | "double_click" | "selection" | "none"
+    dictAltClickLookup: true,
+    dictCardExpanded: false,
     dictTriggerLastMode: "both",
     dictionaryLookupMode: "standard",
     enableDictionaryAi: true,
@@ -437,7 +448,7 @@
     root.style.setProperty("--raccoon-font-style", s.fontStyle || "normal");
     root.style.setProperty("--raccoon-sidebar-width", `${s.sidebarWidth || 400}px`);
 
-    const fontFam = getFontFamilyCss(s.fontFamily || "smiley-sans");
+    const fontFam = getFontFamilyCss(s.fontFamily || "system");
     root.style.setProperty("--raccoon-font-family", fontFam);
     root.style.setProperty("--reader-font-family", fontFam);
 
@@ -1056,7 +1067,9 @@
             items: Array.isArray(items) ? items : [],
             sl: currentSettings.sourceLang || "auto",
             tl: currentSettings.targetLang || "zh-CN",
-            engineOverride: engineOverride || null
+            engineOverride: engineOverride || null,
+            // Page title helps AI engines keep terminology consistent.
+            context: { title: String(document.title || "").slice(0, 160), host: location.hostname }
           },
           (res) => {
             const runtimeError = chrome.runtime.lastError;
@@ -2107,7 +2120,7 @@
     if (attachShortLabel) transNode.classList.add("raccoon-attached-translation");
     transNode.setAttribute("data-render-style", currentSettings.renderStyle || "classic");
 
-    const fontFam = getFontFamilyCss(currentSettings.fontFamily || "smiley-sans");
+    const fontFam = getFontFamilyCss(currentSettings.fontFamily || "system");
     if (currentSettings.renderStyle === "native") applyNativeReferenceStyle(origEl, transNode);
     else {
       transNode.style.setProperty("font-family", fontFam, "important");
@@ -9114,6 +9127,7 @@
     document.addEventListener("mouseup", (e) => {
       clearTimeout(selectionMouseUpTimer);
       if(e.detail>1)return;
+      if(isAltClickLookup(e)&&!window.getSelection()?.toString().trim())return;
       if (isCurrentHostExcluded("selection")) return;
       const mode = currentSettings.dictTriggerMode || "both";
       if (selectionRoot.contains(e.target)) return;
@@ -9128,7 +9142,10 @@
       }
       if (mode === "none" || mode === "double_click") return;
 
-      selectionMouseUpTimer=setTimeout(() => {
+      selectionMouseUpTimer=setTimeout(() => showTriggerForCurrentSelection(clickX, clickY), 50);
+    });
+
+    function showTriggerForCurrentSelection(clickX, clickY, { below = false } = {}) {
         const selection = window.getSelection();
         const text = selection ? selection.toString().trim() : "";
 
@@ -9140,11 +9157,32 @@
             const r = range.getBoundingClientRect();
             if (r && r.width > 0 && r.height > 0 && r.top > 10 && r.left > 10) rect = r;
           } catch (_) {}
+          // On touch screens the system's own Copy / Look Up menu sits above
+          // the selection; place the toolbar under the selection handles.
+          if (rect && below) rect = { left:rect.left, width:rect.width, height:rect.height, right:rect.right, top:rect.bottom + 66, bottom:rect.bottom + 66 + rect.height };
           let exactRange = null; try { exactRange = selection.getRangeAt(0).cloneRange(); } catch (_) {}
           const allowDictionary = isDictionarySelectionCandidate(text) && !isPassageSelection(text);
-          showSelectionTriggerAbove(rect, clickX, clickY, text, exactRange, allowDictionary);
+          showSelectionTriggerAbove(rect, clickX ?? rect?.left ?? 20, clickY ?? rect?.bottom ?? 20, text, exactRange, allowDictionary);
         } else hideSelectionTriggerButton();
-      }, 50);
+    }
+
+    // iPhone / iPad (Safari) and other touch screens: there is no mouseup or
+    // double-click; text is chosen with a long press and selection handles.
+    // Show the same lookup / highlight toolbar once the selection settles.
+    let touchSelectionTimer = 0;
+    let lastPointerWasTouch = false;
+    document.addEventListener("pointerdown", e => { lastPointerWasTouch = e.pointerType === "touch" || e.pointerType === "pen"; }, true);
+    document.addEventListener("selectionchange", () => {
+      if (!lastPointerWasTouch && !matchMedia("(hover: none) and (pointer: coarse)").matches) return;
+      clearTimeout(touchSelectionTimer);
+      touchSelectionTimer = setTimeout(() => {
+        const mode = currentSettings.dictTriggerMode || "both";
+        if (mode === "none" || isCurrentHostExcluded("selection")) return;
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || selectionRoot.contains(selection.anchorNode)) return;
+        if (selection.anchorNode?.parentElement?.closest?.("input, textarea, [contenteditable='true']")) return;
+        showTriggerForCurrentSelection(undefined, undefined, { below:true });
+      }, 450);
     });
 
     document.addEventListener("dblclick", (e) => {
@@ -9161,28 +9199,29 @@
         const selection = window.getSelection();
         const text = selection ? selection.toString().trim() : "";
         if (isValidText(text) && text.split(/\s+/).length <= 4) {
-          let cardTop = clickY + 8;
-          let cardLeft = clickX - 20;
-
-          try {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            if (rect && rect.width > 0 && rect.bottom > 10 && rect.left > 10) {
-              cardTop = rect.bottom + 6;
-              cardLeft = rect.left;
-            }
-          } catch (_) {}
-
-          if (cardTop + 340 > window.innerHeight) {
-            cardTop = Math.max(15, clickY - 340);
-          }
-
-          cardTop = Math.max(15, Math.min(cardTop, window.innerHeight - 350));
-          cardLeft = Math.max(15, Math.min(cardLeft, window.innerWidth - Math.min(414, window.innerWidth - 20)));
-          openDictionaryCard(cardTop, cardLeft, text);
+          let rect = null;
+          try { rect = selection.getRangeAt(0).getBoundingClientRect(); } catch (_) {}
+          openDictionaryCardNear(rect, clickX, clickY, text);
         }
       }, 30);
     });
+
+    // ⌥/Alt + click looks up the word under the pointer without selecting
+    // first. It also works on words inside links: the click is consumed so
+    // the link neither opens nor downloads.
+    document.addEventListener("click", (e) => {
+      if (!isAltClickLookup(e)) return;
+      // ⌥ + drag is a selection (the "划选时需按住 ⌥" setting); leave it alone.
+      const current = window.getSelection();
+      if (current && !current.isCollapsed && current.toString().trim()) return;
+      const range = wordRangeAtPoint(e.clientX, e.clientY);
+      if (!range) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const text = range.toString().trim();
+      try { const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); } catch (_) {}
+      openDictionaryCardNear(range.getBoundingClientRect(), e.clientX, e.clientY, text);
+    }, true);
 
     document.addEventListener("mousedown", (e) => {
       if (selectionRoot && !selectionRoot.contains(e.target)) {
@@ -9192,6 +9231,63 @@
         }
       }
     });
+  }
+
+  function isAltClickLookup(e) {
+    if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey || e.button !== 0) return false;
+    if (currentSettings.dictAltClickLookup === false || (currentSettings.dictTriggerMode || "both") === "none") return false;
+    if (isCurrentHostExcluded("selection") || selectionRoot?.contains(e.target)) return false;
+    return !e.target?.closest?.("input, textarea, select, button, [contenteditable='true'], #raccoon-floating-ball-root, #raccoon-sidebar-root");
+  }
+
+  // The word under a screen point, segmented with Intl.Segmenter so Chinese
+  // and Japanese words are found without spaces.
+  function wordRangeAtPoint(x, y) {
+    let node = null, offset = 0;
+    try {
+      if (document.caretPositionFromPoint) { const position = document.caretPositionFromPoint(x, y); node = position?.offsetNode; offset = position?.offset || 0; }
+      else if (document.caretRangeFromPoint) { const range = document.caretRangeFromPoint(x, y); node = range?.startContainer; offset = range?.startOffset || 0; }
+    } catch (_) { return null; }
+    if (!node || node.nodeType !== Node.TEXT_NODE || !node.nodeValue.trim()) return null;
+    const value = node.nodeValue;
+    let start = -1, end = -1;
+    if (typeof Intl !== "undefined" && Intl.Segmenter) {
+      const lang = node.parentElement?.closest("[lang]")?.getAttribute("lang") || undefined;
+      let segmenter;
+      try { segmenter = new Intl.Segmenter(lang, { granularity:"word" }); } catch (_) { segmenter = new Intl.Segmenter(undefined, { granularity:"word" }); }
+      for (const part of segmenter.segment(value)) {
+        const partEnd = part.index + part.segment.length;
+        if (!part.isWordLike) continue;
+        if (offset >= part.index && offset < partEnd) { start = part.index; end = partEnd; break; }
+        if (offset === partEnd) { start = part.index; end = partEnd; }
+      }
+    } else {
+      const isWordChar = ch => /[\p{L}\p{N}'’-]/u.test(ch || "");
+      start = offset; end = offset;
+      while (start > 0 && isWordChar(value[start - 1])) start--;
+      while (end < value.length && isWordChar(value[end])) end++;
+    }
+    if (start < 0 || end <= start) return null;
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    // The caret API snaps to the nearest text even far from the pointer.
+    const rect = range.getBoundingClientRect();
+    if (!rect.width || x < rect.left - 3 || x > rect.right + 3 || y < rect.top - 3 || y > rect.bottom + 3) return null;
+    return isValidText(range.toString().trim()) ? range : null;
+  }
+
+  function openDictionaryCardNear(rect, x, y, text) {
+    let cardTop = y + 8;
+    let cardLeft = x - 20;
+    if (rect && rect.width > 0 && rect.bottom > 10 && rect.left > 10) {
+      cardTop = rect.bottom + 6;
+      cardLeft = rect.left;
+    }
+    if (cardTop + 340 > window.innerHeight) cardTop = Math.max(15, (rect?.top || y) - 346);
+    cardTop = Math.max(15, Math.min(cardTop, window.innerHeight - 350));
+    cardLeft = Math.max(15, Math.min(cardLeft, window.innerWidth - Math.min(414, window.innerWidth - 20)));
+    openDictionaryCard(cardTop, cardLeft, text);
   }
 
   function captureInputTextSelection(target) {
@@ -9669,6 +9765,42 @@
     };
   }
 
+  // Word cards open light: brief meanings first; detailed senses, examples,
+  // related words and Wikipedia sit behind one "更多" toggle whose state is
+  // remembered.
+  const DICT_SECONDARY_SECTIONS = ".dict-detail-section, .dict-example-section, .dict-related-section, .dict-wiki-section, .dict-classical-section";
+  function setupDictionaryCompactMode(cardEl, contentEl) {
+    if (!cardEl || !contentEl) return;
+    cardEl.classList.add("dict-compact");
+    cardEl.classList.toggle("dict-expanded", currentSettings.dictCardExpanded === true);
+    const sync = () => {
+      const hidden = contentEl.querySelectorAll(`:scope > :is(${DICT_SECONDARY_SECTIONS})`).length;
+      const canCompact = hidden > 0 && !!contentEl.querySelector(":scope > .dict-brief-section");
+      cardEl.classList.toggle("dict-has-more", canCompact);
+      let toggle = contentEl.querySelector(":scope > .dict-more-toggle");
+      if (!canCompact) { toggle?.remove(); return; }
+      if (!toggle) {
+        toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "dict-more-toggle";
+        toggle.addEventListener("click", () => {
+          const expanded = !cardEl.classList.contains("dict-expanded");
+          cardEl.classList.toggle("dict-expanded", expanded);
+          currentSettings.dictCardExpanded = expanded;
+          try { chrome.runtime.sendMessage({ action:"UPDATE_SETTINGS", settings:{ dictCardExpanded:expanded } }).catch(() => {}); } catch (_) {}
+          sync();
+        });
+      }
+      if (toggle !== contentEl.lastElementChild) contentEl.appendChild(toggle);
+      const expanded = cardEl.classList.contains("dict-expanded");
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      toggle.innerHTML = `<span>${expanded ? "收起" : "更多释义、例句与百科"}</span><i aria-hidden="true"></i>`;
+    };
+    const observer = new MutationObserver(() => { observer.disconnect(); sync(); observer.observe(contentEl, { childList:true }); });
+    observer.observe(contentEl, { childList:true });
+    sync();
+  }
+
   async function openDictionaryCard(top, left, text, options = {}) {
     if (!selectionRoot) return;
     disposeActiveDictionaryCard();
@@ -9681,7 +9813,8 @@
     if(isWelcomePage)Object.assign(currentSettings,{dictionaryLookupMode:"standard",sourceLang:"en",targetLang:"zh-CN",dictTriggerMode:"both",imageOcrLanguage:"eng"});
 
     const passageLike = options.forcePassage === true || isPassageSelection(text);
-    const estimatedWidth = Math.min(passageLike ? 580 : 520, Math.max(300, window.innerWidth - 20));
+    const compactCard = !passageLike && currentSettings.dictCardExpanded !== true;
+    const estimatedWidth = Math.min(passageLike ? 580 : compactCard ? 420 : 520, Math.max(300, window.innerWidth - 20));
     const maxLeft = window.innerWidth - estimatedWidth - 10;
     const adjustLeft = Math.max(10, Math.min(left, maxLeft));
 
@@ -9742,6 +9875,7 @@
     const dictionaryAiEnabled = currentSettings.enableDictionaryAi !== false;
     const effectiveDictionaryLookupMode = dictionaryAiEnabled ? currentSettings.dictionaryLookupMode : "standard";
     cardEl.classList.toggle("dict-ai-after-dictionary", dictionaryAiEnabled && currentSettings.dictionaryAiPosition === "last");
+    if (!passageLike) setupDictionaryCompactMode(cardEl, contentEl);
     const dragCleanup = makeDictionaryCardDraggable(cardEl);
     const closeOnEscape = (event) => {
       if (event.key !== "Escape" || !cardEl?.isConnected) return;
@@ -9928,6 +10062,22 @@
       if (!dictionaryAiEnabled) {
         aiComposerDock.style.display = "none";
         aiComposerDock.innerHTML = "";
+        return;
+      }
+      if (!hasConfiguredAiDictionary()) {
+        // Without an AI key the composer is a disabled box; keep the card light
+        // and offer one quiet link instead.
+        aiComposerDock.style.display = "none";
+        aiComposerDock.innerHTML = "";
+        const footer = cardEl.querySelector(".dict-source-footer");
+        if (footer && !footer.querySelector(".dict-ai-setup-link")) {
+          const link = document.createElement("button");
+          link.type = "button";
+          link.className = "dict-ai-setup-link";
+          link.textContent = "配置 AI 后可问语境";
+          link.addEventListener("click", () => { try { chrome.runtime.sendMessage({ action:"OPEN_OPTIONS_PAGE", tab:"tab-api" }).catch(() => {}); } catch (_) {} });
+          footer.appendChild(link);
+        }
         return;
       }
       aiComposerDock.style.display = "block";

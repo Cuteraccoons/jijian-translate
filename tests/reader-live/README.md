@@ -38,3 +38,5 @@ python3 tests/reader-live/run-baike-headings.py --session baike-manual --mode li
 维基百科调查补充：`wiki-inventory.js` / `run-wiki-inventory.py` 统计 16 页结构与阅读器输出；`wiki-detail-audit.js` 核对公式、长表、气候表、音频和代码。参见 [模块报告](../../docs/handoff/WIKIPEDIA-SURVEY.md) 与 [逐步计划](../../docs/handoff/IMPLEMENTATION-PLAN.md)。调查发现不等于修复完成。
 
 2026-10-25（1.0.6）：新增 `doc-structures.js`（自有 fixture）：`<figure>` 包裹的代码块与表格、标题锚点符号、页内目录、隐藏的备选标签页、名为 Comments 的章节、列表项引导句，以及 GitHub issue 的首帖＋评论结构。新增 `../reader-site-sweep.mjs` 与 `sweep-cases.json`（63 个可访问实站）做结构扫描，逐页输出 JSONL；只读页面、不调用翻译服务。本机 Playwright 缓存与已装 Chromium 版本不一致时，给 `run-reader-live.mjs` 与扫描脚本设置 `CHROMIUM_PATH`。全部 23 个 fixture 通过（`baike-body-media.js` 整套连跑偶发超时，单独重跑通过）。
+
+2026-10-27：新增 `lookup-alt-click.js`（⌥／Alt + 点击查词：链接内单词、中文分词、普通点击仍跳转）与 `../translation-batch-audit.mjs`（模拟网络的合批翻译检查）。24 个 fixture 全部通过。

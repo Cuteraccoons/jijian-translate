@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentSiteDomain = document.getElementById("current-site-domain");
   const btnToggleBlockSite = document.getElementById("btn-toggle-block-site");
   const siteDockNote = document.getElementById("site-dock-note");
+  const isSafariExtension = /^safari-web-extension:/.test(chrome.runtime.getURL(""));
   const popupRenderStyleGrid = document.getElementById("popup-render-style-grid");
   const siteImageTranslationToggle = document.getElementById("site-image-translation-toggle");
   const siteImageTranslationDomain = document.getElementById("site-image-translation-domain");
@@ -1121,6 +1122,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           }, 150);
         } catch (err) {
           if (statusDot) statusDot.className = "status-dot";
+          // Safari grants website access per site; until then nothing can be
+          // injected. Tell the user where to allow it.
+          if (isSafariExtension && siteDockNote) {
+            siteDockNote.textContent = "请先允许访问此网站：点地址栏旁的扩展图标，选择“始终允许”";
+            siteDockNote.classList.add("show-note");
+            setTimeout(() => siteDockNote.classList.remove("show-note"), 5200);
+          }
         }
       } else {
         if (callback) callback(response);
@@ -1218,7 +1226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     selectRenderStyle.value = activeRenderStyle;
     syncPopupRenderStyleGrid(activeRenderStyle);
     syncPopupStyleDependentOptions(activeRenderStyle);
-    selectFontFamily.value = s.fontFamily || "smiley-sans";
+    selectFontFamily.value = s.fontFamily || "system";
     syncPopupTextColor(s.textColor || "black");
     if (s.fontSizeRatio) {
       labelFontSize.textContent = `${s.fontSizeRatio}%`;
@@ -1299,6 +1307,9 @@ document.addEventListener("DOMContentLoaded", async () => {
            url.startsWith("edge://") ||
            url.startsWith("about:") ||
            url.startsWith("chrome-extension://") ||
+           url.startsWith("safari-web-extension://") ||
+           url.startsWith("safari://") ||
+           url.startsWith("favorites://") ||
            url.includes("chromewebstore.google.com");
   }
 

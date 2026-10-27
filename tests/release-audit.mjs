@@ -39,7 +39,7 @@ for (const f of [
 const sandboxCsp = manifest.content_security_policy?.sandbox || '';
 if (/script-src[^;]*https?:/i.test(sandboxCsp) || /worker-src[^;]*https?:/i.test(sandboxCsp)) fail('remote executable code remains allowed by sandbox CSP');
 if (!read('ocr-sandbox.html').includes('vendor/tesseract/tesseract.min.js')) fail('OCR sandbox does not load local Tesseract runtime');
-if (!read('ocr-sandbox.html').includes('makeFilteredWorkerUrl') || !read('ocr-sandbox.html').includes('isBenignTesseractDiagnostic')) fail('OCR worker diagnostics are not filtered');
+if (!read('ocr-sandbox.js').includes('makeFilteredWorkerUrl') || !read('ocr-sandbox.js').includes('isBenignTesseractDiagnostic') || !read('ocr-worker.js').includes('Parameter not found')) fail('OCR worker diagnostics are not filtered');
 if (!process.exitCode) pass('local-only OCR executable runtime');
 
 for (const [htmlFile, jsFile] of [['options.html','options.js'],['popup.html','popup.js']]) {
@@ -72,7 +72,7 @@ for (const needle of [
   'prepareImageForOcr',
   'aria-label="切换本地词典"'
 ]) {
-  const target = needle === 'prepareImageForOcr' ? read('ocr-sandbox.html') : content;
+  const target = needle === 'prepareImageForOcr' ? read('ocr-sandbox.js') : content;
   if (!target.includes(needle)) fail(`missing release invariant: ${needle}`);
 }
 if (!process.exitCode) pass('translation core invariants');
@@ -110,7 +110,9 @@ if (!content.includes('function floatingPillStatusSnapshot') || !content.include
 if (!read('options.js').includes('readableProviderError') || !read('options.js').includes('}, 12000)') || !read('options.js').includes('正在读取模型...')) fail('model discovery does not expose invalid-key or timeout failures');
 if (!process.exitCode) pass('DOM-preserving translation safeguards');
 
-const sandbox = read('ocr-sandbox.html');
+// The OCR page's script lives in ocr-sandbox.js (Safari forbids inline scripts).
+const sandbox = read('ocr-sandbox.html') + read('ocr-sandbox.js');
+if (/<script>(?!<\/script>)/.test(read('ocr-sandbox.html'))) fail('OCR page must not use inline scripts (Safari CSP)');
 for (const needle of [
   'calculateOcrScale',
   'prepareImageForOcr',

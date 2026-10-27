@@ -135,6 +135,54 @@
 - Tailwind 文档这类没有 `article`／`main` 的页面，正文容器落到 `body`，右侧栏的推广卡片（“From the creators of Tailwind CSS”）会混入正文末尾。
 - AWS 文档的 “Note”／“Topics” 小标题进入大纲；Stripe 文档的选项卡内容只取到约一半；Apple 开发者文档的 Topics 符号列表未收录。
 
+## 1.0.7 正体默认字体与 Safari 适配（2026-10-27 第二轮）
+
+维护者反馈：默认译文是斜体的得意黑，不要斜体；已购买 Apple 开发者账号（审核中），先做 Safari 适配并让 Safari 版更全能。
+
+- **字体**：`fontFamily` 默认 `system`；`translationFontDefaultV3` 迁移把仍是 `smiley-sans` 的用户一次性改回系统字体（得意黑只有 Oblique 字形）。设置页与 Popup 的选项标成“得意黑（斜体）”。
+- **Safari**（细节见 `safari/README.md`）：
+  - OCR：内联脚本移到 `ocr-sandbox.js`；用 `self.origin === 'null'` 判断是否在 Chrome 沙盒里，是则用 blob worker，否则用新文件 `ocr-worker.js`。Chrome 沙盒与“无沙盒”两种方式都实测识别出 HELLO / SECOND CARD。
+  - 本地词典：无 `showOpenFilePicker`／`showDirectoryPicker` 时用 `<input type=file>`（文件夹用 `webkitdirectory`），把 File 存进原来的 IndexedDB 键；`getDictionaryFile`／`readFileHandleAsDataUrl` 接受 Blob。用假 MDX 验证了存储与读取链路；真词典解析未在 Safari 测。
+  - 得意黑改由 `content.js` 里的 `FontFace` 注册，删除 `fonts/smiley-content.css`。
+  - `tabSessionStorage()`：没有 `storage.session` 时用内存。
+  - Popup：Safari 下注入失败时提示去扩展按钮里允许访问。
+  - 触屏：`selectionchange` + 粗指针判断，选区稳定 450 ms 后在选区下方显示工具条（Chromium 移动端模拟验证）。
+  - `scripts/build-safari.sh` 生成 `safari/Jijian Translate/` Xcode 工程（引用 `safari/web-extension/` 暂存文件，暂存时去掉 `sandbox` 与 `open_in_tab`）；macOS 与 iOS 模拟器目标都**编译成功**。
+- **未验证**：没有在真正的 Safari 中运行（macOS 需要用户手动开启“允许未签名的扩展”；iOS 模拟器的设置界面渲染空白，未能启用扩展）。
+- 打包：`scripts/package-chrome.sh` 生成 `dist/Jijian-Translate-<版本>.zip`，文件清单在 `scripts/release-files.sh`，Safari 暂存共用同一清单。版本升到 1.0.7（1.0.6 可能已上传）。
+
+## 1.0.6 第二轮：翻译精度、轻量查词与 Safari 评估（2026-10-27）
+
+维护者要求：评估 Safari 适配难度；提升翻译精度；查词更方便、轻巧；完成后打 ZIP 上传。
+
+### 翻译（`background.js`）
+
+- `buildTranslationSystemPrompt`：DeepSeek／OpenAI（未自定义提示词时）／Claude／Gemini／Ollama／自定义接口共用。用户改过 OpenAI 提示词则保留，只追加批量标记规则。
+- 合批：只认 `⟦n⟧`；模型全部改写成 `[n]` 时，只接受行首的 `[n]`。修复了正文引用 `[1]` 把一段译文截断并错配到别段的问题。网页批次附带 `context: {title, host}`（`content.js` 发送）。
+- `translateManyWithDeepL`：请求头 `DeepL-Auth-Key`，多段一次提交；`deeplTargetLang` 处理 ZH-HANS／ZH-HANT、EN-US、PT-BR。
+- `splitForGoogle`：编码后超过 5000 字符的段落按句切成 ≤ 1600 字的块。没能验证 Google 是否接受 POST（本机当时被限流 429），所以仍用 GET。
+- `cleanModelTranslation`：去掉“翻译：”前缀、代码围栏和原文没有的外层引号。
+- 测试：`tests/translation-batch-audit.mjs`（模拟网络，11 项）。**没有调用真实翻译服务**，实际译文质量请维护者用自己的 Key 抽查。
+
+### 查词（`content.js`、`floating.css`、`options.*`）
+
+- `setupDictionaryCompactMode`：单词卡加 `dict-compact`；有简明释义且有次要分区时加 `dict-has-more`，次要分区隐藏，末尾“更多释义、例句与百科”按钮；状态存 `dictCardExpanded`。段落卡不受影响。
+- 未配置 AI：不渲染输入框，页脚显示“配置 AI 后可问语境”，打开设置的 API 页。
+- ⌥／Alt + 点击：`wordRangeAtPoint`（`caretPositionFromPoint` + `Intl.Segmenter`，并校验指针确实落在词上）；捕获阶段拦截 click，所以链接不打开、Mac 上也不触发 ⌥ 点击下载。已有选区时（⌥ 拖选）不触发，与“划选时需按住 ⌥”兼容。设置 `dictAltClickLookup`，默认开。
+- 测试：`tests/reader-live/lookup-alt-click.js`（链接内单词、中文分词、普通点击仍可跳转）。
+
+### Safari 评估（只评估，未改代码）
+
+- 本机 Xcode 27 的 `xcrun safari-web-extension-converter` 能直接转换，生成 macOS／iOS 工程，macOS 版**无签名编译成功**。转换器只提示两项不支持：`sandbox`（OCR 沙盒页）和 `options_ui.open_in_tab`。
+- 需要改的地方：
+  1. **图片 OCR**：Safari 不支持 manifest `sandbox`，`ocr-sandbox.html` 依赖的 `unsafe-eval`／blob worker 策略会失效，需要改为普通扩展页内运行 Tesseract（`wasm-unsafe-eval` 已在 extension_pages 允许）并实测。
+  2. **本地 MDX 词典**：Safari 没有 `showDirectoryPicker`／`showOpenFilePicker`，要改成 `<input type=file webkitdirectory>` 导入并把文件存进 IndexedDB，且无法像 Chrome 那样保持文件夹授权。
+  3. **得意黑字体**：`fonts/smiley-content.css` 写死了 `chrome-extension://` 地址，Safari 的扩展协议不同，需改为脚本用 `runtime.getURL` 注入 `@font-face`；`popup.js` 里也有一处 `chrome-extension://` 判断需复查。
+  4. **权限体验**：Safari 默认按网站逐个授权，自动翻译和悬浮入口要等用户在该站点允许后才出现，需要在欢迎页说明。
+  5. iOS 上没有双击／⌥ 点击这类桌面手势，查词与阅读器需单独做触屏适配（可以后做，先只发 macOS）。
+- 发布条件：需要 Apple Developer Program（年费 99 美元）签名、公证并通过 App Store 审核；没有账号只能在本机打开 Safari“允许未签名扩展”自用。
+- 估计：macOS 版可用约 2–4 天（主要是 OCR 与本地词典两处）；加上 iOS 触屏适配与上架流程再多 1–2 周。
+
 ## 当前进度
 
 已完成：维基百科延伸阅读与补充表格、组合棋盘、译文上标引用、表格原有彩色单元格、整行大纲点击、圆形纸张色块；百度百科摘要、基本信息、作品与图集的首轮提取。以上不等于全部网页适配完成。

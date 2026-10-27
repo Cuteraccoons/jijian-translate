@@ -1,0 +1,407 @@
+// OCR host page script (kept external: Safari loads ocr-sandbox.html as a
+// normal extension page, whose CSP does not allow inline scripts).
+(() => {
+  const LOCAL_WORKER_RUNTIME = new URL('vendor/tesseract/worker.min.js', location.href).href;
+  // Chrome runs this page as a manifest sandbox with an opaque origin, where
+  // only a blob: worker can start. Safari has no manifest sandbox and loads it
+  // as an ordinary extension page, whose CSP allows same-origin workers only.
+  const LOCAL_WORKER = self.origin === 'null'
+    ? makeFilteredWorkerUrl(LOCAL_WORKER_RUNTIME)
+    : new URL('ocr-worker.js', location.href).href;
+  const LOCAL_CORE = new URL('vendor/tesseract/tesseract-core-lstm.wasm.js', location.href).href;
+  const TESSDATA_CDN = 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0_best_int';
+  const TESSDATA_GITHUB = 'https://raw.githubusercontent.com/naptha/tessdata/gh-pages/4.0.0_best_int';
+  const TESSDATA_PROJECT = 'https://tessdata.projectnaptha.com/4.0.0';
+  let workerState = { key:'', promise:null };
+  let currentRecognizeProgress = null;
+
+  function isBenignTesseractDiagnostic(args) {
+    const message=args.map(value=>String(value??'')).join(' ').trim();
+    return /^Warning: Parameter not found: [a-z0-9_]+$/i.test(message)
+      || /^Estimating resolution as \d+$/i.test(message);
+  }
+  function installDiagnosticFilter(targetConsole) {
+    for(const method of ['log','warn','error']){
+      const original=targetConsole?.[method]?.bind(targetConsole); if(!original)continue;
+      targetConsole[method]=(...args)=>{if(!isBenignTesseractDiagnostic(args))original(...args);};
+    }
+  }
+  function makeFilteredWorkerUrl(runtimeUrl) {
+    const source=`(()=>{const benign=args=>{const message=args.map(value=>String(value??'')).join(' ').trim();return /^Warning: Parameter not found: [a-z0-9_]+$/i.test(message)||/^Estimating resolution as \\d+$/i.test(message);};for(const method of ['log','warn','error']){const original=console[method]?.bind(console);if(!original)continue;console[method]=(...args)=>{if(!benign(args))original(...args);};}importScripts(${JSON.stringify(runtimeUrl)});})();`;
+    return URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+  }
+  installDiagnosticFilter(console);
+
+  function post(type, payload={}) { parent.postMessage({source:'jijian-ocr-sandbox', type, ...payload}, '*'); }
+  function readableOcrError(error) {
+    const raw=String(error?.message||error||'').replace(/\s+/g,' ').trim();
+    if(!raw)return 'OCR 运行组件加载失败，请刷新页面后重试';
+    const looksLikeRuntimeCode=raw.length>260||/(?:WebAssembly|wasmBinary|function\s*\(|=>|\bvar\s+\w+|\breturn\s*\{|\.output\?\.length)/.test(raw);
+    if(looksLikeRuntimeCode)return 'OCR 运行组件加载失败，请刷新页面后重试';
+    return raw.slice(0,220);
+  }
+  async function ensureLib() {
+    if (!self.Tesseract) throw new Error('本地 OCR 运行组件加载失败');
+    return self.Tesseract;
+  }
+  function normalizeLangs(input) {
+    const list = Array.isArray(input) ? input : String(input || 'eng').split('+');
+    const safe = list.map(x=>String(x||'').trim()).filter(x=>/^[a-z_]+$/i.test(x));
+    return safe.length ? [...new Set(safe)] : ['eng'];
+  }
+  function langKey(langs) { return [...langs].sort().join('+'); }
+
+  function calculateOcrScale(w, h) {
+    const pixels = Math.max(1, w * h);
+    const shortest = Math.max(1, Math.min(w, h));
+    const longest = Math.max(w, h);
+    let scale = 1;
+
+    // Preserve character size on long screenshots. The old longest-edge cap
+    // could turn an 800×10000 screenshot into ~208×2600 and destroy OCR detail.
+    if (shortest < 760 && longest < 7000) scale = Math.min(2.6, 820 / shortest);
+
+    // Cap by total pixels rather than a single edge. This keeps strip images
+    // legible while preventing ordinary giant photos from consuming too much RAM.
+    const targetPixels = 12_000_000;
+    if (pixels * scale * scale > targetPixels) scale *= Math.sqrt(targetPixels / (pixels * scale * scale));
+    if (longest * scale > 14_000) scale *= 14_000 / (longest * scale);
+    return Math.max(.32, Math.min(2.6, scale));
+  }
+
+  function analyzeCanvasTone(canvas) {
+    try {
+      const sample=document.createElement('canvas');
+      const ratio=Math.min(1,360/Math.max(canvas.width,canvas.height));
+      sample.width=Math.max(1,Math.round(canvas.width*ratio));
+      sample.height=Math.max(1,Math.round(canvas.height*ratio));
+      const ctx=sample.getContext('2d',{alpha:false,willReadFrequently:true});
+      if(!ctx)return {low:0,high:255,span:255,colorfulness:0};
+      ctx.drawImage(canvas,0,0,sample.width,sample.height);
+      const data=ctx.getImageData(0,0,sample.width,sample.height).data;
+      const histogram=new Uint32Array(256);
+      let colorfulness=0,count=0;
+      for(let i=0;i<data.length;i+=4){
+        const r=data[i],g=data[i+1],b=data[i+2];
+        const l=Math.max(0,Math.min(255,Math.round(r*.299+g*.587+b*.114)));
+        histogram[l]++; colorfulness+=Math.max(r,g,b)-Math.min(r,g,b); count++;
+      }
+      const percentile=p=>{
+        const target=count*p;let seen=0;
+        for(let i=0;i<histogram.length;i++){seen+=histogram[i];if(seen>=target)return i;}
+        return 255;
+      };
+      const low=percentile(.035),high=percentile(.965);
+      return {low,high,span:Math.max(0,high-low),colorfulness:colorfulness/Math.max(1,count)};
+    } catch (_) { return {low:0,high:255,span:255,colorfulness:0}; }
+  }
+
+  function prepareCanvasPixelsForOcr(canvas) {
+    const tone=analyzeCanvasTone(canvas);
+    // Tesseract already performs its own binarisation. Only rescue genuinely
+    // low-contrast, mostly neutral screenshots here; aggressive black/white
+    // conversion destroys coloured labels, gradients and antialiased glyphs.
+    if(tone.span<18||tone.span>=108||tone.colorfulness>=44)return 'source';
+    try{
+      const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});
+      const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const range=Math.max(28,tone.high-tone.low);
+      for(let i=0;i<image.data.length;i+=4){
+        const r=image.data[i],g=image.data[i+1],b=image.data[i+2];
+        const l=r*.299+g*.587+b*.114;
+        const stretched=Math.max(0,Math.min(255,(l-tone.low)*255/range));
+        const value=Math.round(l*.26+stretched*.74);
+        image.data[i]=value;image.data[i+1]=value;image.data[i+2]=value;image.data[i+3]=255;
+      }
+      ctx.putImageData(image,0,0);
+      return 'contrast';
+    }catch(_){return 'source';}
+  }
+
+  function imageToDataUrl(img, sourceRect, destSize) {
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(destSize.width));
+    canvas.height=Math.max(1,Math.round(destSize.height));
+    const ctx=canvas.getContext('2d',{alpha:false});
+    if(!ctx) return '';
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,sourceRect.x,sourceRect.y,sourceRect.width,sourceRect.height,0,0,canvas.width,canvas.height);
+    const preprocessing=prepareCanvasPixelsForOcr(canvas);
+    return {dataUrl:canvas.toDataURL('image/png'),preprocessing};
+  }
+
+  async function prepareImageForOcr(dataUrl) {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const originalWidth=Math.max(1,img.naturalWidth||img.width||1);
+          const originalHeight=Math.max(1,img.naturalHeight||img.height||1);
+          const scale=calculateOcrScale(originalWidth,originalHeight);
+          const processedWidth=Math.max(1,Math.round(originalWidth*scale));
+          const processedHeight=Math.max(1,Math.round(originalHeight*scale));
+          const vertical=processedHeight>processedWidth;
+          const longest=Math.max(processedWidth,processedHeight);
+          const shortest=Math.min(processedWidth,processedHeight);
+          const extreme=(longest/Math.max(1,shortest))>=4.2 && longest>4200;
+          const segments=[];
+
+          if(!extreme){
+            const rendered=imageToDataUrl(img,{x:0,y:0,width:originalWidth,height:originalHeight},{width:processedWidth,height:processedHeight});
+            segments.push({dataUrl:rendered?.dataUrl||dataUrl,preprocessing:rendered?.preprocessing||'source',offsetX:0,offsetY:0,width:processedWidth,height:processedHeight});
+          }else{
+            // Long screenshots / banners are recognized in overlapping tiles so
+            // Tesseract never has to shrink the full strip to a tiny short edge.
+            const tileLength=3000;
+            const overlap=180;
+            const total=vertical?processedHeight:processedWidth;
+            for(let start=0;start<total;start+=tileLength-overlap){
+              const end=Math.min(total,start+tileLength);
+              const len=end-start;
+              const px=vertical?0:start, py=vertical?start:0;
+              const pw=vertical?processedWidth:len, ph=vertical?len:processedHeight;
+              const sx=px/scale, sy=py/scale, sw=pw/scale, sh=ph/scale;
+              const rendered=imageToDataUrl(img,{x:sx,y:sy,width:sw,height:sh},{width:pw,height:ph});
+              if(rendered?.dataUrl) segments.push({dataUrl:rendered.dataUrl,preprocessing:rendered.preprocessing||'source',offsetX:px,offsetY:py,width:pw,height:ph});
+              if(end>=total) break;
+            }
+          }
+          resolve({dataUrl,segments,originalWidth,originalHeight,processedWidth,processedHeight,scale});
+        } catch (_) {
+          resolve({dataUrl,segments:[{dataUrl,offsetX:0,offsetY:0,width:img.naturalWidth||1,height:img.naturalHeight||1}],originalWidth:img.naturalWidth||1,originalHeight:img.naturalHeight||1,processedWidth:img.naturalWidth||1,processedHeight:img.naturalHeight||1,scale:1});
+        }
+      };
+      img.onerror = () => resolve({dataUrl,segments:[{dataUrl,offsetX:0,offsetY:0,width:0,height:0}],originalWidth:0,originalHeight:0,processedWidth:0,processedHeight:0,scale:1});
+      img.src = dataUrl;
+    });
+  }
+
+  function makeWorkerOptions(langPath) {
+    const opts={
+      workerPath:LOCAL_WORKER,
+      workerBlobURL:false,
+      corePath:LOCAL_CORE,
+      cacheMethod:'write',
+      logger:m=>{
+        let progress=Number(m.progress||0);
+        if(String(m.status||'').toLowerCase().includes('recognizing') && currentRecognizeProgress?.total){
+          progress=(currentRecognizeProgress.index+Math.max(0,Math.min(1,progress)))/currentRecognizeProgress.total;
+        }
+        post('progress',{status:m.status||'',progress,id:self.__jijianActiveOcrId||''});
+      },
+      errorHandler:err=>post('progress',{status:'ocr runtime warning',progress:0,id:self.__jijianActiveOcrId||'',detail:readableOcrError(err)})
+    };
+    if(langPath) opts.langPath=langPath;
+    return opts;
+  }
+
+  const modelRequests=new Map();
+  function requestModel(language){
+    const requestId=`${self.__jijianActiveOcrId}:${language}`;
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{modelRequests.delete(requestId);reject(new Error('语言模型下载超时，请检查网络后重试'));},60000);
+      modelRequests.set(requestId,{resolve,reject,timer});
+      post('model-request',{id:self.__jijianActiveOcrId,requestId,language});
+    });
+  }
+
+  async function makeWorker(langs) {
+    const T=await ensureLib();
+    let languageData=langs;
+    if(location.protocol==='chrome-extension:'){
+      languageData=await Promise.all(langs.map(async code=>{
+        post('progress',{id:self.__jijianActiveOcrId,status:'loading language traineddata',progress:0,detail:code});
+        const model=await requestModel(code);
+        return {code,data:Uint8Array.from(atob(model.data),char=>char.charCodeAt(0))};
+      }));
+    }
+    const attempts=[
+      {langPath:TESSDATA_CDN,label:'jsDelivr'},
+      {langPath:TESSDATA_PROJECT,label:'Project Naptha'},
+      {langPath:TESSDATA_GITHUB,label:'GitHub'}
+    ];
+    let lastErr=null;
+    for(let i=0;i<attempts.length;i++){
+      const attempt=attempts[i];
+      post('progress',{status:`loading language source ${i+1}/${attempts.length}`,progress:.03+i*.02,id:self.__jijianActiveOcrId||'',detail:attempt.label});
+      try{
+        let timer;
+        const workers=new Set();
+        const NativeWorker=window.Worker;
+        // Track only workers created by this attempt, so a failed download can
+        // actually be stopped before the next mirror starts.
+        window.Worker=class extends NativeWorker {
+          constructor(...args){super(...args);workers.add(this);}
+          postMessage(message,...args){
+            // The bundled runtime loads {code,data} language records correctly,
+            // but its initialize path treats data as the language name.
+            if(message?.action==='initialize'&&Array.isArray(message.payload?.langs))message={...message,payload:{...message.payload,langs:message.payload.langs.map(lang=>typeof lang==='string'?lang:lang.code)}};
+            super.postMessage(message,...args);
+          }
+        };
+        let pending,failStartup;
+        const startupFailure=new Promise((_,reject)=>{failStartup=reject;});
+        try { pending=T.createWorker(languageData,1,{...makeWorkerOptions(attempt.langPath),errorHandler:error=>failStartup(new Error(readableOcrError(error))),...(languageData!==langs?{cacheMethod:"none"}:{})}); }
+        finally { window.Worker=NativeWorker; }
+        try {
+          return await Promise.race([pending,startupFailure,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('模型加载超时')),30000);})]);
+        } catch(error) { workers.forEach(worker=>worker.terminate());throw error; }
+        finally { clearTimeout(timer); }
+      }catch(err){
+        lastErr=err;
+      }
+    }
+    throw new Error(`OCR 模型或运行组件下载失败：${readableOcrError(lastErr||'网络不可用')}`);
+  }
+
+  function tsvToLines(tsv, segmentWidth=0) {
+    const rows=String(tsv||'').split(/\r?\n/); if(rows.length<2) return [];
+    const groups=new Map();
+    for(let i=1;i<rows.length;i++){
+      if(!rows[i]) continue;
+      const cols=rows[i].split('\t'); if(cols.length<12) continue;
+      const level=Number(cols[0]), text=cols.slice(11).join('\t').trim();
+      if(level!==5||!text) continue;
+      const left=Number(cols[6])||0, top=Number(cols[7])||0, width=Number(cols[8])||0, height=Number(cols[9])||0, confidence=Number(cols[10]);
+      const key=`${cols[1]}:${cols[2]}:${cols[3]}:${cols[4]}`;
+      if(width<=0||height<=0)continue;
+      const item=groups.get(key)||[];
+      item.push({text,left,top,width,height,x0:left,y0:top,x1:left+width,y1:top+height,confidence:Number.isFinite(confidence)?confidence:0});
+      groups.set(key,item);
+    }
+    const result=[];
+    for(const words of groups.values()){
+      words.sort((a,b)=>a.x0-b.x0);
+      const heights=words.map(word=>word.height).sort((a,b)=>a-b);
+      const charWidths=words.map(word=>word.width/Math.max(1,Array.from(word.text).length)).sort((a,b)=>a-b);
+      const medianHeight=heights[Math.floor(heights.length/2)]||12;
+      const medianChar=charWidths[Math.floor(charWidths.length/2)]||medianHeight*.55;
+      const gapLimit=Math.max(12,medianHeight*1.15,medianChar*3.2);
+      const parts=[];let current=[];
+      for(const word of words){
+        const previous=current[current.length-1];
+        const gap=previous?word.x0-previous.x1:0;
+        // Tesseract often assigns separate columns/cards to one TSV line. A
+        // conservative gap split keeps every translated backdrop local.
+        if(previous&&gap>gapLimit){parts.push(current);current=[];}
+        current.push(word);
+      }
+      if(current.length)parts.push(current);
+      for(const part of parts){
+        const text=part.map(word=>word.text).join(' ').replace(/\s+/g,' ').trim();
+        const x0=Math.min(...part.map(word=>word.x0)),y0=Math.min(...part.map(word=>word.y0));
+        const x1=Math.max(...part.map(word=>word.x1)),y1=Math.max(...part.map(word=>word.y1));
+        const confidence=part.reduce((sum,word)=>sum+Math.max(0,word.confidence),0)/Math.max(1,part.length);
+        const tooWide=segmentWidth>0&&(x1-x0)>segmentWidth*.96&&part.length===1;
+        if(text&&x1>x0&&y1>y0&&confidence>=18&&!tooWide)result.push({text,bbox:{x0,y0,x1,y1},confidence,wordCount:part.length});
+      }
+    }
+    return result;
+  }
+
+  function normalizeLineKey(text){return String(text||'').toLowerCase().replace(/[\s\p{P}\p{S}]+/gu,'').slice(0,80);}
+  function lineTextSimilarity(a,b){
+    const left=normalizeLineKey(a),right=normalizeLineKey(b);
+    if(!left||!right)return 0;if(left===right)return 1;
+    if(Math.abs(left.length-right.length)>Math.max(3,Math.ceil(Math.max(left.length,right.length)*.28)))return 0;
+    const prev=Array.from({length:right.length+1},(_,i)=>i);
+    for(let i=1;i<=left.length;i++){
+      let diagonal=prev[0];prev[0]=i;
+      for(let j=1;j<=right.length;j++){
+        const old=prev[j];
+        prev[j]=Math.min(prev[j]+1,prev[j-1]+1,diagonal+(left[i-1]===right[j-1]?0:1));
+        diagonal=old;
+      }
+    }
+    return 1-prev[right.length]/Math.max(left.length,right.length);
+  }
+  function dedupeLines(lines){
+    const sorted=[...lines].sort((a,b)=>(a.bbox?.y0||0)-(b.bbox?.y0||0)||(a.bbox?.x0||0)-(b.bbox?.x0||0));
+    const out=[];
+    for(const line of sorted){
+      const key=normalizeLineKey(line.text); if(!key) continue;
+      const cy=((line.bbox.y0+line.bbox.y1)/2), cx=((line.bbox.x0+line.bbox.x1)/2);
+      const dup=out.find(prev=>{
+        if(lineTextSimilarity(prev.text,line.text)<.8)return false;
+        const py=(prev.bbox.y0+prev.bbox.y1)/2, px=(prev.bbox.x0+prev.bbox.x1)/2;
+        const h=Math.max(8,line.bbox.y1-line.bbox.y0,prev.bbox.y1-prev.bbox.y0);
+        const w=Math.max(16,line.bbox.x1-line.bbox.x0,prev.bbox.x1-prev.bbox.x0);
+        return Math.abs(cy-py)<h*1.05&&Math.abs(cx-px)<Math.max(24,w*.4);
+      });
+      if(!dup)out.push(line); else if((line.confidence||0)>(dup.confidence||0))Object.assign(dup,line);
+    }
+    return out;
+  }
+
+  function selectPageSegMode(width,height){
+    const ratio=width/Math.max(1,height);
+    if(height<=220&&ratio>=3.2)return '7';
+    if(width<=360&&height>=width*2.2)return '4';
+    return '3';
+  }
+
+  function inferLineAlignment(line,imageWidth){
+    const width=Math.max(1,imageWidth||0),box=line?.bbox||{};
+    const x0=Number(box.x0||0),x1=Number(box.x1||0),center=(x0+x1)/2;
+    const boxWidth=Math.max(1,x1-x0);
+    if(Math.abs(center-width/2)<=Math.max(width*.065,boxWidth*.12))return 'center';
+    if(x1>width*.9&&x0>width*.45)return 'right';
+    return 'left';
+  }
+
+  async function getWorker(rawLangs) {
+    const langs=normalizeLangs(rawLangs),key=langKey(langs); if(workerState.key===key&&workerState.promise)return workerState.promise;
+    const previous=workerState.promise;
+    const next=(async()=>{if(previous){try{const old=await previous;await old?.terminate?.();}catch(_){}}return await makeWorker(langs);})();
+    workerState={key,promise:next}; try{return await next;}catch(err){if(workerState.promise===next)workerState={key:'',promise:null};throw err;}
+  }
+
+  window.addEventListener('message',async event=>{
+    const msg=event?.data; if(event.source!==parent||!msg||msg.source!=='jijian-translate')return;
+    if(msg.type==='model-response'){
+      const request=modelRequests.get(msg.requestId);if(!request)return;
+      clearTimeout(request.timer);modelRequests.delete(msg.requestId);
+      if(msg.success)request.resolve(msg);else request.reject(new Error(msg.error||'模型下载失败'));
+      return;
+    }
+    if(msg.type==='ping'){post('ready');return;} if(msg.type!=='recognize'||!msg.id)return;
+    if(self.__jijianActiveOcrId){post('error',{id:msg.id,error:'已有图片正在识别，请完成后再试'});return;}
+    self.__jijianActiveOcrId=msg.id;
+    try{
+      const langs=normalizeLangs(msg.langs||msg.lang||'eng');
+      const worker=await getWorker(langs);
+      post('progress',{id:msg.id,status:'preparing image',progress:.03});
+      const prepared=await prepareImageForOcr(msg.dataUrl);
+      const allLines=[], texts=[], confidences=[];
+      const segments=prepared.segments?.length?prepared.segments:[{dataUrl:prepared.dataUrl,offsetX:0,offsetY:0}];
+      for(let i=0;i<segments.length;i++){
+        const seg=segments[i]; currentRecognizeProgress={index:i,total:segments.length};
+        post('progress',{id:msg.id,status:segments.length>1?`recognizing segment ${i+1}/${segments.length}`:'recognizing text',progress:i/segments.length});
+        const psm=selectPageSegMode(seg.width||0,seg.height||0);
+        try{await worker.setParameters({tessedit_pageseg_mode:psm,preserve_interword_spaces:'1',user_defined_dpi:'300'});}catch(_){}
+        const out=await worker.recognize(seg.dataUrl,{rotateAuto:true},{text:true,tsv:true});
+        const scale=Math.max(.0001,prepared.scale||1);
+        const mapped=tsvToLines(out?.data?.tsv||'',seg.width||0).map(line=>({
+          ...line,
+          bbox:{
+            x0:(line.bbox.x0+(seg.offsetX||0))/scale,
+            y0:(line.bbox.y0+(seg.offsetY||0))/scale,
+            x1:(line.bbox.x1+(seg.offsetX||0))/scale,
+            y1:(line.bbox.y1+(seg.offsetY||0))/scale
+          }
+        }));
+        allLines.push(...mapped);
+        if(String(out?.data?.text||'').trim())texts.push(String(out.data.text).trim());
+        if(Number.isFinite(Number(out?.data?.confidence)))confidences.push(Number(out.data.confidence));
+      }
+      currentRecognizeProgress=null;
+      const lines=dedupeLines(allLines).map(line=>({...line,alignment:inferLineAlignment(line,prepared.originalWidth||0)}));
+      const text=lines.length?lines.map(x=>x.text).join('\n'):texts.join('\n');
+      post('result',{id:msg.id,text,confidence:confidences.length?confidences.reduce((a,b)=>a+b,0)/confidences.length:0,langKey:langKey(langs),imageWidth:prepared.originalWidth||0,imageHeight:prepared.originalHeight||0,processedWidth:prepared.processedWidth||0,processedHeight:prepared.processedHeight||0,preprocessing:[...new Set(segments.map(segment=>segment.preprocessing||'source'))],lines});
+    }catch(e){post('error',{id:msg.id,error:readableOcrError(e)});}
+    finally{currentRecognizeProgress=null;self.__jijianActiveOcrId='';}
+  });
+  post('ready');
+})();

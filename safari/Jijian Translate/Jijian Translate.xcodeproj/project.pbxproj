@@ -1,0 +1,1105 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		669ECB913090AB8400C95568 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECB903090AB8400C95568 /* AppDelegate.swift */; };
+		669ECB933090AB8400C95568 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECB923090AB8400C95568 /* SceneDelegate.swift */; };
+		669ECB963090AB8400C95568 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB943090AB8400C95568 /* LaunchScreen.storyboard */; };
+		669ECB993090AB8400C95568 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB973090AB8400C95568 /* Main.storyboard */; };
+		669ECBA23090AB8400C95568 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECBA13090AB8400C95568 /* AppDelegate.swift */; };
+		669ECBA53090AB8400C95568 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBA33090AB8400C95568 /* Main.storyboard */; };
+		669ECBAC3090AB8400C95568 /* Jijian Translate Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 669ECBAB3090AB8400C95568 /* Jijian Translate Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		669ECBB63090AB8400C95568 /* Jijian Translate Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 669ECBB53090AB8400C95568 /* Jijian Translate Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		669ECBBB3090AB8400C95568 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB803090AB8200C95568 /* Main.html */; };
+		669ECBBC3090AB8400C95568 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB803090AB8200C95568 /* Main.html */; };
+		669ECBBD3090AB8400C95568 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB823090AB8200C95568 /* Icon.png */; };
+		669ECBBE3090AB8400C95568 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB823090AB8200C95568 /* Icon.png */; };
+		669ECBBF3090AB8400C95568 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB833090AB8200C95568 /* Style.css */; };
+		669ECBC03090AB8400C95568 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB833090AB8200C95568 /* Style.css */; };
+		669ECBC13090AB8400C95568 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB843090AB8200C95568 /* Script.js */; };
+		669ECBC23090AB8400C95568 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB843090AB8200C95568 /* Script.js */; };
+		669ECBC33090AB8400C95568 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECB853090AB8200C95568 /* ViewController.swift */; };
+		669ECBC43090AB8400C95568 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECB853090AB8200C95568 /* ViewController.swift */; };
+		669ECBC53090AB8400C95568 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB863090AB8300C95568 /* Assets.xcassets */; };
+		669ECBC63090AB8400C95568 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 669ECB863090AB8300C95568 /* Assets.xcassets */; };
+		669ECBC73090AB8400C95568 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECB883090AB8300C95568 /* SafariWebExtensionHandler.swift */; };
+		669ECBC83090AB8400C95568 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669ECB883090AB8300C95568 /* SafariWebExtensionHandler.swift */; };
+		669ECBFA3090AB8400C95568 /* reader-share.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDA3090AB8400C95568 /* reader-share.js */; };
+		669ECBFB3090AB8400C95568 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDB3090AB8400C95568 /* popup.js */; };
+		669ECBFC3090AB8400C95568 /* welcome-articles.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDC3090AB8400C95568 /* welcome-articles.js */; };
+		669ECBFD3090AB8400C95568 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDD3090AB8400C95568 /* LICENSE */; };
+		669ECBFE3090AB8400C95568 /* collection-filters.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDE3090AB8400C95568 /* collection-filters.js */; };
+		669ECBFF3090AB8400C95568 /* reading-lab.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDF3090AB8400C95568 /* reading-lab.js */; };
+		669ECC003090AB8400C95568 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE03090AB8400C95568 /* background.js */; };
+		669ECC013090AB8400C95568 /* reader.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE13090AB8400C95568 /* reader.css */; };
+		669ECC023090AB8400C95568 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE23090AB8400C95568 /* popup.html */; };
+		669ECC033090AB8400C95568 /* options.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE33090AB8400C95568 /* options.js */; };
+		669ECC043090AB8400C95568 /* welcome-samples.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE43090AB8400C95568 /* welcome-samples.js */; };
+		669ECC053090AB8400C95568 /* reading-lab.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE53090AB8400C95568 /* reading-lab.css */; };
+		669ECC063090AB8400C95568 /* ocr-sandbox.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE63090AB8400C95568 /* ocr-sandbox.js */; };
+		669ECC073090AB8400C95568 /* ocr-sandbox.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE73090AB8400C95568 /* ocr-sandbox.html */; };
+		669ECC083090AB8400C95568 /* NOTICE in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE83090AB8400C95568 /* NOTICE */; };
+		669ECC093090AB8400C95568 /* welcome.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE93090AB8400C95568 /* welcome.js */; };
+		669ECC0A3090AB8400C95568 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEA3090AB8400C95568 /* icons */; };
+		669ECC0B3090AB8400C95568 /* reading-lab.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEB3090AB8400C95568 /* reading-lab.html */; };
+		669ECC0C3090AB8400C95568 /* welcome.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEC3090AB8400C95568 /* welcome.html */; };
+		669ECC0D3090AB8400C95568 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBED3090AB8400C95568 /* manifest.json */; };
+		669ECC0E3090AB8400C95568 /* welcome.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEE3090AB8400C95568 /* welcome.css */; };
+		669ECC0F3090AB8400C95568 /* options.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEF3090AB8400C95568 /* options.html */; };
+		669ECC103090AB8400C95568 /* reader-notes.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF03090AB8400C95568 /* reader-notes.js */; };
+		669ECC113090AB8400C95568 /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF13090AB8400C95568 /* popup.css */; };
+		669ECC123090AB8400C95568 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF23090AB8400C95568 /* content.js */; };
+		669ECC133090AB8400C95568 /* ocr-worker.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF33090AB8400C95568 /* ocr-worker.js */; };
+		669ECC143090AB8400C95568 /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF43090AB8400C95568 /* fonts */; };
+		669ECC153090AB8400C95568 /* floating.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF53090AB8400C95568 /* floating.css */; };
+		669ECC163090AB8400C95568 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF63090AB8400C95568 /* assets */; };
+		669ECC173090AB8400C95568 /* ocr-models.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF73090AB8400C95568 /* ocr-models.js */; };
+		669ECC183090AB8400C95568 /* options.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF83090AB8400C95568 /* options.css */; };
+		669ECC193090AB8400C95568 /* vendor in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF93090AB8400C95568 /* vendor */; };
+		669ECC1A3090AB8400C95568 /* reader-share.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDA3090AB8400C95568 /* reader-share.js */; };
+		669ECC1B3090AB8400C95568 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDB3090AB8400C95568 /* popup.js */; };
+		669ECC1C3090AB8400C95568 /* welcome-articles.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDC3090AB8400C95568 /* welcome-articles.js */; };
+		669ECC1D3090AB8400C95568 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDD3090AB8400C95568 /* LICENSE */; };
+		669ECC1E3090AB8400C95568 /* collection-filters.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDE3090AB8400C95568 /* collection-filters.js */; };
+		669ECC1F3090AB8400C95568 /* reading-lab.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBDF3090AB8400C95568 /* reading-lab.js */; };
+		669ECC203090AB8400C95568 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE03090AB8400C95568 /* background.js */; };
+		669ECC213090AB8400C95568 /* reader.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE13090AB8400C95568 /* reader.css */; };
+		669ECC223090AB8400C95568 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE23090AB8400C95568 /* popup.html */; };
+		669ECC233090AB8400C95568 /* options.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE33090AB8400C95568 /* options.js */; };
+		669ECC243090AB8400C95568 /* welcome-samples.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE43090AB8400C95568 /* welcome-samples.js */; };
+		669ECC253090AB8400C95568 /* reading-lab.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE53090AB8400C95568 /* reading-lab.css */; };
+		669ECC263090AB8400C95568 /* ocr-sandbox.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE63090AB8400C95568 /* ocr-sandbox.js */; };
+		669ECC273090AB8400C95568 /* ocr-sandbox.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE73090AB8400C95568 /* ocr-sandbox.html */; };
+		669ECC283090AB8400C95568 /* NOTICE in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE83090AB8400C95568 /* NOTICE */; };
+		669ECC293090AB8400C95568 /* welcome.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBE93090AB8400C95568 /* welcome.js */; };
+		669ECC2A3090AB8400C95568 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEA3090AB8400C95568 /* icons */; };
+		669ECC2B3090AB8400C95568 /* reading-lab.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEB3090AB8400C95568 /* reading-lab.html */; };
+		669ECC2C3090AB8400C95568 /* welcome.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEC3090AB8400C95568 /* welcome.html */; };
+		669ECC2D3090AB8400C95568 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBED3090AB8400C95568 /* manifest.json */; };
+		669ECC2E3090AB8400C95568 /* welcome.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEE3090AB8400C95568 /* welcome.css */; };
+		669ECC2F3090AB8400C95568 /* options.html in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBEF3090AB8400C95568 /* options.html */; };
+		669ECC303090AB8400C95568 /* reader-notes.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF03090AB8400C95568 /* reader-notes.js */; };
+		669ECC313090AB8400C95568 /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF13090AB8400C95568 /* popup.css */; };
+		669ECC323090AB8400C95568 /* content.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF23090AB8400C95568 /* content.js */; };
+		669ECC333090AB8400C95568 /* ocr-worker.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF33090AB8400C95568 /* ocr-worker.js */; };
+		669ECC343090AB8400C95568 /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF43090AB8400C95568 /* fonts */; };
+		669ECC353090AB8400C95568 /* floating.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF53090AB8400C95568 /* floating.css */; };
+		669ECC363090AB8400C95568 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF63090AB8400C95568 /* assets */; };
+		669ECC373090AB8400C95568 /* ocr-models.js in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF73090AB8400C95568 /* ocr-models.js */; };
+		669ECC383090AB8400C95568 /* options.css in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF83090AB8400C95568 /* options.css */; };
+		669ECC393090AB8400C95568 /* vendor in Resources */ = {isa = PBXBuildFile; fileRef = 669ECBF93090AB8400C95568 /* vendor */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		669ECBAD3090AB8400C95568 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 669ECB7A3090AB8200C95568 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 669ECBAA3090AB8400C95568;
+			remoteInfo = "Jijian Translate Extension (iOS)";
+		};
+		669ECBB73090AB8400C95568 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 669ECB7A3090AB8200C95568 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 669ECBB43090AB8400C95568;
+			remoteInfo = "Jijian Translate Extension (macOS)";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		669ECBCE3090AB8400C95568 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				669ECBAC3090AB8400C95568 /* Jijian Translate Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+		669ECBD53090AB8400C95568 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				669ECBB63090AB8400C95568 /* Jijian Translate Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		669ECB813090AB8200C95568 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		669ECB823090AB8200C95568 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		669ECB833090AB8200C95568 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		669ECB843090AB8200C95568 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		669ECB853090AB8200C95568 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		669ECB863090AB8300C95568 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		669ECB883090AB8300C95568 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		669ECB8D3090AB8400C95568 /* Jijian Translate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jijian Translate.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		669ECB903090AB8400C95568 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		669ECB923090AB8400C95568 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		669ECB953090AB8400C95568 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		669ECB983090AB8400C95568 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		669ECB9A3090AB8400C95568 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		669ECB9F3090AB8400C95568 /* Jijian Translate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jijian Translate.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		669ECBA13090AB8400C95568 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		669ECBA43090AB8400C95568 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		669ECBA63090AB8400C95568 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		669ECBAB3090AB8400C95568 /* Jijian Translate Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Jijian Translate Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		669ECBB03090AB8400C95568 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		669ECBB53090AB8400C95568 /* Jijian Translate Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Jijian Translate Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		669ECBBA3090AB8400C95568 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		669ECBDA3090AB8400C95568 /* reader-share.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "reader-share.js"; path = "../../web-extension/reader-share.js"; sourceTree = "<group>"; };
+		669ECBDB3090AB8400C95568 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = popup.js; path = "../../web-extension/popup.js"; sourceTree = "<group>"; };
+		669ECBDC3090AB8400C95568 /* welcome-articles.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "welcome-articles.js"; path = "../../web-extension/welcome-articles.js"; sourceTree = "<group>"; };
+		669ECBDD3090AB8400C95568 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; name = LICENSE; path = "../../web-extension/LICENSE"; sourceTree = "<group>"; };
+		669ECBDE3090AB8400C95568 /* collection-filters.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "collection-filters.js"; path = "../../web-extension/collection-filters.js"; sourceTree = "<group>"; };
+		669ECBDF3090AB8400C95568 /* reading-lab.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "reading-lab.js"; path = "../../web-extension/reading-lab.js"; sourceTree = "<group>"; };
+		669ECBE03090AB8400C95568 /* background.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = background.js; path = "../../web-extension/background.js"; sourceTree = "<group>"; };
+		669ECBE13090AB8400C95568 /* reader.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = reader.css; path = "../../web-extension/reader.css"; sourceTree = "<group>"; };
+		669ECBE23090AB8400C95568 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = "../../web-extension/popup.html"; sourceTree = "<group>"; };
+		669ECBE33090AB8400C95568 /* options.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = options.js; path = "../../web-extension/options.js"; sourceTree = "<group>"; };
+		669ECBE43090AB8400C95568 /* welcome-samples.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "welcome-samples.js"; path = "../../web-extension/welcome-samples.js"; sourceTree = "<group>"; };
+		669ECBE53090AB8400C95568 /* reading-lab.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = "reading-lab.css"; path = "../../web-extension/reading-lab.css"; sourceTree = "<group>"; };
+		669ECBE63090AB8400C95568 /* ocr-sandbox.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "ocr-sandbox.js"; path = "../../web-extension/ocr-sandbox.js"; sourceTree = "<group>"; };
+		669ECBE73090AB8400C95568 /* ocr-sandbox.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = "ocr-sandbox.html"; path = "../../web-extension/ocr-sandbox.html"; sourceTree = "<group>"; };
+		669ECBE83090AB8400C95568 /* NOTICE */ = {isa = PBXFileReference; lastKnownFileType = text; name = NOTICE; path = "../../web-extension/NOTICE"; sourceTree = "<group>"; };
+		669ECBE93090AB8400C95568 /* welcome.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = welcome.js; path = "../../web-extension/welcome.js"; sourceTree = "<group>"; };
+		669ECBEA3090AB8400C95568 /* icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icons; path = "../../web-extension/icons"; sourceTree = "<group>"; };
+		669ECBEB3090AB8400C95568 /* reading-lab.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = "reading-lab.html"; path = "../../web-extension/reading-lab.html"; sourceTree = "<group>"; };
+		669ECBEC3090AB8400C95568 /* welcome.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = welcome.html; path = "../../web-extension/welcome.html"; sourceTree = "<group>"; };
+		669ECBED3090AB8400C95568 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = "../../web-extension/manifest.json"; sourceTree = "<group>"; };
+		669ECBEE3090AB8400C95568 /* welcome.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = welcome.css; path = "../../web-extension/welcome.css"; sourceTree = "<group>"; };
+		669ECBEF3090AB8400C95568 /* options.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = options.html; path = "../../web-extension/options.html"; sourceTree = "<group>"; };
+		669ECBF03090AB8400C95568 /* reader-notes.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "reader-notes.js"; path = "../../web-extension/reader-notes.js"; sourceTree = "<group>"; };
+		669ECBF13090AB8400C95568 /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = popup.css; path = "../../web-extension/popup.css"; sourceTree = "<group>"; };
+		669ECBF23090AB8400C95568 /* content.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = content.js; path = "../../web-extension/content.js"; sourceTree = "<group>"; };
+		669ECBF33090AB8400C95568 /* ocr-worker.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "ocr-worker.js"; path = "../../web-extension/ocr-worker.js"; sourceTree = "<group>"; };
+		669ECBF43090AB8400C95568 /* fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = fonts; path = "../../web-extension/fonts"; sourceTree = "<group>"; };
+		669ECBF53090AB8400C95568 /* floating.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = floating.css; path = "../../web-extension/floating.css"; sourceTree = "<group>"; };
+		669ECBF63090AB8400C95568 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = "../../web-extension/assets"; sourceTree = "<group>"; };
+		669ECBF73090AB8400C95568 /* ocr-models.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "ocr-models.js"; path = "../../web-extension/ocr-models.js"; sourceTree = "<group>"; };
+		669ECBF83090AB8400C95568 /* options.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = options.css; path = "../../web-extension/options.css"; sourceTree = "<group>"; };
+		669ECBF93090AB8400C95568 /* vendor */ = {isa = PBXFileReference; lastKnownFileType = folder; name = vendor; path = "../../web-extension/vendor"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		669ECB8A3090AB8400C95568 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		669ECB9C3090AB8400C95568 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		669ECBA83090AB8400C95568 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		669ECBB23090AB8400C95568 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		669ECB793090AB8200C95568 = {
+			isa = PBXGroup;
+			children = (
+				669ECB7E3090AB8200C95568 /* Shared (App) */,
+				669ECB873090AB8300C95568 /* Shared (Extension) */,
+				669ECB8F3090AB8400C95568 /* iOS (App) */,
+				669ECBA03090AB8400C95568 /* macOS (App) */,
+				669ECBAF3090AB8400C95568 /* iOS (Extension) */,
+				669ECBB93090AB8400C95568 /* macOS (Extension) */,
+				669ECB8E3090AB8400C95568 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		669ECB7E3090AB8200C95568 /* Shared (App) */ = {
+			isa = PBXGroup;
+			children = (
+				669ECB853090AB8200C95568 /* ViewController.swift */,
+				669ECB863090AB8300C95568 /* Assets.xcassets */,
+				669ECB7F3090AB8200C95568 /* Resources */,
+			);
+			path = "Shared (App)";
+			sourceTree = "<group>";
+		};
+		669ECB7F3090AB8200C95568 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				669ECB803090AB8200C95568 /* Main.html */,
+				669ECB823090AB8200C95568 /* Icon.png */,
+				669ECB833090AB8200C95568 /* Style.css */,
+				669ECB843090AB8200C95568 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		669ECB873090AB8300C95568 /* Shared (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				669ECBD93090AB8400C95568 /* Resources */,
+				669ECB883090AB8300C95568 /* SafariWebExtensionHandler.swift */,
+			);
+			path = "Shared (Extension)";
+			sourceTree = "<group>";
+		};
+		669ECB8E3090AB8400C95568 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				669ECB8D3090AB8400C95568 /* Jijian Translate.app */,
+				669ECB9F3090AB8400C95568 /* Jijian Translate.app */,
+				669ECBAB3090AB8400C95568 /* Jijian Translate Extension.appex */,
+				669ECBB53090AB8400C95568 /* Jijian Translate Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		669ECB8F3090AB8400C95568 /* iOS (App) */ = {
+			isa = PBXGroup;
+			children = (
+				669ECB903090AB8400C95568 /* AppDelegate.swift */,
+				669ECB923090AB8400C95568 /* SceneDelegate.swift */,
+				669ECB943090AB8400C95568 /* LaunchScreen.storyboard */,
+				669ECB973090AB8400C95568 /* Main.storyboard */,
+				669ECB9A3090AB8400C95568 /* Info.plist */,
+			);
+			path = "iOS (App)";
+			sourceTree = "<group>";
+		};
+		669ECBA03090AB8400C95568 /* macOS (App) */ = {
+			isa = PBXGroup;
+			children = (
+				669ECBA13090AB8400C95568 /* AppDelegate.swift */,
+				669ECBA33090AB8400C95568 /* Main.storyboard */,
+				669ECBA63090AB8400C95568 /* Info.plist */,
+			);
+			path = "macOS (App)";
+			sourceTree = "<group>";
+		};
+		669ECBAF3090AB8400C95568 /* iOS (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				669ECBB03090AB8400C95568 /* Info.plist */,
+			);
+			path = "iOS (Extension)";
+			sourceTree = "<group>";
+		};
+		669ECBB93090AB8400C95568 /* macOS (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				669ECBBA3090AB8400C95568 /* Info.plist */,
+			);
+			path = "macOS (Extension)";
+			sourceTree = "<group>";
+		};
+		669ECBD93090AB8400C95568 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				669ECBDA3090AB8400C95568 /* reader-share.js */,
+				669ECBDB3090AB8400C95568 /* popup.js */,
+				669ECBDC3090AB8400C95568 /* welcome-articles.js */,
+				669ECBDD3090AB8400C95568 /* LICENSE */,
+				669ECBDE3090AB8400C95568 /* collection-filters.js */,
+				669ECBDF3090AB8400C95568 /* reading-lab.js */,
+				669ECBE03090AB8400C95568 /* background.js */,
+				669ECBE13090AB8400C95568 /* reader.css */,
+				669ECBE23090AB8400C95568 /* popup.html */,
+				669ECBE33090AB8400C95568 /* options.js */,
+				669ECBE43090AB8400C95568 /* welcome-samples.js */,
+				669ECBE53090AB8400C95568 /* reading-lab.css */,
+				669ECBE63090AB8400C95568 /* ocr-sandbox.js */,
+				669ECBE73090AB8400C95568 /* ocr-sandbox.html */,
+				669ECBE83090AB8400C95568 /* NOTICE */,
+				669ECBE93090AB8400C95568 /* welcome.js */,
+				669ECBEA3090AB8400C95568 /* icons */,
+				669ECBEB3090AB8400C95568 /* reading-lab.html */,
+				669ECBEC3090AB8400C95568 /* welcome.html */,
+				669ECBED3090AB8400C95568 /* manifest.json */,
+				669ECBEE3090AB8400C95568 /* welcome.css */,
+				669ECBEF3090AB8400C95568 /* options.html */,
+				669ECBF03090AB8400C95568 /* reader-notes.js */,
+				669ECBF13090AB8400C95568 /* popup.css */,
+				669ECBF23090AB8400C95568 /* content.js */,
+				669ECBF33090AB8400C95568 /* ocr-worker.js */,
+				669ECBF43090AB8400C95568 /* fonts */,
+				669ECBF53090AB8400C95568 /* floating.css */,
+				669ECBF63090AB8400C95568 /* assets */,
+				669ECBF73090AB8400C95568 /* ocr-models.js */,
+				669ECBF83090AB8400C95568 /* options.css */,
+				669ECBF93090AB8400C95568 /* vendor */,
+			);
+			name = Resources;
+			path = "Shared (Extension)";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		669ECB8C3090AB8400C95568 /* Jijian Translate (iOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 669ECBCF3090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate (iOS)" */;
+			buildPhases = (
+				669ECB893090AB8400C95568 /* Sources */,
+				669ECB8A3090AB8400C95568 /* Frameworks */,
+				669ECB8B3090AB8400C95568 /* Resources */,
+				669ECBCE3090AB8400C95568 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				669ECBAE3090AB8400C95568 /* PBXTargetDependency */,
+			);
+			name = "Jijian Translate (iOS)";
+			productName = "Jijian Translate (iOS)";
+			productReference = 669ECB8D3090AB8400C95568 /* Jijian Translate.app */;
+			productType = "com.apple.product-type.application";
+		};
+		669ECB9E3090AB8400C95568 /* Jijian Translate (macOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 669ECBD63090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate (macOS)" */;
+			buildPhases = (
+				669ECB9B3090AB8400C95568 /* Sources */,
+				669ECB9C3090AB8400C95568 /* Frameworks */,
+				669ECB9D3090AB8400C95568 /* Resources */,
+				669ECBD53090AB8400C95568 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				669ECBB83090AB8400C95568 /* PBXTargetDependency */,
+			);
+			name = "Jijian Translate (macOS)";
+			productName = "Jijian Translate (macOS)";
+			productReference = 669ECB9F3090AB8400C95568 /* Jijian Translate.app */;
+			productType = "com.apple.product-type.application";
+		};
+		669ECBAA3090AB8400C95568 /* Jijian Translate Extension (iOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 669ECBCB3090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate Extension (iOS)" */;
+			buildPhases = (
+				669ECBA73090AB8400C95568 /* Sources */,
+				669ECBA83090AB8400C95568 /* Frameworks */,
+				669ECBA93090AB8400C95568 /* Resources */,
+			);
+			buildRules = (
+			);
+			name = "Jijian Translate Extension (iOS)";
+			productName = "Jijian Translate Extension (iOS)";
+			productReference = 669ECBAB3090AB8400C95568 /* Jijian Translate Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		669ECBB43090AB8400C95568 /* Jijian Translate Extension (macOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 669ECBD23090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate Extension (macOS)" */;
+			buildPhases = (
+				669ECBB13090AB8400C95568 /* Sources */,
+				669ECBB23090AB8400C95568 /* Frameworks */,
+				669ECBB33090AB8400C95568 /* Resources */,
+			);
+			buildRules = (
+			);
+			name = "Jijian Translate Extension (macOS)";
+			productName = "Jijian Translate Extension (macOS)";
+			productReference = 669ECBB53090AB8400C95568 /* Jijian Translate Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		669ECB7A3090AB8200C95568 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					669ECB8C3090AB8400C95568 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					669ECB9E3090AB8400C95568 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					669ECBAA3090AB8400C95568 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					669ECBB43090AB8400C95568 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = 669ECB7D3090AB8200C95568 /* Build configuration list for PBXProject "Jijian Translate" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 669ECB793090AB8200C95568;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 669ECB8E3090AB8400C95568 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				669ECB8C3090AB8400C95568 /* Jijian Translate (iOS) */,
+				669ECB9E3090AB8400C95568 /* Jijian Translate (macOS) */,
+				669ECBAA3090AB8400C95568 /* Jijian Translate Extension (iOS) */,
+				669ECBB43090AB8400C95568 /* Jijian Translate Extension (macOS) */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		669ECB8B3090AB8400C95568 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				669ECBBD3090AB8400C95568 /* Icon.png in Resources */,
+				669ECB963090AB8400C95568 /* LaunchScreen.storyboard in Resources */,
+				669ECBBB3090AB8400C95568 /* Main.html in Resources */,
+				669ECBC13090AB8400C95568 /* Script.js in Resources */,
+				669ECBC53090AB8400C95568 /* Assets.xcassets in Resources */,
+				669ECB993090AB8400C95568 /* Main.storyboard in Resources */,
+				669ECBBF3090AB8400C95568 /* Style.css in Resources */,
+			);
+		};
+		669ECB9D3090AB8400C95568 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				669ECBBE3090AB8400C95568 /* Icon.png in Resources */,
+				669ECBC03090AB8400C95568 /* Style.css in Resources */,
+				669ECBA53090AB8400C95568 /* Main.storyboard in Resources */,
+				669ECBC23090AB8400C95568 /* Script.js in Resources */,
+				669ECBC63090AB8400C95568 /* Assets.xcassets in Resources */,
+				669ECBBC3090AB8400C95568 /* Main.html in Resources */,
+			);
+		};
+		669ECBA93090AB8400C95568 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				669ECC263090AB8400C95568 /* ocr-sandbox.js in Resources */,
+				669ECC293090AB8400C95568 /* welcome.js in Resources */,
+				669ECC243090AB8400C95568 /* welcome-samples.js in Resources */,
+				669ECC2E3090AB8400C95568 /* welcome.css in Resources */,
+				669ECC363090AB8400C95568 /* assets in Resources */,
+				669ECC1A3090AB8400C95568 /* reader-share.js in Resources */,
+				669ECC1C3090AB8400C95568 /* welcome-articles.js in Resources */,
+				669ECC203090AB8400C95568 /* background.js in Resources */,
+				669ECC283090AB8400C95568 /* NOTICE in Resources */,
+				669ECC253090AB8400C95568 /* reading-lab.css in Resources */,
+				669ECC323090AB8400C95568 /* content.js in Resources */,
+				669ECC2C3090AB8400C95568 /* welcome.html in Resources */,
+				669ECC1D3090AB8400C95568 /* LICENSE in Resources */,
+				669ECC2B3090AB8400C95568 /* reading-lab.html in Resources */,
+				669ECC333090AB8400C95568 /* ocr-worker.js in Resources */,
+				669ECC223090AB8400C95568 /* popup.html in Resources */,
+				669ECC343090AB8400C95568 /* fonts in Resources */,
+				669ECC2D3090AB8400C95568 /* manifest.json in Resources */,
+				669ECC213090AB8400C95568 /* reader.css in Resources */,
+				669ECC2F3090AB8400C95568 /* options.html in Resources */,
+				669ECC393090AB8400C95568 /* vendor in Resources */,
+				669ECC1E3090AB8400C95568 /* collection-filters.js in Resources */,
+				669ECC1B3090AB8400C95568 /* popup.js in Resources */,
+				669ECC1F3090AB8400C95568 /* reading-lab.js in Resources */,
+				669ECC373090AB8400C95568 /* ocr-models.js in Resources */,
+				669ECC233090AB8400C95568 /* options.js in Resources */,
+				669ECC313090AB8400C95568 /* popup.css in Resources */,
+				669ECC273090AB8400C95568 /* ocr-sandbox.html in Resources */,
+				669ECC303090AB8400C95568 /* reader-notes.js in Resources */,
+				669ECC2A3090AB8400C95568 /* icons in Resources */,
+				669ECC353090AB8400C95568 /* floating.css in Resources */,
+				669ECC383090AB8400C95568 /* options.css in Resources */,
+			);
+		};
+		669ECBB33090AB8400C95568 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				669ECC063090AB8400C95568 /* ocr-sandbox.js in Resources */,
+				669ECC093090AB8400C95568 /* welcome.js in Resources */,
+				669ECC043090AB8400C95568 /* welcome-samples.js in Resources */,
+				669ECC0E3090AB8400C95568 /* welcome.css in Resources */,
+				669ECC163090AB8400C95568 /* assets in Resources */,
+				669ECBFA3090AB8400C95568 /* reader-share.js in Resources */,
+				669ECBFC3090AB8400C95568 /* welcome-articles.js in Resources */,
+				669ECC003090AB8400C95568 /* background.js in Resources */,
+				669ECC083090AB8400C95568 /* NOTICE in Resources */,
+				669ECC053090AB8400C95568 /* reading-lab.css in Resources */,
+				669ECC123090AB8400C95568 /* content.js in Resources */,
+				669ECC0C3090AB8400C95568 /* welcome.html in Resources */,
+				669ECBFD3090AB8400C95568 /* LICENSE in Resources */,
+				669ECC0B3090AB8400C95568 /* reading-lab.html in Resources */,
+				669ECC133090AB8400C95568 /* ocr-worker.js in Resources */,
+				669ECC023090AB8400C95568 /* popup.html in Resources */,
+				669ECC143090AB8400C95568 /* fonts in Resources */,
+				669ECC0D3090AB8400C95568 /* manifest.json in Resources */,
+				669ECC013090AB8400C95568 /* reader.css in Resources */,
+				669ECC0F3090AB8400C95568 /* options.html in Resources */,
+				669ECC193090AB8400C95568 /* vendor in Resources */,
+				669ECBFE3090AB8400C95568 /* collection-filters.js in Resources */,
+				669ECBFB3090AB8400C95568 /* popup.js in Resources */,
+				669ECBFF3090AB8400C95568 /* reading-lab.js in Resources */,
+				669ECC173090AB8400C95568 /* ocr-models.js in Resources */,
+				669ECC033090AB8400C95568 /* options.js in Resources */,
+				669ECC113090AB8400C95568 /* popup.css in Resources */,
+				669ECC073090AB8400C95568 /* ocr-sandbox.html in Resources */,
+				669ECC103090AB8400C95568 /* reader-notes.js in Resources */,
+				669ECC0A3090AB8400C95568 /* icons in Resources */,
+				669ECC153090AB8400C95568 /* floating.css in Resources */,
+				669ECC183090AB8400C95568 /* options.css in Resources */,
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		669ECB893090AB8400C95568 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				669ECBC33090AB8400C95568 /* ViewController.swift in Sources */,
+				669ECB913090AB8400C95568 /* AppDelegate.swift in Sources */,
+				669ECB933090AB8400C95568 /* SceneDelegate.swift in Sources */,
+			);
+		};
+		669ECB9B3090AB8400C95568 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				669ECBC43090AB8400C95568 /* ViewController.swift in Sources */,
+				669ECBA23090AB8400C95568 /* AppDelegate.swift in Sources */,
+			);
+		};
+		669ECBA73090AB8400C95568 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				669ECBC73090AB8400C95568 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+		};
+		669ECBB13090AB8400C95568 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				669ECBC83090AB8400C95568 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		669ECBAE3090AB8400C95568 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 669ECBAA3090AB8400C95568 /* Jijian Translate Extension (iOS) */;
+			targetProxy = 669ECBAD3090AB8400C95568 /* PBXContainerItemProxy */;
+		};
+		669ECBB83090AB8400C95568 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 669ECBB43090AB8400C95568 /* Jijian Translate Extension (macOS) */;
+			targetProxy = 669ECBB73090AB8400C95568 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		669ECB803090AB8200C95568 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				669ECB813090AB8200C95568 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		669ECB943090AB8400C95568 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				669ECB953090AB8400C95568 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		669ECB973090AB8400C95568 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				669ECB983090AB8400C95568 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		669ECBA33090AB8400C95568 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				669ECBA43090AB8400C95568 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		669ECBC93090AB8400C95568 /* Debug configuration for PBXProject "Jijian Translate" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		669ECBCA3090AB8400C95568 /* Release configuration for PBXProject "Jijian Translate" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		669ECBCC3090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate Extension (iOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate.Extension;
+				PRODUCT_NAME = "Jijian Translate Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		669ECBCD3090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate Extension (iOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate.Extension;
+				PRODUCT_NAME = "Jijian Translate Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		669ECBD03090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate (iOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate;
+				PRODUCT_NAME = "Jijian Translate";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		669ECBD13090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate (iOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate;
+				PRODUCT_NAME = "Jijian Translate";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		669ECBD33090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate Extension (macOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate.Extension;
+				PRODUCT_NAME = "Jijian Translate Extension";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		669ECBD43090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate Extension (macOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate.Extension;
+				PRODUCT_NAME = "Jijian Translate Extension";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		669ECBD73090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate (macOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate;
+				PRODUCT_NAME = "Jijian Translate";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		669ECBD83090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate (macOS)" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "极简翻译";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0.7;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuteraccoons.JijianTranslate;
+				PRODUCT_NAME = "Jijian Translate";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		669ECB7D3090AB8200C95568 /* Build configuration list for PBXProject "Jijian Translate" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				669ECBC93090AB8400C95568 /* Debug configuration for PBXProject "Jijian Translate" */,
+				669ECBCA3090AB8400C95568 /* Release configuration for PBXProject "Jijian Translate" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		669ECBCB3090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate Extension (iOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				669ECBCC3090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate Extension (iOS)" */,
+				669ECBCD3090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate Extension (iOS)" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		669ECBCF3090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate (iOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				669ECBD03090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate (iOS)" */,
+				669ECBD13090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate (iOS)" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		669ECBD23090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate Extension (macOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				669ECBD33090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate Extension (macOS)" */,
+				669ECBD43090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate Extension (macOS)" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		669ECBD63090AB8400C95568 /* Build configuration list for PBXNativeTarget "Jijian Translate (macOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				669ECBD73090AB8400C95568 /* Debug configuration for PBXNativeTarget "Jijian Translate (macOS)" */,
+				669ECBD83090AB8400C95568 /* Release configuration for PBXNativeTarget "Jijian Translate (macOS)" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 669ECB7A3090AB8200C95568 /* Project object */;
+	validationLevel = 1;
+}
